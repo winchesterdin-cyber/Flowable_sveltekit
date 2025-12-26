@@ -1,0 +1,11 @@
+backend/target/
+!backend/target/*.jar
+.git
+.gitignore
+*.md
+.idea/
+*.iml
+backend/.mvn/wrapper/maven-wrapper.jar
+frontend/
+node_modules/
+.env
