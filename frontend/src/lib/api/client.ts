@@ -1,6 +1,8 @@
 import type { User, Task, TaskDetails, ProcessDefinition, ProcessInstance, LoginRequest } from '$lib/types';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+// In production, use relative URLs (empty string) so nginx can proxy /api/* to backend
+// In development, use localhost:8080 for direct backend access
+const API_BASE = import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? 'http://localhost:8080' : '');
 
 async function fetchApi<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
 	const response = await fetch(`${API_BASE}${endpoint}`, {
