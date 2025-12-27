@@ -29,6 +29,7 @@ public class CorsConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
+        // Local development origins
         List<String> allowedOrigins = new ArrayList<>(Arrays.asList(
             "http://localhost:3000",
             "http://localhost:5173",
@@ -63,13 +64,24 @@ public class CorsConfig {
         }
 
         configuration.setAllowedOrigins(allowedOrigins);
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+
+        // Also allow Netlify preview/deploy URLs using patterns
+        // This covers: *.netlify.app and deploy-preview-*.netlify.app
+        configuration.setAllowedOriginPatterns(Arrays.asList(
+            "https://*.netlify.app",
+            "https://*.netlify.live"
+        ));
+
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(List.of("*"));
+        configuration.setExposedHeaders(Arrays.asList("Set-Cookie", "Authorization"));
         configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/api/**", configuration);
+        // Also allow CORS for actuator endpoints (for health checks)
+        source.registerCorsConfiguration("/actuator/**", configuration);
         return source;
     }
 }
