@@ -6,10 +6,12 @@ server:
       # Set session timeout to 30 minutes to prevent cookie accumulation
       timeout: 30m
       cookie:
-        # Use secure cookies in production (behind HTTPS proxy)
-        secure: false
-        # Set SameSite to Lax for security while allowing normal navigation
-        same-site: lax
+        # Use secure cookies in production (required for cross-origin with SameSite=None)
+        # Railway provides HTTPS, so this is safe
+        secure: ${COOKIE_SECURE:true}
+        # Set SameSite to None for cross-origin requests (Netlify frontend -> Railway backend)
+        # This is required for cookies to be sent in cross-origin requests
+        same-site: ${COOKIE_SAME_SITE:none}
         # Cookie path
         path: /
         # Session cookie name
