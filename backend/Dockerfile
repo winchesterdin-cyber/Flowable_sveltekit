@@ -25,15 +25,17 @@ COPY --from=build /app/target/*.jar app.jar
 # Expose port 8080 (Railway will set PORT env var)
 EXPOSE 8080
 
-# Health check
+# Health check - uses PORT env var (defaults to 8080)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:8080/actuator/health || exit 1
+  CMD wget --no-verbose --tries=1 --spider http://localhost:${PORT:-8080}/actuator/health || exit 1
 
 # Run the application
-# Note: Railway provides PORT env var, Spring Boot will use server.port
-ENTRYPOINT ["java", \
-  "-XX:+UseContainerSupport", \
-  "-XX:MaxRAMPercentage=75.0", \
-  "-Djava.security.egd=file:/dev/./urandom", \
-  "-Dserver.port=${PORT:-8080}", \
-  "-jar", "app.jar"]
+# Note: Railway provides PORT env var, Spring Boot reads it from application.yml
+# Using shell form to allow proper environment variable expansion
+CMD java \
+  -XX:+UseContainerSupport \
+  -XX:MaxRAMPercentage=75.0 \
+  -Djava.security.egd=file:/dev/./urandom \
+  -Dserver.port=${PORT:-8080} \
+  -Dserver.address=0.0.0.0 \
+  -jar app.jar
