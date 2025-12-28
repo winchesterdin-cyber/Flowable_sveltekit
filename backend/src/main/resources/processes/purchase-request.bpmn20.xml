@@ -32,33 +32,33 @@
                 // Determine required approval levels based on amount and department
                 var approvalLevel = 'SUPERVISOR';
                 var requiresMultiApproval = false;
-                var requiredApprovers = [];
+                var requiredApproversJson = '[]';
 
                 if (amount > 50000) {
                     approvalLevel = 'EXECUTIVE';
                     requiresMultiApproval = true;
-                    requiredApprovers = ['SUPERVISOR', 'MANAGER', 'DIRECTOR', 'EXECUTIVE'];
+                    requiredApproversJson = '["SUPERVISOR","MANAGER","DIRECTOR","EXECUTIVE"]';
                 } else if (amount > 20000) {
                     approvalLevel = 'DIRECTOR';
                     requiresMultiApproval = true;
-                    requiredApprovers = ['SUPERVISOR', 'MANAGER', 'DIRECTOR'];
+                    requiredApproversJson = '["SUPERVISOR","MANAGER","DIRECTOR"]';
                 } else if (amount > 5000) {
                     approvalLevel = 'MANAGER';
                     requiresMultiApproval = true;
-                    requiredApprovers = ['SUPERVISOR', 'MANAGER'];
+                    requiredApproversJson = '["SUPERVISOR","MANAGER"]';
                 } else if (amount > 1000) {
                     approvalLevel = 'SUPERVISOR';
-                    requiredApprovers = ['SUPERVISOR'];
+                    requiredApproversJson = '["SUPERVISOR"]';
                 } else {
                     approvalLevel = 'AUTO_APPROVED';
-                    requiredApprovers = [];
+                    requiredApproversJson = '[]';
                 }
 
                 execution.setVariable('approvalLevel', approvalLevel);
                 execution.setVariable('currentLevel', 'SUPERVISOR');
                 execution.setVariable('requiresMultiApproval', requiresMultiApproval);
-                execution.setVariable('requiredApprovers', Java.to(requiredApprovers, 'java.lang.String[]'));
-                execution.setVariable('completedApprovals', Java.to([], 'java.lang.String[]'));
+                execution.setVariable('requiredApprovers', requiredApproversJson);
+                execution.setVariable('completedApprovals', '[]');
                 execution.setVariable('escalationCount', 0);
                 execution.setVariable('escalationHistory', '[]');
                 execution.setVariable('approvalHistory', '[]');
