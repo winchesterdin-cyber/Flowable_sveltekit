@@ -2,6 +2,9 @@
 <definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
              xmlns:flowable="http://flowable.org/bpmn"
+             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+             xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+             xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
              targetNamespace="http://demo.com/bpm"
              xsi:schemaLocation="http://www.omg.org/spec/BPMN/20100524/MODEL
                                  http://www.omg.org/spec/BPMN/20100524/MODEL/BPMN20.xsd">
@@ -332,4 +335,327 @@
         </endEvent>
 
     </process>
+
+    <bpmndi:BPMNDiagram id="BPMNDiagram_purchase-request">
+        <bpmndi:BPMNPlane id="BPMNPlane_purchase-request" bpmnElement="purchase-request">
+            <!-- Start Event -->
+            <bpmndi:BPMNShape id="startEvent_di" bpmnElement="startEvent">
+                <dc:Bounds x="100" y="300" width="36" height="36"/>
+                <bpmndi:BPMNLabel>
+                    <dc:Bounds x="78" y="343" width="80" height="27"/>
+                </bpmndi:BPMNLabel>
+            </bpmndi:BPMNShape>
+
+            <!-- Determine Approval Path -->
+            <bpmndi:BPMNShape id="determineApprovalPath_di" bpmnElement="determineApprovalPath">
+                <dc:Bounds x="200" y="278" width="100" height="80"/>
+            </bpmndi:BPMNShape>
+
+            <!-- Check Auto Approval Gateway -->
+            <bpmndi:BPMNShape id="checkAutoApproval_di" bpmnElement="checkAutoApproval" isMarkerVisible="true">
+                <dc:Bounds x="365" y="293" width="50" height="50"/>
+                <bpmndi:BPMNLabel>
+                    <dc:Bounds x="350" y="350" width="80" height="14"/>
+                </bpmndi:BPMNLabel>
+            </bpmndi:BPMNShape>
+
+            <!-- Supervisor Approval -->
+            <bpmndi:BPMNShape id="supervisorApproval_di" bpmnElement="supervisorApproval">
+                <dc:Bounds x="480" y="278" width="100" height="80"/>
+            </bpmndi:BPMNShape>
+
+            <!-- Check Supervisor Decision Gateway -->
+            <bpmndi:BPMNShape id="checkSupervisorDecision_di" bpmnElement="checkSupervisorDecision" isMarkerVisible="true">
+                <dc:Bounds x="645" y="293" width="50" height="50"/>
+                <bpmndi:BPMNLabel>
+                    <dc:Bounds x="625" y="350" width="90" height="14"/>
+                </bpmndi:BPMNLabel>
+            </bpmndi:BPMNShape>
+
+            <!-- Request Changes -->
+            <bpmndi:BPMNShape id="requestChanges_di" bpmnElement="requestChanges">
+                <dc:Bounds x="480" y="420" width="100" height="80"/>
+            </bpmndi:BPMNShape>
+
+            <!-- Check Needs More Approvals Gateway -->
+            <bpmndi:BPMNShape id="checkNeedsMoreApprovals_di" bpmnElement="checkNeedsMoreApprovals" isMarkerVisible="true">
+                <dc:Bounds x="765" y="293" width="50" height="50"/>
+                <bpmndi:BPMNLabel>
+                    <dc:Bounds x="745" y="263" width="90" height="27"/>
+                </bpmndi:BPMNLabel>
+            </bpmndi:BPMNShape>
+
+            <!-- Manager Approval -->
+            <bpmndi:BPMNShape id="managerApproval_di" bpmnElement="managerApproval">
+                <dc:Bounds x="880" y="278" width="100" height="80"/>
+            </bpmndi:BPMNShape>
+
+            <!-- Check Manager Decision Gateway -->
+            <bpmndi:BPMNShape id="checkManagerDecision_di" bpmnElement="checkManagerDecision" isMarkerVisible="true">
+                <dc:Bounds x="1045" y="293" width="50" height="50"/>
+                <bpmndi:BPMNLabel>
+                    <dc:Bounds x="1025" y="350" width="90" height="14"/>
+                </bpmndi:BPMNLabel>
+            </bpmndi:BPMNShape>
+
+            <!-- Update Level After Manager -->
+            <bpmndi:BPMNShape id="updateLevelAfterManager_di" bpmnElement="updateLevelAfterManager">
+                <dc:Bounds x="1160" y="278" width="100" height="80"/>
+            </bpmndi:BPMNShape>
+
+            <!-- Check Needs Director Gateway -->
+            <bpmndi:BPMNShape id="checkNeedsDirector_di" bpmnElement="checkNeedsDirector" isMarkerVisible="true">
+                <dc:Bounds x="1325" y="293" width="50" height="50"/>
+                <bpmndi:BPMNLabel>
+                    <dc:Bounds x="1305" y="263" width="90" height="14"/>
+                </bpmndi:BPMNLabel>
+            </bpmndi:BPMNShape>
+
+            <!-- Director Approval -->
+            <bpmndi:BPMNShape id="directorApproval_di" bpmnElement="directorApproval">
+                <dc:Bounds x="880" y="100" width="100" height="80"/>
+            </bpmndi:BPMNShape>
+
+            <!-- Check Director Decision Gateway -->
+            <bpmndi:BPMNShape id="checkDirectorDecision_di" bpmnElement="checkDirectorDecision" isMarkerVisible="true">
+                <dc:Bounds x="1045" y="115" width="50" height="50"/>
+                <bpmndi:BPMNLabel>
+                    <dc:Bounds x="1025" y="85" width="90" height="14"/>
+                </bpmndi:BPMNLabel>
+            </bpmndi:BPMNShape>
+
+            <!-- Update Level After Director -->
+            <bpmndi:BPMNShape id="updateLevelAfterDirector_di" bpmnElement="updateLevelAfterDirector">
+                <dc:Bounds x="1160" y="100" width="100" height="80"/>
+            </bpmndi:BPMNShape>
+
+            <!-- Check Needs Executive Gateway -->
+            <bpmndi:BPMNShape id="checkNeedsExecutive_di" bpmnElement="checkNeedsExecutive" isMarkerVisible="true">
+                <dc:Bounds x="1325" y="115" width="50" height="50"/>
+                <bpmndi:BPMNLabel>
+                    <dc:Bounds x="1305" y="85" width="90" height="14"/>
+                </bpmndi:BPMNLabel>
+            </bpmndi:BPMNShape>
+
+            <!-- Executive Approval -->
+            <bpmndi:BPMNShape id="executiveApproval_di" bpmnElement="executiveApproval">
+                <dc:Bounds x="1440" y="100" width="100" height="80"/>
+            </bpmndi:BPMNShape>
+
+            <!-- Check Executive Decision Gateway -->
+            <bpmndi:BPMNShape id="checkExecutiveDecision_di" bpmnElement="checkExecutiveDecision" isMarkerVisible="true">
+                <dc:Bounds x="1605" y="115" width="50" height="50"/>
+                <bpmndi:BPMNLabel>
+                    <dc:Bounds x="1585" y="85" width="90" height="14"/>
+                </bpmndi:BPMNLabel>
+            </bpmndi:BPMNShape>
+
+            <!-- End Approved -->
+            <bpmndi:BPMNShape id="endApproved_di" bpmnElement="endApproved">
+                <dc:Bounds x="1702" y="300" width="36" height="36"/>
+                <bpmndi:BPMNLabel>
+                    <dc:Bounds x="1676" y="343" width="88" height="14"/>
+                </bpmndi:BPMNLabel>
+            </bpmndi:BPMNShape>
+
+            <!-- End Rejected -->
+            <bpmndi:BPMNShape id="endRejected_di" bpmnElement="endRejected">
+                <dc:Bounds x="1702" y="500" width="36" height="36"/>
+                <bpmndi:BPMNLabel>
+                    <dc:Bounds x="1676" y="543" width="88" height="14"/>
+                </bpmndi:BPMNLabel>
+            </bpmndi:BPMNShape>
+
+            <!-- Sequence Flows -->
+            <bpmndi:BPMNEdge id="flow1_di" bpmnElement="flow1">
+                <di:waypoint x="136" y="318"/>
+                <di:waypoint x="200" y="318"/>
+            </bpmndi:BPMNEdge>
+
+            <bpmndi:BPMNEdge id="flow2_di" bpmnElement="flow2">
+                <di:waypoint x="300" y="318"/>
+                <di:waypoint x="365" y="318"/>
+            </bpmndi:BPMNEdge>
+
+            <bpmndi:BPMNEdge id="flowAutoApproved_di" bpmnElement="flowAutoApproved">
+                <di:waypoint x="390" y="343"/>
+                <di:waypoint x="390" y="400"/>
+                <di:waypoint x="1720" y="400"/>
+                <di:waypoint x="1720" y="336"/>
+                <bpmndi:BPMNLabel>
+                    <dc:Bounds x="1000" y="382" width="70" height="14"/>
+                </bpmndi:BPMNLabel>
+            </bpmndi:BPMNEdge>
+
+            <bpmndi:BPMNEdge id="flowNeedsApproval_di" bpmnElement="flowNeedsApproval">
+                <di:waypoint x="415" y="318"/>
+                <di:waypoint x="480" y="318"/>
+            </bpmndi:BPMNEdge>
+
+            <bpmndi:BPMNEdge id="flow3_di" bpmnElement="flow3">
+                <di:waypoint x="580" y="318"/>
+                <di:waypoint x="645" y="318"/>
+            </bpmndi:BPMNEdge>
+
+            <bpmndi:BPMNEdge id="flowSupApproved_di" bpmnElement="flowSupApproved">
+                <di:waypoint x="695" y="318"/>
+                <di:waypoint x="765" y="318"/>
+            </bpmndi:BPMNEdge>
+
+            <bpmndi:BPMNEdge id="flowSupRejected_di" bpmnElement="flowSupRejected">
+                <di:waypoint x="670" y="343"/>
+                <di:waypoint x="670" y="518"/>
+                <di:waypoint x="1702" y="518"/>
+            </bpmndi:BPMNEdge>
+
+            <bpmndi:BPMNEdge id="flowSupEscalate_di" bpmnElement="flowSupEscalate">
+                <di:waypoint x="670" y="293"/>
+                <di:waypoint x="670" y="140"/>
+                <di:waypoint x="880" y="140"/>
+            </bpmndi:BPMNEdge>
+
+            <bpmndi:BPMNEdge id="flowSupRequestChanges_di" bpmnElement="flowSupRequestChanges">
+                <di:waypoint x="670" y="343"/>
+                <di:waypoint x="670" y="460"/>
+                <di:waypoint x="580" y="460"/>
+            </bpmndi:BPMNEdge>
+
+            <bpmndi:BPMNEdge id="flowChangesAddressed_di" bpmnElement="flowChangesAddressed">
+                <di:waypoint x="480" y="460"/>
+                <di:waypoint x="440" y="460"/>
+                <di:waypoint x="440" y="318"/>
+                <di:waypoint x="480" y="318"/>
+            </bpmndi:BPMNEdge>
+
+            <bpmndi:BPMNEdge id="flowComplete_di" bpmnElement="flowComplete">
+                <di:waypoint x="815" y="318"/>
+                <di:waypoint x="1702" y="318"/>
+            </bpmndi:BPMNEdge>
+
+            <bpmndi:BPMNEdge id="flowNeedsManager_di" bpmnElement="flowNeedsManager">
+                <di:waypoint x="790" y="343"/>
+                <di:waypoint x="790" y="380"/>
+                <di:waypoint x="930" y="380"/>
+                <di:waypoint x="930" y="358"/>
+            </bpmndi:BPMNEdge>
+
+            <bpmndi:BPMNEdge id="flow4_di" bpmnElement="flow4">
+                <di:waypoint x="980" y="318"/>
+                <di:waypoint x="1045" y="318"/>
+            </bpmndi:BPMNEdge>
+
+            <bpmndi:BPMNEdge id="flowMgrApproved_di" bpmnElement="flowMgrApproved">
+                <di:waypoint x="1095" y="318"/>
+                <di:waypoint x="1160" y="318"/>
+            </bpmndi:BPMNEdge>
+
+            <bpmndi:BPMNEdge id="flowMgrRejected_di" bpmnElement="flowMgrRejected">
+                <di:waypoint x="1070" y="343"/>
+                <di:waypoint x="1070" y="518"/>
+                <di:waypoint x="1702" y="518"/>
+            </bpmndi:BPMNEdge>
+
+            <bpmndi:BPMNEdge id="flowMgrEscalate_di" bpmnElement="flowMgrEscalate">
+                <di:waypoint x="1070" y="293"/>
+                <di:waypoint x="1070" y="220"/>
+                <di:waypoint x="980" y="220"/>
+                <di:waypoint x="980" y="140"/>
+            </bpmndi:BPMNEdge>
+
+            <bpmndi:BPMNEdge id="flowMgrDeEscalate_di" bpmnElement="flowMgrDeEscalate">
+                <di:waypoint x="1070" y="343"/>
+                <di:waypoint x="1070" y="380"/>
+                <di:waypoint x="530" y="380"/>
+                <di:waypoint x="530" y="358"/>
+            </bpmndi:BPMNEdge>
+
+            <bpmndi:BPMNEdge id="flow5_di" bpmnElement="flow5">
+                <di:waypoint x="1260" y="318"/>
+                <di:waypoint x="1325" y="318"/>
+            </bpmndi:BPMNEdge>
+
+            <bpmndi:BPMNEdge id="flowDirectorNotNeeded_di" bpmnElement="flowDirectorNotNeeded">
+                <di:waypoint x="1375" y="318"/>
+                <di:waypoint x="1702" y="318"/>
+            </bpmndi:BPMNEdge>
+
+            <bpmndi:BPMNEdge id="flowNeedsDirector_di" bpmnElement="flowNeedsDirector">
+                <di:waypoint x="1350" y="293"/>
+                <di:waypoint x="1350" y="220"/>
+                <di:waypoint x="980" y="220"/>
+                <di:waypoint x="980" y="140"/>
+            </bpmndi:BPMNEdge>
+
+            <bpmndi:BPMNEdge id="flow6_di" bpmnElement="flow6">
+                <di:waypoint x="980" y="140"/>
+                <di:waypoint x="1045" y="140"/>
+            </bpmndi:BPMNEdge>
+
+            <bpmndi:BPMNEdge id="flowDirApproved_di" bpmnElement="flowDirApproved">
+                <di:waypoint x="1095" y="140"/>
+                <di:waypoint x="1160" y="140"/>
+            </bpmndi:BPMNEdge>
+
+            <bpmndi:BPMNEdge id="flowDirRejected_di" bpmnElement="flowDirRejected">
+                <di:waypoint x="1070" y="165"/>
+                <di:waypoint x="1070" y="518"/>
+                <di:waypoint x="1702" y="518"/>
+            </bpmndi:BPMNEdge>
+
+            <bpmndi:BPMNEdge id="flowDirEscalate_di" bpmnElement="flowDirEscalate">
+                <di:waypoint x="1070" y="115"/>
+                <di:waypoint x="1070" y="60"/>
+                <di:waypoint x="1490" y="60"/>
+                <di:waypoint x="1490" y="100"/>
+            </bpmndi:BPMNEdge>
+
+            <bpmndi:BPMNEdge id="flowDirDeEscalate_di" bpmnElement="flowDirDeEscalate">
+                <di:waypoint x="1045" y="140"/>
+                <di:waypoint x="1000" y="140"/>
+                <di:waypoint x="1000" y="220"/>
+                <di:waypoint x="930" y="220"/>
+                <di:waypoint x="930" y="278"/>
+            </bpmndi:BPMNEdge>
+
+            <bpmndi:BPMNEdge id="flow7_di" bpmnElement="flow7">
+                <di:waypoint x="1260" y="140"/>
+                <di:waypoint x="1325" y="140"/>
+            </bpmndi:BPMNEdge>
+
+            <bpmndi:BPMNEdge id="flowExecutiveNotNeeded_di" bpmnElement="flowExecutiveNotNeeded">
+                <di:waypoint x="1350" y="165"/>
+                <di:waypoint x="1350" y="318"/>
+                <di:waypoint x="1702" y="318"/>
+            </bpmndi:BPMNEdge>
+
+            <bpmndi:BPMNEdge id="flowNeedsExecutive_di" bpmnElement="flowNeedsExecutive">
+                <di:waypoint x="1375" y="140"/>
+                <di:waypoint x="1440" y="140"/>
+            </bpmndi:BPMNEdge>
+
+            <bpmndi:BPMNEdge id="flow8_di" bpmnElement="flow8">
+                <di:waypoint x="1540" y="140"/>
+                <di:waypoint x="1605" y="140"/>
+            </bpmndi:BPMNEdge>
+
+            <bpmndi:BPMNEdge id="flowExecApproved_di" bpmnElement="flowExecApproved">
+                <di:waypoint x="1630" y="165"/>
+                <di:waypoint x="1630" y="318"/>
+                <di:waypoint x="1702" y="318"/>
+            </bpmndi:BPMNEdge>
+
+            <bpmndi:BPMNEdge id="flowExecRejected_di" bpmnElement="flowExecRejected">
+                <di:waypoint x="1655" y="140"/>
+                <di:waypoint x="1720" y="140"/>
+                <di:waypoint x="1720" y="500"/>
+            </bpmndi:BPMNEdge>
+
+            <bpmndi:BPMNEdge id="flowExecDeEscalate_di" bpmnElement="flowExecDeEscalate">
+                <di:waypoint x="1630" y="115"/>
+                <di:waypoint x="1630" y="60"/>
+                <di:waypoint x="930" y="60"/>
+                <di:waypoint x="930" y="100"/>
+            </bpmndi:BPMNEdge>
+        </bpmndi:BPMNPlane>
+    </bpmndi:BPMNDiagram>
 </definitions>
