@@ -131,7 +131,7 @@ startsecs=0
 priority=10
 
 [program:backend]
-command=java -XX:+UseContainerSupport -XX:MaxRAMPercentage=70.0 -XX:+TieredCompilation -XX:TieredStopAtLevel=1 -Djava.security.egd=file:/dev/./urandom -Dspring.jmx.enabled=false -Dserver.address=0.0.0.0 -Dserver.port=8081 -jar /app/app.jar
+command=java -XX:+UseContainerSupport -XX:MaxRAMPercentage=50.0 -XX:MaxMetaspaceSize=128m -XX:+TieredCompilation -XX:TieredStopAtLevel=1 -XX:+UseSerialGC -Djava.security.egd=file:/dev/./urandom -Dspring.jmx.enabled=false -Dserver.address=0.0.0.0 -Dserver.port=8081 -jar /app/app.jar
 directory=/app
 autostart=true
 autorestart=true
