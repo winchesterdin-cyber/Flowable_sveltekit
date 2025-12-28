@@ -14,6 +14,7 @@ import type {
   HandoffRequest
 } from '$lib/types';
 import { createLogger } from '$lib/utils/logger';
+import { backendStatus } from '$lib/stores/backendStatus';
 
 // In production, use relative URLs (empty string) so nginx can proxy /api/* to backend
 // In development, use localhost:8080 for direct backend access
@@ -21,6 +22,14 @@ const API_BASE =
   import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? 'http://localhost:8080' : '');
 
 const log = createLogger('api');
+
+// Retry configuration for backend startup
+const STARTUP_RETRY_CONFIG = {
+  maxRetries: 10,
+  initialDelayMs: 1000,
+  maxDelayMs: 5000,
+  backoffMultiplier: 1.5
+};
 
 /**
  * Custom API error with detailed information
@@ -169,6 +178,39 @@ function parseErrorResponse(
   return new ApiError(errorMessage, status, statusText, errorDetails, fieldErrors, timestamp);
 }
 
+/**
+ * Check if an error response indicates the backend is still starting up
+ */
+function isBackendStartingError(errorBody: Record<string, unknown> | null): boolean {
+  if (!errorBody) return false;
+
+  const error = errorBody.error as string | undefined;
+  const message = errorBody.message as string | undefined;
+
+  // Check for the specific startup message from Railway
+  if (error === 'Service starting') return true;
+  if (message?.toLowerCase().includes('backend is initializing')) return true;
+  if (message?.toLowerCase().includes('service starting')) return true;
+
+  return false;
+}
+
+/**
+ * Sleep for a specified number of milliseconds
+ */
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Calculate delay for next retry using exponential backoff
+ */
+function getRetryDelay(attempt: number): number {
+  const delay =
+    STARTUP_RETRY_CONFIG.initialDelayMs * Math.pow(STARTUP_RETRY_CONFIG.backoffMultiplier, attempt);
+  return Math.min(delay, STARTUP_RETRY_CONFIG.maxDelayMs);
+}
+
 async function fetchApi<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const url = `${API_BASE}${endpoint}`;
   const method = options.method || 'GET';
@@ -177,88 +219,145 @@ async function fetchApi<T>(endpoint: string, options: RequestInit = {}): Promise
     body: options.body ? JSON.parse(options.body as string) : undefined
   });
 
-  try {
-    const response = await fetch(url, {
-      ...options,
-      credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-        ...options.headers
-      }
-    });
-
-    if (!response.ok) {
-      // Read the raw response text first
-      let rawText = '';
-      let errorBody: Record<string, unknown> | null = null;
-
-      try {
-        rawText = await response.text();
-        if (rawText && rawText.trim()) {
-          // Check if it looks like JSON before parsing
-          const trimmed = rawText.trim();
-          if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
-            errorBody = JSON.parse(rawText);
-          }
+  for (let attempt = 0; attempt <= STARTUP_RETRY_CONFIG.maxRetries; attempt++) {
+    try {
+      const response = await fetch(url, {
+        ...options,
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+          ...options.headers
         }
-      } catch {
-        // Response body is not valid JSON
-        log.warn('Failed to parse error response as JSON', {
-          rawText: rawText.substring(0, 200)
-        });
-      }
-
-      log.error(`${method} ${url} failed`, undefined, {
-        status: response.status,
-        statusText: response.statusText,
-        errorBody,
-        rawText: rawText.substring(0, 500)
       });
 
-      throw parseErrorResponse(response.status, response.statusText, errorBody, rawText);
-    }
+      if (!response.ok) {
+        // Read the raw response text first
+        let rawText = '';
+        let errorBody: Record<string, unknown> | null = null;
 
-    // Handle empty responses (204 No Content)
-    const contentLength = response.headers.get('content-length');
-    if (response.status === 204 || contentLength === '0') {
-      return {} as T;
-    }
+        try {
+          rawText = await response.text();
+          if (rawText && rawText.trim()) {
+            // Check if it looks like JSON before parsing
+            const trimmed = rawText.trim();
+            if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+              errorBody = JSON.parse(rawText);
+            }
+          }
+        } catch {
+          // Response body is not valid JSON
+          log.warn('Failed to parse error response as JSON', {
+            rawText: rawText.substring(0, 200)
+          });
+        }
 
-    const data = await response.json();
-    log.debug(`${method} ${url} success`, { data });
-    return data;
-  } catch (error) {
-    // Re-throw ApiErrors as-is
-    if (error instanceof ApiError) {
-      throw error;
-    }
+        // Check if backend is still starting up - retry with exponential backoff
+        if (isBackendStartingError(errorBody)) {
+          const delay = getRetryDelay(attempt);
+          log.info(
+            `Backend is starting, retrying in ${delay}ms (attempt ${attempt + 1}/${STARTUP_RETRY_CONFIG.maxRetries + 1})`,
+            {
+              url,
+              method,
+              attempt
+            }
+          );
 
-    // Handle network errors with more specific messages
-    if (error instanceof TypeError) {
-      const isConnectionRefused =
-        error.message.includes('fetch') || error.message.includes('network');
-      log.error('Network error occurred', error, { url, method });
+          // Update backend status store
+          backendStatus.setStarting(attempt + 1, STARTUP_RETRY_CONFIG.maxRetries + 1);
+
+          if (attempt < STARTUP_RETRY_CONFIG.maxRetries) {
+            await sleep(delay);
+            continue; // Retry the request
+          }
+          // Max retries reached, fall through to throw error
+        }
+
+        log.error(`${method} ${url} failed`, undefined, {
+          status: response.status,
+          statusText: response.statusText,
+          errorBody,
+          rawText: rawText.substring(0, 500)
+        });
+
+        // Mark backend as ready if we got a response (even an error)
+        backendStatus.setReady();
+
+        throw parseErrorResponse(response.status, response.statusText, errorBody, rawText);
+      }
+
+      // Success - mark backend as ready
+      backendStatus.setReady();
+
+      // Handle empty responses (204 No Content)
+      const contentLength = response.headers.get('content-length');
+      if (response.status === 204 || contentLength === '0') {
+        return {} as T;
+      }
+
+      const data = await response.json();
+      log.debug(`${method} ${url} success`, { data });
+      return data;
+    } catch (error) {
+      // Re-throw ApiErrors as-is (they're already processed)
+      if (error instanceof ApiError) {
+        throw error;
+      }
+
+      // For network errors during startup, retry
+      if (error instanceof TypeError && attempt < STARTUP_RETRY_CONFIG.maxRetries) {
+        const delay = getRetryDelay(attempt);
+        log.info(
+          `Network error, backend may be starting. Retrying in ${delay}ms (attempt ${attempt + 1}/${STARTUP_RETRY_CONFIG.maxRetries + 1})`,
+          {
+            url,
+            method,
+            error: error.message,
+            attempt
+          }
+        );
+        backendStatus.setStarting(attempt + 1, STARTUP_RETRY_CONFIG.maxRetries + 1);
+        await sleep(delay);
+        continue;
+      }
+
+      // Handle network errors with more specific messages
+      if (error instanceof TypeError) {
+        const isConnectionRefused =
+          error.message.includes('fetch') || error.message.includes('network');
+        log.error('Network error occurred', error, { url, method });
+        backendStatus.setError('Connection failed');
+        throw new ApiError(
+          'Connection failed',
+          0,
+          'Network Error',
+          isConnectionRefused
+            ? `Unable to connect to ${url}. The server may be down or there may be a network issue.`
+            : `Network error: ${error.message}`
+        );
+      }
+
+      // Handle other errors
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      log.error('Unexpected error', error, { url, method });
       throw new ApiError(
-        'Connection failed',
+        'Request failed',
         0,
-        'Network Error',
-        isConnectionRefused
-          ? `Unable to connect to ${url}. The server may be down or there may be a network issue.`
-          : `Network error: ${error.message}`
+        'Unknown Error',
+        `An unexpected error occurred: ${errorMessage}`
       );
     }
-
-    // Handle other errors
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    log.error('Unexpected error', error, { url, method });
-    throw new ApiError(
-      'Request failed',
-      0,
-      'Unknown Error',
-      `An unexpected error occurred: ${errorMessage}`
-    );
   }
+
+  // If we've exhausted all retries
+  backendStatus.setError('Backend failed to start');
+  throw new ApiError(
+    'Backend unavailable',
+    503,
+    'Service Unavailable',
+    `Backend is still starting after ${STARTUP_RETRY_CONFIG.maxRetries + 1} attempts. Please try again in a moment.`
+  );
 }
 
 export const api = {
@@ -391,10 +490,7 @@ export const api = {
   },
 
   // Handoff
-  async handoffTask(
-    taskId: string,
-    request: HandoffRequest
-  ): Promise<{ message: string }> {
+  async handoffTask(taskId: string, request: HandoffRequest): Promise<{ message: string }> {
     return fetchApi(`/api/workflow/tasks/${taskId}/handoff`, {
       method: 'POST',
       body: JSON.stringify(request)

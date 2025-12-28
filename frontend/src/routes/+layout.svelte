@@ -6,6 +6,7 @@
 	import { api } from '$lib/api/client';
 	import { authStore } from '$lib/stores/auth.svelte';
 	import Navbar from '$lib/components/Navbar.svelte';
+	import BackendStartingBanner from '$lib/components/BackendStartingBanner.svelte';
 
 	const { children } = $props();
 
@@ -35,6 +36,9 @@
 		}
 	});
 </script>
+
+<!-- Backend startup banner - shows when backend is cold starting on Railway -->
+<BackendStartingBanner />
 
 <div class="min-h-screen flex flex-col">
 	{#if authStore.loading}
