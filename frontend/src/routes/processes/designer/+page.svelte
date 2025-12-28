@@ -182,6 +182,7 @@
 
   // Validation state
   let validationErrors = $state<string[]>([]);
+  let validationWarnings = $state<string[]>([]);
 
   // Available process variables for expression builder
   let processVariables = $state<string[]>(['initiator', 'amount', 'description', 'decision', 'status']);
@@ -1192,73 +1193,220 @@
   }
 
   // BPMN Diagram Validation
-  function validateBpmnDiagram(): { valid: boolean; errors: string[] } {
-    if (!modeler) return { valid: false, errors: ['Modeler not initialized'] };
+  function validateBpmnDiagram(): { valid: boolean; errors: string[]; warnings: string[] } {
+    if (!modeler) return { valid: false, errors: ['Modeler not initialized'], warnings: [] };
 
     const errors: string[] = [];
+    const warnings: string[] = [];
     const elementRegistry = modeler.get('elementRegistry');
 
     let hasStartEvent = false;
     let hasEndEvent = false;
     const disconnectedElements: string[] = [];
-    const elementsWithoutNames: string[] = [];
 
-    elementRegistry.forEach((element: any) => {
-      if (element.type === 'bpmn:StartEvent') hasStartEvent = true;
-      if (element.type === 'bpmn:EndEvent') hasEndEvent = true;
+    // Element types that don't participate in sequence flows
+    const nonFlowElementTypes = new Set([
+      'bpmn:Process',
+      'bpmn:Collaboration',
+      'bpmn:Participant',
+      'bpmn:Lane',
+      'bpmn:LaneSet',
+      'bpmn:SequenceFlow',
+      'bpmn:MessageFlow',
+      'bpmn:Association',
+      'bpmn:DataObject',
+      'bpmn:DataObjectReference',
+      'bpmn:DataStoreReference',
+      'bpmn:DataInput',
+      'bpmn:DataOutput',
+      'bpmn:TextAnnotation',
+      'bpmn:Group',
+      'bpmn:Category',
+      'bpmn:CategoryValue',
+      'label'
+    ]);
 
-      // Check for disconnected elements (excluding the process itself and labels)
-      if (element.type !== 'bpmn:Process' &&
-          element.type !== 'label' &&
-          element.type !== 'bpmn:SequenceFlow') {
-        const bo = element.businessObject;
-        const incoming = bo.incoming || [];
-        const outgoing = bo.outgoing || [];
+    // Element types that don't require incoming connections
+    const noIncomingRequired = new Set([
+      'bpmn:StartEvent',
+      'bpmn:BoundaryEvent', // Attached to host element, triggered by events
+      'bpmn:EventBasedGateway' // Can be used as a start pattern
+    ]);
 
-        if (element.type !== 'bpmn:StartEvent' && incoming.length === 0) {
-          disconnectedElements.push(`${element.type.replace('bpmn:', '')} "${bo.name || bo.id}" has no incoming connections`);
+    // Element types that don't require outgoing connections
+    const noOutgoingRequired = new Set([
+      'bpmn:EndEvent',
+      'bpmn:IntermediateThrowEvent', // Can be terminal (e.g., terminate, escalation, compensation)
+      'bpmn:CompensateEventDefinition'
+    ]);
+
+    // Check if an element is a terminating throw event
+    function isTerminatingThrowEvent(bo: any): boolean {
+      if (!bo.eventDefinitions || bo.eventDefinitions.length === 0) return false;
+      return bo.eventDefinitions.some((ed: any) =>
+        ed.$type === 'bpmn:TerminateEventDefinition' ||
+        ed.$type === 'bpmn:EscalationEventDefinition' ||
+        ed.$type === 'bpmn:CompensateEventDefinition' ||
+        ed.$type === 'bpmn:SignalEventDefinition' ||
+        ed.$type === 'bpmn:MessageEventDefinition'
+      );
+    }
+
+    // Check if element is inside a subprocess (internal flows handled separately)
+    function isInsideSubProcess(element: any): boolean {
+      let parent = element.parent;
+      while (parent) {
+        if (parent.type === 'bpmn:SubProcess' ||
+            parent.type === 'bpmn:Transaction' ||
+            parent.type === 'bpmn:AdHocSubProcess') {
+          return true;
         }
-        if (element.type !== 'bpmn:EndEvent' && outgoing.length === 0) {
-          disconnectedElements.push(`${element.type.replace('bpmn:', '')} "${bo.name || bo.id}" has no outgoing connections`);
+        parent = parent.parent;
+      }
+      return false;
+    }
+
+    // Check if a subprocess is collapsed (visual only, no internal elements shown)
+    function isCollapsedSubProcess(element: any): boolean {
+      if (element.type !== 'bpmn:SubProcess' &&
+          element.type !== 'bpmn:Transaction' &&
+          element.type !== 'bpmn:AdHocSubProcess') {
+        return false;
+      }
+      // Check if it's collapsed (di:isExpanded attribute)
+      return element.collapsed === true || element.businessObject?.di?.isExpanded === false;
+    }
+
+    // Collect all elements for validation
+    const allElements: any[] = [];
+    elementRegistry.forEach((element: any) => {
+      allElements.push(element);
+    });
+
+    // First pass: identify start/end events and build element map
+    for (const element of allElements) {
+      const type = element.type;
+
+      // Track start and end events (only at process level, not inside subprocesses)
+      if (type === 'bpmn:StartEvent' && !isInsideSubProcess(element)) {
+        hasStartEvent = true;
+      }
+      if (type === 'bpmn:EndEvent' && !isInsideSubProcess(element)) {
+        hasEndEvent = true;
+      }
+    }
+
+    // Second pass: validate connections and element-specific rules
+    for (const element of allElements) {
+      const type = element.type;
+      const bo = element.businessObject;
+
+      // Skip non-flow elements
+      if (nonFlowElementTypes.has(type)) continue;
+
+      // Skip collapsed subprocesses for internal validation
+      if (isCollapsedSubProcess(element)) continue;
+
+      // Get connections
+      const incoming = bo?.incoming || [];
+      const outgoing = bo?.outgoing || [];
+
+      // Connection validation for flow elements
+      const requiresIncoming = !noIncomingRequired.has(type);
+      const requiresOutgoing = !noOutgoingRequired.has(type);
+
+      // Special handling for intermediate throw events
+      if (type === 'bpmn:IntermediateThrowEvent') {
+        // Check if it's a terminating type that doesn't need outgoing
+        if (isTerminatingThrowEvent(bo)) {
+          // These can be terminal, don't require outgoing
+        } else if (outgoing.length === 0) {
+          // Non-terminating throw events should have outgoing
+          disconnectedElements.push(
+            `${type.replace('bpmn:', '')} "${bo?.name || bo?.id}" has no outgoing connections`
+          );
+        }
+        // Always check incoming for intermediate events
+        if (incoming.length === 0) {
+          disconnectedElements.push(
+            `${type.replace('bpmn:', '')} "${bo?.name || bo?.id}" has no incoming connections`
+          );
+        }
+        continue;
+      }
+
+      // Check incoming connections
+      if (requiresIncoming && incoming.length === 0) {
+        // Don't flag boundary events - they're attached to their host
+        if (type !== 'bpmn:BoundaryEvent') {
+          disconnectedElements.push(
+            `${type.replace('bpmn:', '')} "${bo?.name || bo?.id}" has no incoming connections`
+          );
         }
       }
 
-      // Check for user tasks without assignee
-      if (element.type === 'bpmn:UserTask') {
-        const bo = element.businessObject;
-        const assignee = bo.get('flowable:assignee');
-        const candidateGroups = bo.get('flowable:candidateGroups');
-        const candidateUsers = bo.get('flowable:candidateUsers');
+      // Check outgoing connections
+      if (requiresOutgoing && outgoing.length === 0) {
+        disconnectedElements.push(
+          `${type.replace('bpmn:', '')} "${bo?.name || bo?.id}" has no outgoing connections`
+        );
+      }
+
+      // Boundary events must have outgoing (they trigger a flow when event occurs)
+      if (type === 'bpmn:BoundaryEvent' && outgoing.length === 0) {
+        disconnectedElements.push(
+          `Boundary Event "${bo?.name || bo?.id}" has no outgoing connections`
+        );
+      }
+
+      // Check for user tasks without assignee (warning, not error)
+      if (type === 'bpmn:UserTask') {
+        const assignee = bo?.get?.('flowable:assignee');
+        const candidateGroups = bo?.get?.('flowable:candidateGroups');
+        const candidateUsers = bo?.get?.('flowable:candidateUsers');
 
         if (!assignee && !candidateGroups && !candidateUsers) {
-          errors.push(`User Task "${bo.name || bo.id}" has no assignee or candidates defined`);
+          warnings.push(`User Task "${bo?.name || bo?.id}" has no assignee or candidates defined`);
         }
       }
 
-      // Check for script tasks without scripts
-      if (element.type === 'bpmn:ScriptTask') {
-        const bo = element.businessObject;
-        if (!bo.script) {
-          errors.push(`Script Task "${bo.name || bo.id}" has no script defined`);
+      // Check for script tasks without scripts (warning, not error)
+      if (type === 'bpmn:ScriptTask') {
+        if (!bo?.script) {
+          warnings.push(`Script Task "${bo?.name || bo?.id}" has no script defined`);
         }
       }
 
-      // Check exclusive gateways for conditions
-      if (element.type === 'bpmn:ExclusiveGateway') {
-        const bo = element.businessObject;
-        const outgoing = bo.outgoing || [];
-        if (outgoing.length > 1) {
-          const hasDefault = bo.default;
-          const flowsWithConditions = outgoing.filter((flow: any) =>
+      // Check exclusive gateways for conditions (warning, not error)
+      if (type === 'bpmn:ExclusiveGateway') {
+        const gatewayOutgoing = bo?.outgoing || [];
+        if (gatewayOutgoing.length > 1) {
+          const hasDefault = bo?.default;
+          const flowsWithConditions = gatewayOutgoing.filter((flow: any) =>
             flow.conditionExpression || flow === hasDefault
           );
-          if (flowsWithConditions.length !== outgoing.length) {
-            errors.push(`Exclusive Gateway "${bo.name || bo.id}" has flows without conditions`);
+          if (flowsWithConditions.length !== gatewayOutgoing.length) {
+            warnings.push(`Exclusive Gateway "${bo?.name || bo?.id}" has flows without conditions`);
           }
         }
       }
-    });
 
+      // Check inclusive gateways for conditions (warning, not error)
+      if (type === 'bpmn:InclusiveGateway') {
+        const gatewayOutgoing = bo?.outgoing || [];
+        if (gatewayOutgoing.length > 1) {
+          const hasDefault = bo?.default;
+          const flowsWithConditions = gatewayOutgoing.filter((flow: any) =>
+            flow.conditionExpression || flow === hasDefault
+          );
+          if (flowsWithConditions.length !== gatewayOutgoing.length) {
+            warnings.push(`Inclusive Gateway "${bo?.name || bo?.id}" has flows without conditions`);
+          }
+        }
+      }
+    }
+
+    // Critical errors: missing start/end events
     if (!hasStartEvent) {
       errors.push('Process must have at least one Start Event');
     }
@@ -1266,14 +1414,19 @@
       errors.push('Process must have at least one End Event');
     }
 
-    // Add disconnected element warnings (not errors)
-    if (disconnectedElements.length > 0 && disconnectedElements.length <= 3) {
-      errors.push(...disconnectedElements);
-    } else if (disconnectedElements.length > 3) {
-      errors.push(`${disconnectedElements.length} elements have connection issues`);
+    // Connection issues are errors (prevent deployment)
+    if (disconnectedElements.length > 0) {
+      if (disconnectedElements.length <= 3) {
+        errors.push(...disconnectedElements);
+      } else {
+        // Provide a summary with the first few issues
+        errors.push(`${disconnectedElements.length} elements have connection issues:`);
+        errors.push(...disconnectedElements.slice(0, 3));
+        errors.push(`...and ${disconnectedElements.length - 3} more`);
+      }
     }
 
-    return { valid: errors.length === 0, errors };
+    return { valid: errors.length === 0, errors, warnings };
   }
 
   async function handleDeploy() {
@@ -1295,6 +1448,7 @@
 
     // Validate BPMN diagram
     const validation = validateBpmnDiagram();
+    validationWarnings = validation.warnings;
     if (!validation.valid) {
       validationErrors = validation.errors;
       error = `Diagram validation failed: ${validation.errors[0]}`;
@@ -1549,20 +1703,43 @@
       {/if}
 
       {#if validationErrors.length > 0}
-        <div class="border-b border-yellow-200 bg-yellow-50 p-3">
+        <div class="border-b border-red-200 bg-red-50 p-3">
           <div class="flex items-start">
-            <svg class="mr-2 h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
-              <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+            <svg class="mr-2 h-5 w-5 flex-shrink-0 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
             </svg>
             <div class="flex-1">
-              <p class="text-sm font-medium text-yellow-800">Validation Issues:</p>
-              <ul class="mt-1 list-inside list-disc text-sm text-yellow-700">
+              <p class="text-sm font-medium text-red-800">Validation Errors (must fix before deploying):</p>
+              <ul class="mt-1 list-inside list-disc text-sm text-red-700">
                 {#each validationErrors as validationError}
                   <li>{validationError}</li>
                 {/each}
               </ul>
             </div>
-            <button onclick={() => validationErrors = []} class="ml-auto text-yellow-600 hover:text-yellow-800">
+            <button onclick={() => validationErrors = []} class="ml-auto flex-shrink-0 text-red-600 hover:text-red-800">
+              <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      {/if}
+
+      {#if validationWarnings.length > 0}
+        <div class="border-b border-yellow-200 bg-yellow-50 p-3">
+          <div class="flex items-start">
+            <svg class="mr-2 h-5 w-5 flex-shrink-0 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+            </svg>
+            <div class="flex-1">
+              <p class="text-sm font-medium text-yellow-800">Warnings (can still deploy):</p>
+              <ul class="mt-1 list-inside list-disc text-sm text-yellow-700">
+                {#each validationWarnings as warning}
+                  <li>{warning}</li>
+                {/each}
+              </ul>
+            </div>
+            <button onclick={() => validationWarnings = []} class="ml-auto flex-shrink-0 text-yellow-600 hover:text-yellow-800">
               <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
               </svg>
@@ -1612,7 +1789,7 @@
                   Export
                 </button>
                 <button
-                  onclick={() => { const validation = validateBpmnDiagram(); validationErrors = validation.errors; }}
+                  onclick={() => { const validation = validateBpmnDiagram(); validationErrors = validation.errors; validationWarnings = validation.warnings; }}
                   class="rounded bg-blue-100 px-3 py-1 text-xs font-medium text-blue-700 hover:bg-blue-200"
                 >
                   Validate
