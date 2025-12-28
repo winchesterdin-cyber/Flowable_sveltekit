@@ -10,6 +10,7 @@ import javax.script.ScriptEngine;
 import javax.script.ScriptEngineFactory;
 import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
+import java.lang.reflect.Method;
 import java.util.List;
 
 /**
@@ -39,34 +40,72 @@ public class FlowableScriptingConfig {
 
         ScriptEngineManager scriptEngineManager = new ScriptEngineManager(classLoader);
 
-        // Log available engines
-        List<ScriptEngineFactory> factories = scriptEngineManager.getEngineFactories();
-        log.info("ScriptEngineManager found {} engine(s):", factories.size());
-        for (ScriptEngineFactory factory : factories) {
-            log.info("  - {} v{}: names={}",
-                factory.getEngineName(),
-                factory.getEngineVersion(),
-                factory.getNames());
-        }
+        // CRITICAL FIX: Manually instantiate and register GraalVM JavaScript factory
+        // This bypasses the service loader mechanism which may fail in Spring Boot fat JARs
+        try {
+            log.info("Attempting to manually instantiate GraalVM JavaScript engine factory...");
 
-        // Try to find and configure JavaScript engine
-        ScriptEngine jsEngine = findJavaScriptEngine(scriptEngineManager);
-        if (jsEngine != null) {
-            log.info("JavaScript engine configured for Flowable: {} v{}",
-                jsEngine.getFactory().getEngineName(),
-                jsEngine.getFactory().getEngineVersion());
+            // Try to load the GraalJSScriptEngineFactory class directly
+            Class<?> factoryClass = Class.forName(
+                "com.oracle.truffle.js.scriptengine.GraalJSScriptEngineFactory",
+                true,
+                classLoader
+            );
 
-            // Register additional names to ensure Flowable can find it
-            scriptEngineManager.registerEngineName("javascript", jsEngine.getFactory());
-            scriptEngineManager.registerEngineName("JavaScript", jsEngine.getFactory());
-            scriptEngineManager.registerEngineName("js", jsEngine.getFactory());
-            scriptEngineManager.registerEngineName("ecmascript", jsEngine.getFactory());
+            ScriptEngineFactory graalFactory = (ScriptEngineFactory) factoryClass.getDeclaredConstructor().newInstance();
+            log.info("Successfully instantiated GraalVM JavaScript factory: {}", graalFactory.getEngineName());
+
+            // Register the factory under all common JavaScript names
+            scriptEngineManager.registerEngineName("javascript", graalFactory);
+            scriptEngineManager.registerEngineName("JavaScript", graalFactory);
+            scriptEngineManager.registerEngineName("js", graalFactory);
+            scriptEngineManager.registerEngineName("JS", graalFactory);
+            scriptEngineManager.registerEngineName("ecmascript", graalFactory);
+            scriptEngineManager.registerEngineName("graal.js", graalFactory);
+            scriptEngineManager.registerEngineName("Graal.js", graalFactory);
+            scriptEngineManager.registerEngineName("GraalJS", graalFactory);
+
+            log.info("GraalVM JavaScript factory registered under all common names");
 
             // Test the engine
-            testJavaScriptEngine(jsEngine);
-        } else {
-            log.error("CRITICAL: No JavaScript engine found for Flowable!");
-            log.error("BPMN script tasks using 'javascript' will fail.");
+            ScriptEngine testEngine = scriptEngineManager.getEngineByName("javascript");
+            if (testEngine != null) {
+                testJavaScriptEngine(testEngine);
+            }
+
+        } catch (Exception e) {
+            log.error("Failed to manually instantiate GraalVM JavaScript factory: {}", e.getMessage());
+            log.error("Falling back to automatic discovery...");
+
+            // Fallback: Try automatic discovery
+            List<ScriptEngineFactory> factories = scriptEngineManager.getEngineFactories();
+            log.info("ScriptEngineManager found {} engine(s) via service loader:", factories.size());
+            for (ScriptEngineFactory factory : factories) {
+                log.info("  - {} v{}: names={}",
+                    factory.getEngineName(),
+                    factory.getEngineVersion(),
+                    factory.getNames());
+            }
+
+            // Try to find and configure JavaScript engine
+            ScriptEngine jsEngine = findJavaScriptEngine(scriptEngineManager);
+            if (jsEngine != null) {
+                log.info("JavaScript engine configured for Flowable: {} v{}",
+                    jsEngine.getFactory().getEngineName(),
+                    jsEngine.getFactory().getEngineVersion());
+
+                // Register additional names to ensure Flowable can find it
+                scriptEngineManager.registerEngineName("javascript", jsEngine.getFactory());
+                scriptEngineManager.registerEngineName("JavaScript", jsEngine.getFactory());
+                scriptEngineManager.registerEngineName("js", jsEngine.getFactory());
+                scriptEngineManager.registerEngineName("ecmascript", jsEngine.getFactory());
+
+                // Test the engine
+                testJavaScriptEngine(jsEngine);
+            } else {
+                log.error("CRITICAL: No JavaScript engine found for Flowable!");
+                log.error("BPMN script tasks using 'javascript' will fail.");
+            }
         }
 
         // Create Flowable ScriptingEngines with our configured manager

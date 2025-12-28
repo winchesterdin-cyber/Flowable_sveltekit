@@ -52,32 +52,36 @@
         </dependency>
 
         <!-- GraalVM JavaScript Engine (required for Java 17+ since Nashorn was removed in Java 15) -->
-        <!-- Using GraalVM 22.3.3 which is fully available in Maven Central -->
+        <!-- Using GraalVM 23.1.1 which has better compatibility with Spring Boot 3.2 -->
         <!-- GraalVM SDK -->
         <dependency>
             <groupId>org.graalvm.sdk</groupId>
             <artifactId>graal-sdk</artifactId>
-            <version>22.3.3</version>
+            <version>23.1.1</version>
+        </dependency>
+        <!-- GraalVM Polyglot API (CRITICAL - this registers the ScriptEngineFactory) -->
+        <dependency>
+            <groupId>org.graalvm.polyglot</groupId>
+            <artifactId>polyglot</artifactId>
+            <version>23.1.1</version>
         </dependency>
         <!-- GraalVM Truffle API (required for JavaScript engine) -->
         <dependency>
             <groupId>org.graalvm.truffle</groupId>
             <artifactId>truffle-api</artifactId>
-            <version>22.3.3</version>
-            <scope>runtime</scope>
+            <version>23.1.1</version>
         </dependency>
         <!-- GraalVM JavaScript implementation -->
         <dependency>
             <groupId>org.graalvm.js</groupId>
             <artifactId>js</artifactId>
-            <version>22.3.3</version>
-            <scope>runtime</scope>
+            <version>23.1.1</version>
         </dependency>
-        <!-- JSR-223 ScriptEngine bridge for GraalVM JS -->
+        <!-- JSR-223 ScriptEngine bridge for GraalVM JS (CRITICAL for javax.script support) -->
         <dependency>
             <groupId>org.graalvm.js</groupId>
             <artifactId>js-scriptengine</artifactId>
-            <version>22.3.3</version>
+            <version>23.1.1</version>
         </dependency>
 
         <!-- Session Management -->
