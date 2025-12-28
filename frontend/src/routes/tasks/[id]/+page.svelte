@@ -119,6 +119,18 @@
 						{ value: 'escalate', label: 'Escalate to Executive' }
 					]
 				};
+			case 'purchase-approval-form':
+				return {
+					type: 'approval',
+					showDecision: true,
+					decisions: [
+						{ value: 'approved', label: 'Approve' },
+						{ value: 'rejected', label: 'Reject' },
+						{ value: 'escalate', label: 'Escalate to Higher Level' },
+						{ value: 'de_escalate', label: 'De-escalate to Lower Level' },
+						{ value: 'request_changes', label: 'Request Changes' }
+					]
+				};
 			case 'claim-task-form':
 			case 'complete-task-form':
 				return {
