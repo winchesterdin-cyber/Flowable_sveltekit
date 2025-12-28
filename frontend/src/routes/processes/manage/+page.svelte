@@ -27,7 +27,7 @@
     }
   }
 
-  async function handleDelete(processKey: string, processName: string) {
+  async function handleDelete(processDefId: string, processKey: string, processName: string) {
     if (deleteConfirm !== processKey) {
       deleteConfirm = processKey;
       return;
@@ -37,22 +37,9 @@
     success = '';
 
     try {
-      // Find the process definition by key
-      const process = processes.find((p) => p.key === processKey);
-      if (!process) {
-        throw new Error('Process not found');
-      }
-
-      // Note: We need the process definition ID, which we don't have in the current API
-      // For now, we'll show a message that this feature needs backend support
-      error =
-        'Process deletion is not yet implemented. The backend needs to be updated to support deletion by process key.';
-      deleteConfirm = null;
-
-      // TODO: Implement deletion when backend supports it
-      // await api.deleteProcess(process.id, false);
-      // success = `Process "${processName}" deleted successfully`;
-      // await loadProcesses();
+      await api.deleteProcess(processDefId, false);
+      success = `Process "${processName}" deleted successfully`;
+      await loadProcesses();
     } catch (err) {
       console.error('Error deleting process:', err);
       error = err instanceof Error ? err.message : 'Failed to delete process';
@@ -61,9 +48,9 @@
     }
   }
 
-  function handleEdit(processKey: string) {
-    // Navigate to designer with the process key
-    goto(`/processes/designer?edit=${processKey}`);
+  function handleEdit(processDefId: string, processKey: string) {
+    // Navigate to designer with the process definition ID
+    goto(`/processes/designer?edit=${processKey}&processDefinitionId=${processDefId}`);
   }
 
   function handleCreate() {
@@ -246,7 +233,7 @@
 
               <div class="ml-4 flex gap-2">
                 <button
-                  onclick={() => handleEdit(key)}
+                  onclick={() => handleEdit(latest.id, key)}
                   class="rounded-md bg-blue-100 px-3 py-1.5 text-sm font-medium text-blue-700 hover:bg-blue-200"
                   title="View in designer"
                 >
@@ -255,7 +242,7 @@
                 {#if deleteConfirm === key}
                   <div class="flex gap-2">
                     <button
-                      onclick={() => handleDelete(key, latest.name || key)}
+                      onclick={() => handleDelete(latest.id, key, latest.name || key)}
                       class="rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700"
                     >
                       Confirm

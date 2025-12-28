@@ -120,6 +120,7 @@ public class ProcessService {
 
     private ProcessDTO convertToDTO(ProcessDefinition definition) {
         return ProcessDTO.builder()
+                .id(definition.getId())
                 .key(definition.getKey())
                 .name(definition.getName())
                 .description(definition.getDescription())

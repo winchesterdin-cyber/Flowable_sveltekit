@@ -8,6 +8,7 @@ import java.util.Map;
 @Data
 @Builder
 public class ProcessDTO {
+    private String id;
     private String key;
     private String name;
     private String description;
