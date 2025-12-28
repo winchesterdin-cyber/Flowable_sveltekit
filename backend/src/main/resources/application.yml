@@ -45,7 +45,9 @@ spring:
 flowable:
   database-schema-update: true
   async-executor-activate: true
-  history-level: full
+  # Use 'audit' instead of 'full' to reduce memory usage during startup
+  # 'audit' logs task variables but uses less memory than 'full'
+  history-level: audit
   process-definition-location-prefix: classpath*:/processes/
   process-definition-location-suffixes: "**.bpmn20.xml,**.bpmn"
 
