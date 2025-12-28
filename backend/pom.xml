@@ -59,6 +59,13 @@
             <artifactId>graal-sdk</artifactId>
             <version>22.3.3</version>
         </dependency>
+        <!-- GraalVM Truffle API (required for JavaScript engine) -->
+        <dependency>
+            <groupId>org.graalvm.truffle</groupId>
+            <artifactId>truffle-api</artifactId>
+            <version>22.3.3</version>
+            <scope>runtime</scope>
+        </dependency>
         <!-- GraalVM JavaScript implementation -->
         <dependency>
             <groupId>org.graalvm.js</groupId>
