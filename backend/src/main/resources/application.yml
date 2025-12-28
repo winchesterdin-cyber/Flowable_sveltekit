@@ -26,12 +26,23 @@ server:
 spring:
   application:
     name: bpm-backend
+  # Enable lazy initialization to reduce startup memory pressure
+  main:
+    lazy-initialization: true
 
   datasource:
     url: jdbc:h2:mem:flowabledb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
     driver-class-name: org.h2.Driver
     username: sa
     password:
+    # HikariCP connection pool settings - reduced for low memory environments
+    hikari:
+      minimum-idle: 1
+      maximum-pool-size: 3
+      idle-timeout: 30000
+      connection-timeout: 20000
+      max-lifetime: 60000
+      pool-name: FlowableHikariPool
 
   h2:
     console:
@@ -41,17 +52,31 @@ spring:
   session:
     store-type: none
 
-# Flowable Configuration
+# Flowable Configuration - Optimized for low memory environments
 flowable:
   database-schema-update: true
-  async-executor-activate: true
+  # Delay async executor startup to reduce memory pressure during initialization
+  async-executor-activate: false
   # Use 'audit' instead of 'full' to reduce memory usage during startup
   # 'audit' logs task variables but uses less memory than 'full'
   history-level: audit
   process-definition-location-prefix: classpath*:/processes/
   process-definition-location-suffixes: "**.bpmn20.xml,**.bpmn"
+  # Disable unused engines to reduce memory footprint
+  # CMMN engine is not used - disable it
+  cmmn:
+    enabled: false
+  # DMN engine is not used - disable it
+  dmn:
+    enabled: false
+  # Event Registry is not used - disable it
+  eventregistry:
+    enabled: false
+  # Reduce ID generator pre-allocation to save memory
+  idm:
+    enabled: true
 
-# Actuator
+# Actuator - Lightweight health checks
 management:
   endpoints:
     web:
@@ -59,10 +84,24 @@ management:
         include: health,info
   endpoint:
     health:
-      show-details: always
+      # Show details only when authorized to reduce response size
+      show-details: when_authorized
+      # Enable probes for Kubernetes/container orchestration
+      probes:
+        enabled: true
+  health:
+    # Disable heavy health indicators during startup
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
 
-# Logging
+# Logging - Reduced verbosity for lower memory usage
 logging:
   level:
-    org.flowable: INFO
-    com.demo.bpm: DEBUG
+    root: WARN
+    org.flowable: WARN
+    org.flowable.engine.impl.persistence: ERROR
+    com.demo.bpm: INFO
+    com.zaxxer.hikari: INFO
+    org.springframework.boot: INFO
