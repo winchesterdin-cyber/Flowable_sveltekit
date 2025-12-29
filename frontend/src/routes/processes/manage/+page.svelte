@@ -417,7 +417,7 @@
               bind:value={variablesJson}
               rows="6"
               class="w-full rounded-md border border-gray-300 px-3 py-2 font-mono text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              placeholder='{"amount": 100, "description": "Test"}'
+              placeholder='&#123;"amount": 100, "description": "Test"&#125;'
             ></textarea>
             {#if variablesError}
               <p class="mt-1 text-xs text-red-600">{variablesError}</p>
