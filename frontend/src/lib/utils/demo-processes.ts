@@ -677,13 +677,21 @@ export const demoProcesses: DemoProcess[] = [
 // Check if any product in the grid has price > 10
 var hasHighPriceItem = false;
 var products = execution.getVariable('products');
-if (products != null && products.length > 0) {
-  for (var i = 0; i < products.length; i++) {
-    var product = products[i];
-    var price = product.price;
-    if (price != null && price > 10) {
-      hasHighPriceItem = true;
-      break;
+if (products != null) {
+  // Handle both Java ArrayList (.size()) and JavaScript array (.length)
+  var len = (typeof products.size === 'function') ? products.size() : products.length;
+  for (var i = 0; i < len; i++) {
+    // Handle both Java ArrayList (.get()) and JavaScript array (bracket notation)
+    var product = (typeof products.get === 'function') ? products.get(i) : products[i];
+    if (product != null) {
+      // Handle both Java Map (.get()) and JavaScript object (property access)
+      var price = (typeof product.get === 'function') ? product.get('price') : product.price;
+      // Parse as number to handle string values from form input
+      var numPrice = parseFloat(price);
+      if (!isNaN(numPrice) && numPrice > 10) {
+        hasHighPriceItem = true;
+        break;
+      }
     }
   }
 }
