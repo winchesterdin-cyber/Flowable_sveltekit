@@ -1,0 +1,50 @@
+<script lang="ts">
+  import { Checkbox as CheckboxPrimitive } from 'bits-ui';
+  import { Check, Minus } from 'lucide-svelte';
+  import { cn } from '$lib/utils';
+
+  interface Props {
+    checked?: boolean | 'indeterminate';
+    disabled?: boolean;
+    required?: boolean;
+    name?: string;
+    value?: string;
+    class?: string;
+    onCheckedChange?: (checked: boolean | 'indeterminate') => void;
+  }
+
+  /* eslint-disable prefer-const */
+  let {
+    checked = $bindable(false),
+    disabled = false,
+    required = false,
+    name,
+    value,
+    class: className,
+    onCheckedChange
+  }: Props = $props();
+  /* eslint-enable prefer-const */
+</script>
+
+<CheckboxPrimitive.Root
+  bind:checked
+  {disabled}
+  {required}
+  {name}
+  {value}
+  {onCheckedChange}
+  class={cn(
+    'border-primary ring-offset-background focus-visible:ring-ring data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground peer h-4 w-4 shrink-0 rounded-sm border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
+    className
+  )}
+>
+  {#snippet children({ checked: isChecked })}
+    <div class="flex items-center justify-center text-current">
+      {#if isChecked === 'indeterminate'}
+        <Minus class="h-3.5 w-3.5" />
+      {:else if isChecked}
+        <Check class="h-3.5 w-3.5" />
+      {/if}
+    </div>
+  {/snippet}
+</CheckboxPrimitive.Root>
