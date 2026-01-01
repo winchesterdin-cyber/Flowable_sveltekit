@@ -1,0 +1,466 @@
+# Plan: Business Tables for Variable Storage
+
+## Overview
+
+Create two database tables to store process variables in a structured, queryable format:
+- **`document`**: One record per process instance (stores form fields)
+- **`grid_rows`**: One record per grid row (stores grid data)
+
+Both tables will have 60 columns (30 varchar, 30 float) plus metadata columns.
+
+---
+
+## Table Schemas
+
+### 1. Document Table
+
+```sql
+CREATE TABLE IF NOT EXISTS document (
+    -- Primary key
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+
+    -- Process linking (both methods)
+    process_instance_id VARCHAR(64) NOT NULL,
+    business_key VARCHAR(255),
+
+    -- Process metadata
+    process_definition_key VARCHAR(255),
+    process_definition_name VARCHAR(255),
+
+    -- 30 VARCHAR columns (max length)
+    varchar_1 VARCHAR(4000),
+    varchar_2 VARCHAR(4000),
+    varchar_3 VARCHAR(4000),
+    varchar_4 VARCHAR(4000),
+    varchar_5 VARCHAR(4000),
+    varchar_6 VARCHAR(4000),
+    varchar_7 VARCHAR(4000),
+    varchar_8 VARCHAR(4000),
+    varchar_9 VARCHAR(4000),
+    varchar_10 VARCHAR(4000),
+    varchar_11 VARCHAR(4000),
+    varchar_12 VARCHAR(4000),
+    varchar_13 VARCHAR(4000),
+    varchar_14 VARCHAR(4000),
+    varchar_15 VARCHAR(4000),
+    varchar_16 VARCHAR(4000),
+    varchar_17 VARCHAR(4000),
+    varchar_18 VARCHAR(4000),
+    varchar_19 VARCHAR(4000),
+    varchar_20 VARCHAR(4000),
+    varchar_21 VARCHAR(4000),
+    varchar_22 VARCHAR(4000),
+    varchar_23 VARCHAR(4000),
+    varchar_24 VARCHAR(4000),
+    varchar_25 VARCHAR(4000),
+    varchar_26 VARCHAR(4000),
+    varchar_27 VARCHAR(4000),
+    varchar_28 VARCHAR(4000),
+    varchar_29 VARCHAR(4000),
+    varchar_30 VARCHAR(4000),
+
+    -- 30 FLOAT columns (can represent boolean as 0/1)
+    float_1 DOUBLE,
+    float_2 DOUBLE,
+    float_3 DOUBLE,
+    float_4 DOUBLE,
+    float_5 DOUBLE,
+    float_6 DOUBLE,
+    float_7 DOUBLE,
+    float_8 DOUBLE,
+    float_9 DOUBLE,
+    float_10 DOUBLE,
+    float_11 DOUBLE,
+    float_12 DOUBLE,
+    float_13 DOUBLE,
+    float_14 DOUBLE,
+    float_15 DOUBLE,
+    float_16 DOUBLE,
+    float_17 DOUBLE,
+    float_18 DOUBLE,
+    float_19 DOUBLE,
+    float_20 DOUBLE,
+    float_21 DOUBLE,
+    float_22 DOUBLE,
+    float_23 DOUBLE,
+    float_24 DOUBLE,
+    float_25 DOUBLE,
+    float_26 DOUBLE,
+    float_27 DOUBLE,
+    float_28 DOUBLE,
+    float_29 DOUBLE,
+    float_30 DOUBLE,
+
+    -- Audit columns
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(255),
+    updated_by VARCHAR(255),
+
+    -- Indexes
+    CONSTRAINT uk_document_process_instance UNIQUE (process_instance_id)
+);
+
+CREATE INDEX idx_document_business_key ON document(business_key);
+CREATE INDEX idx_document_process_def_key ON document(process_definition_key);
+```
+
+### 2. Grid Rows Table
+
+```sql
+CREATE TABLE IF NOT EXISTS grid_rows (
+    -- Primary key
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+
+    -- Foreign key to document
+    document_id BIGINT NOT NULL,
+
+    -- Process linking (for direct queries)
+    process_instance_id VARCHAR(64) NOT NULL,
+
+    -- Grid identification
+    grid_name VARCHAR(255) NOT NULL,
+    row_index INT NOT NULL,
+
+    -- 30 VARCHAR columns (max length)
+    varchar_1 VARCHAR(4000),
+    varchar_2 VARCHAR(4000),
+    varchar_3 VARCHAR(4000),
+    varchar_4 VARCHAR(4000),
+    varchar_5 VARCHAR(4000),
+    varchar_6 VARCHAR(4000),
+    varchar_7 VARCHAR(4000),
+    varchar_8 VARCHAR(4000),
+    varchar_9 VARCHAR(4000),
+    varchar_10 VARCHAR(4000),
+    varchar_11 VARCHAR(4000),
+    varchar_12 VARCHAR(4000),
+    varchar_13 VARCHAR(4000),
+    varchar_14 VARCHAR(4000),
+    varchar_15 VARCHAR(4000),
+    varchar_16 VARCHAR(4000),
+    varchar_17 VARCHAR(4000),
+    varchar_18 VARCHAR(4000),
+    varchar_19 VARCHAR(4000),
+    varchar_20 VARCHAR(4000),
+    varchar_21 VARCHAR(4000),
+    varchar_22 VARCHAR(4000),
+    varchar_23 VARCHAR(4000),
+    varchar_24 VARCHAR(4000),
+    varchar_25 VARCHAR(4000),
+    varchar_26 VARCHAR(4000),
+    varchar_27 VARCHAR(4000),
+    varchar_28 VARCHAR(4000),
+    varchar_29 VARCHAR(4000),
+    varchar_30 VARCHAR(4000),
+
+    -- 30 FLOAT columns (can represent boolean as 0/1)
+    float_1 DOUBLE,
+    float_2 DOUBLE,
+    float_3 DOUBLE,
+    float_4 DOUBLE,
+    float_5 DOUBLE,
+    float_6 DOUBLE,
+    float_7 DOUBLE,
+    float_8 DOUBLE,
+    float_9 DOUBLE,
+    float_10 DOUBLE,
+    float_11 DOUBLE,
+    float_12 DOUBLE,
+    float_13 DOUBLE,
+    float_14 DOUBLE,
+    float_15 DOUBLE,
+    float_16 DOUBLE,
+    float_17 DOUBLE,
+    float_18 DOUBLE,
+    float_19 DOUBLE,
+    float_20 DOUBLE,
+    float_21 DOUBLE,
+    float_22 DOUBLE,
+    float_23 DOUBLE,
+    float_24 DOUBLE,
+    float_25 DOUBLE,
+    float_26 DOUBLE,
+    float_27 DOUBLE,
+    float_28 DOUBLE,
+    float_29 DOUBLE,
+    float_30 DOUBLE,
+
+    -- Audit columns
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    -- Foreign key constraint
+    CONSTRAINT fk_grid_rows_document FOREIGN KEY (document_id) REFERENCES document(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_grid_rows_process_instance ON grid_rows(process_instance_id);
+CREATE INDEX idx_grid_rows_grid_name ON grid_rows(grid_name);
+CREATE INDEX idx_grid_rows_document_grid ON grid_rows(document_id, grid_name);
+```
+
+---
+
+## Implementation Steps
+
+### Step 1: Database Configuration
+
+**File:** `backend/src/main/resources/application.yml`
+
+- Change H2 from in-memory to file-based mode for data persistence
+- Update datasource URL: `jdbc:h2:file:./data/flowabledb;DB_CLOSE_DELAY=-1`
+
+### Step 2: Create Schema Initialization Script
+
+**File:** `backend/src/main/resources/schema.sql`
+
+- Create SQL file with both table definitions
+- Spring Boot will auto-execute on startup
+
+### Step 3: Create Entity Classes
+
+**Files to create:**
+- `backend/src/main/java/com/demo/bpm/entity/Document.java`
+- `backend/src/main/java/com/demo/bpm/entity/GridRow.java`
+
+Using JPA annotations for ORM mapping.
+
+### Step 4: Create Repository Interfaces
+
+**Files to create:**
+- `backend/src/main/java/com/demo/bpm/repository/DocumentRepository.java`
+- `backend/src/main/java/com/demo/bpm/repository/GridRowRepository.java`
+
+Spring Data JPA repositories with custom query methods.
+
+### Step 5: Create DTO Classes
+
+**Files to create:**
+- `backend/src/main/java/com/demo/bpm/dto/DocumentDTO.java`
+- `backend/src/main/java/com/demo/bpm/dto/GridRowDTO.java`
+
+For API responses and data transfer.
+
+### Step 6: Create Service Layer
+
+**File:** `backend/src/main/java/com/demo/bpm/service/BusinessTableService.java`
+
+Key methods:
+```java
+// Document operations
+Document createDocument(String processInstanceId, String businessKey, Map<String, Object> variables);
+Document updateDocument(String processInstanceId, Map<String, Object> variables);
+Document getDocumentByProcessInstanceId(String processInstanceId);
+Document getDocumentByBusinessKey(String businessKey);
+
+// Grid row operations
+List<GridRow> saveGridRows(Long documentId, String gridName, List<Map<String, Object>> rows);
+List<GridRow> getGridRows(Long documentId, String gridName);
+void deleteGridRows(Long documentId, String gridName);
+
+// Field mapping
+void setFieldMapping(String processDefinitionKey, Map<String, ColumnMapping> mappings);
+```
+
+### Step 7: Create Column Mapping Configuration
+
+**File:** `backend/src/main/java/com/demo/bpm/config/ColumnMappingConfig.java`
+
+Define how form fields map to table columns:
+```java
+public class ColumnMapping {
+    private String fieldName;      // e.g., "customerName"
+    private String columnName;     // e.g., "varchar_1"
+    private ColumnType type;       // VARCHAR or FLOAT
+}
+```
+
+**File:** `backend/src/main/resources/column-mappings.yml` (optional)
+
+Allow configurable field-to-column mappings per process definition.
+
+### Step 8: Create REST Controller
+
+**File:** `backend/src/main/java/com/demo/bpm/controller/BusinessTableController.java`
+
+Endpoints:
+```
+GET    /api/documents/{processInstanceId}
+GET    /api/documents/by-business-key/{businessKey}
+POST   /api/documents
+PUT    /api/documents/{processInstanceId}
+
+GET    /api/documents/{documentId}/grids/{gridName}
+POST   /api/documents/{documentId}/grids/{gridName}
+DELETE /api/documents/{documentId}/grids/{gridName}
+```
+
+### Step 9: Integrate with Process Flow
+
+**Modify:** `backend/src/main/java/com/demo/bpm/service/TaskService.java`
+
+When a task is completed:
+1. Extract form values and grid data
+2. Create/update document record
+3. Save grid rows with proper mappings
+
+### Step 10: Add JPA Dependencies
+
+**File:** `backend/pom.xml`
+
+Add Spring Data JPA dependency if not already present.
+
+---
+
+## Column Mapping Strategy
+
+### Option A: Per-Process Configuration File
+
+```yaml
+# column-mappings.yml
+expense-approval:
+  document:
+    expenseType: varchar_1
+    description: varchar_2
+    amount: float_1
+    approved: float_2  # 0 = false, 1 = true
+  grids:
+    lineItems:
+      itemName: varchar_1
+      quantity: float_1
+      unitPrice: float_2
+```
+
+### Option B: Database-Stored Mappings
+
+Create a `column_mapping` table to store dynamic field-to-column mappings.
+
+### Option C: Convention-Based
+
+Map fields alphabetically or by definition order to sequential columns.
+
+---
+
+## Data Flow Diagram
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    User Submits Form                        │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│              TaskController.completeTask()                  │
+│   - Receives form values + grid data as JSON                │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                TaskService.completeTask()                   │
+│   1. Complete Flowable task with variables                  │
+│   2. Call BusinessTableService to persist                   │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│             BusinessTableService.saveData()                 │
+│   1. Get/create Document for process instance               │
+│   2. Map field values to varchar_X / float_X columns        │
+│   3. Save document record                                   │
+│   4. Delete existing grid rows for this submission          │
+│   5. Map grid row values to columns                         │
+│   6. Insert new grid_rows records                           │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                     H2 Database                             │
+│   ┌─────────────────┐    ┌─────────────────┐               │
+│   │    document     │◄───│   grid_rows     │               │
+│   │ (1 per process) │    │ (N per grid)    │               │
+│   └─────────────────┘    └─────────────────┘               │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## File Structure (New Files)
+
+```
+backend/src/main/
+├── java/com/demo/bpm/
+│   ├── entity/
+│   │   ├── Document.java           # JPA entity
+│   │   └── GridRow.java            # JPA entity
+│   ├── repository/
+│   │   ├── DocumentRepository.java # Spring Data JPA
+│   │   └── GridRowRepository.java  # Spring Data JPA
+│   ├── dto/
+│   │   ├── DocumentDTO.java        # Response DTO
+│   │   ├── GridRowDTO.java         # Response DTO
+│   │   └── ColumnMappingDTO.java   # Mapping config DTO
+│   ├── service/
+│   │   └── BusinessTableService.java
+│   ├── controller/
+│   │   └── BusinessTableController.java
+│   └── config/
+│       └── ColumnMappingConfig.java
+└── resources/
+    ├── schema.sql                  # Table creation DDL
+    └── column-mappings.yml         # Field-to-column mappings
+```
+
+---
+
+## Questions for User
+
+1. **Mapping Approach**: Which column mapping strategy do you prefer?
+   - A) YAML config file per process
+   - B) Database-stored mappings (more dynamic)
+   - C) Convention-based (alphabetical/order)
+
+2. **When to Persist**: Should data be saved to business tables:
+   - A) On every task completion
+   - B) Only on process completion
+   - C) Configurable per process/task
+
+3. **Existing Data**: For currently running processes, should we:
+   - A) Migrate existing process variables to business tables
+   - B) Only apply to new process instances
+
+4. **H2 File Location**: Where should the H2 database file be stored?
+   - A) `./data/flowabledb` (relative to backend)
+   - B) User home directory
+   - C) Configurable via environment variable
+
+---
+
+## Estimated Effort
+
+| Task | Complexity |
+|------|------------|
+| Database configuration | Low |
+| Schema creation | Low |
+| Entity classes | Medium |
+| Repository interfaces | Low |
+| Service layer | High |
+| Column mapping | Medium |
+| REST controller | Medium |
+| Process integration | High |
+| Testing | Medium |
+
+---
+
+## Risks and Considerations
+
+1. **Column Limit**: 60 columns may not be enough for complex processes
+   - Mitigation: Can add more columns later or use JSON column for overflow
+
+2. **Type Mismatch**: Storing dates as varchar requires consistent formatting
+   - Mitigation: Use ISO-8601 format consistently
+
+3. **Performance**: Large grid data may impact performance
+   - Mitigation: Add proper indexes, consider batch inserts
+
+4. **Data Consistency**: Business tables must stay in sync with Flowable variables
+   - Mitigation: Use database transactions, handle failures gracefully
