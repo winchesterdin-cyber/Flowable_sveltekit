@@ -312,32 +312,152 @@ Add Spring Data JPA dependency if not already present.
 
 ---
 
-## Column Mapping Strategy
+## Column Mapping Strategy: Hash-Based with Database Storage
 
-### Option A: Per-Process Configuration File
+### Chosen Approach: Hash + DB + Collision Resolution
 
-```yaml
-# column-mappings.yml
-expense-approval:
-  document:
-    expenseType: varchar_1
-    description: varchar_2
-    amount: float_1
-    approved: float_2  # 0 = false, 1 = true
-  grids:
-    lineItems:
-      itemName: varchar_1
-      quantity: float_1
-      unitPrice: float_2
+1. **Hash-based initial assignment**: Field name hashed to determine preferred column
+2. **Database storage**: Actual mappings persisted in `column_mapping` table
+3. **Collision resolution**: If column taken, find nearest available column
+
+### Column Mapping Table
+
+```sql
+CREATE TABLE IF NOT EXISTS column_mapping (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+
+    -- Scope: process-level for document fields, grid-level for grid columns
+    scope_type VARCHAR(20) NOT NULL,           -- 'DOCUMENT' or 'GRID'
+    process_definition_key VARCHAR(255) NOT NULL,
+    grid_name VARCHAR(255),                    -- NULL for document fields
+
+    -- Field info
+    field_name VARCHAR(255) NOT NULL,
+    field_type VARCHAR(20) NOT NULL,           -- 'VARCHAR' or 'FLOAT'
+
+    -- Assigned column
+    column_name VARCHAR(20) NOT NULL,          -- e.g., 'varchar_7', 'float_12'
+
+    -- Metadata
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    -- Unique constraint: one mapping per field per scope
+    CONSTRAINT uk_column_mapping UNIQUE (scope_type, process_definition_key, grid_name, field_name)
+);
+
+CREATE INDEX idx_column_mapping_process ON column_mapping(process_definition_key);
+CREATE INDEX idx_column_mapping_lookup ON column_mapping(scope_type, process_definition_key, grid_name);
 ```
 
-### Option B: Database-Stored Mappings
+### Mapping Algorithm
 
-Create a `column_mapping` table to store dynamic field-to-column mappings.
+```java
+public class HashBasedColumnMapper {
 
-### Option C: Convention-Based
+    private static final int MAX_COLUMNS = 30;
 
-Map fields alphabetically or by definition order to sequential columns.
+    /**
+     * Get or create column mapping for a field.
+     * 1. Check DB for existing mapping → return if found
+     * 2. Calculate hash-based preferred column
+     * 3. If taken, find nearest available
+     * 4. Store mapping in DB and return
+     */
+    public String getColumnName(String processDefKey, String gridName,
+                                 String fieldName, FieldType type) {
+
+        // 1. Check existing mapping
+        Optional<ColumnMapping> existing = repository.findMapping(
+            processDefKey, gridName, fieldName);
+        if (existing.isPresent()) {
+            return existing.get().getColumnName();
+        }
+
+        // 2. Calculate preferred column from hash
+        int preferredColumn = calculatePreferredColumn(fieldName);
+        String prefix = (type == FieldType.VARCHAR) ? "varchar_" : "float_";
+
+        // 3. Get all used columns for this scope
+        Set<Integer> usedColumns = repository.getUsedColumns(
+            processDefKey, gridName, type);
+
+        // 4. Find available column (nearest to preferred)
+        int assignedColumn = findNearestAvailable(preferredColumn, usedColumns);
+
+        // 5. Store and return
+        String columnName = prefix + assignedColumn;
+        repository.saveMapping(processDefKey, gridName, fieldName, type, columnName);
+
+        return columnName;
+    }
+
+    private int calculatePreferredColumn(String fieldName) {
+        // Consistent hash: same field name always gets same preferred column
+        int hash = Math.abs(fieldName.hashCode());
+        return (hash % MAX_COLUMNS) + 1;  // 1-30
+    }
+
+    private int findNearestAvailable(int preferred, Set<Integer> used) {
+        if (!used.contains(preferred)) {
+            return preferred;
+        }
+
+        // Search outward from preferred: +1, -1, +2, -2, ...
+        for (int offset = 1; offset < MAX_COLUMNS; offset++) {
+            int higher = preferred + offset;
+            int lower = preferred - offset;
+
+            if (higher <= MAX_COLUMNS && !used.contains(higher)) {
+                return higher;
+            }
+            if (lower >= 1 && !used.contains(lower)) {
+                return lower;
+            }
+        }
+
+        throw new RuntimeException("No available columns - all 30 are used");
+    }
+}
+```
+
+### Example: Collision Resolution
+
+```
+Process: expense-approval
+Fields: customerName, category, comments (all VARCHAR)
+
+Step 1: customerName
+  hash("customerName") % 30 + 1 = 7
+  varchar_7 available → assign varchar_7 ✓
+
+Step 2: category
+  hash("category") % 30 + 1 = 7  (collision!)
+  varchar_7 taken → check varchar_8 → available → assign varchar_8 ✓
+
+Step 3: comments
+  hash("comments") % 30 + 1 = 8  (collision!)
+  varchar_8 taken → check varchar_9 → available → assign varchar_9 ✓
+
+Result stored in column_mapping table:
+┌─────────────────────┬────────────────┬─────────────┐
+│ field_name          │ field_type     │ column_name │
+├─────────────────────┼────────────────┼─────────────┤
+│ customerName        │ VARCHAR        │ varchar_7   │
+│ category            │ VARCHAR        │ varchar_8   │
+│ comments            │ VARCHAR        │ varchar_9   │
+└─────────────────────┴────────────────┴─────────────┘
+```
+
+### Benefits of This Approach
+
+| Benefit | Description |
+|---------|-------------|
+| **Zero config** | No YAML files to maintain |
+| **Stable** | Once assigned, mapping never changes |
+| **Queryable** | Can lookup mappings via SQL |
+| **Deterministic** | Same field prefers same column across processes |
+| **Collision-proof** | Graceful handling when hash collides |
+| **Self-documenting** | `column_mapping` table shows all assignments |
 
 ---
 
@@ -390,48 +510,48 @@ Map fields alphabetically or by definition order to sequential columns.
 backend/src/main/
 ├── java/com/demo/bpm/
 │   ├── entity/
-│   │   ├── Document.java           # JPA entity
-│   │   └── GridRow.java            # JPA entity
+│   │   ├── Document.java           # JPA entity for document table
+│   │   ├── GridRow.java            # JPA entity for grid_rows table
+│   │   └── ColumnMapping.java      # JPA entity for column_mapping table
 │   ├── repository/
-│   │   ├── DocumentRepository.java # Spring Data JPA
-│   │   └── GridRowRepository.java  # Spring Data JPA
+│   │   ├── DocumentRepository.java     # Spring Data JPA
+│   │   ├── GridRowRepository.java      # Spring Data JPA
+│   │   └── ColumnMappingRepository.java # Spring Data JPA
 │   ├── dto/
 │   │   ├── DocumentDTO.java        # Response DTO
-│   │   ├── GridRowDTO.java         # Response DTO
-│   │   └── ColumnMappingDTO.java   # Mapping config DTO
+│   │   └── GridRowDTO.java         # Response DTO
 │   ├── service/
-│   │   └── BusinessTableService.java
-│   ├── controller/
-│   │   └── BusinessTableController.java
-│   └── config/
-│       └── ColumnMappingConfig.java
+│   │   ├── BusinessTableService.java   # Main service for document/grid ops
+│   │   └── ColumnMappingService.java   # Hash-based mapping logic
+│   └── controller/
+│       └── BusinessTableController.java
 └── resources/
-    ├── schema.sql                  # Table creation DDL
-    └── column-mappings.yml         # Field-to-column mappings
+    └── schema.sql                  # Table creation DDL (3 tables)
 ```
 
 ---
 
-## Questions for User
+## Decisions Made
 
-1. **Mapping Approach**: Which column mapping strategy do you prefer?
-   - A) YAML config file per process
-   - B) Database-stored mappings (more dynamic)
-   - C) Convention-based (alphabetical/order)
+| Question | Decision |
+|----------|----------|
+| **Column Mapping** | Hash-based + DB storage + collision resolution |
+| **Column Split** | 30 varchar + 30 float per table |
+| **Column Naming** | `varchar_1` ... `varchar_30`, `float_1` ... `float_30` |
+| **Process Linking** | Both `process_instance_id` and `business_key` |
+| **Grid Row Links** | FK to document + process_instance_id + grid_name |
+| **Database** | H2 (file-based for persistence) |
 
-2. **When to Persist**: Should data be saved to business tables:
+## Remaining Questions
+
+1. **When to Persist**: Should data be saved to business tables:
    - A) On every task completion
    - B) Only on process completion
    - C) Configurable per process/task
 
-3. **Existing Data**: For currently running processes, should we:
-   - A) Migrate existing process variables to business tables
-   - B) Only apply to new process instances
-
-4. **H2 File Location**: Where should the H2 database file be stored?
+2. **H2 File Location**: Where should the H2 database file be stored?
    - A) `./data/flowabledb` (relative to backend)
-   - B) User home directory
-   - C) Configurable via environment variable
+   - B) Configurable via environment variable (recommended for production)
 
 ---
 
