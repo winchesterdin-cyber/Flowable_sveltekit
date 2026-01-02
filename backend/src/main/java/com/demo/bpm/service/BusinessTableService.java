@@ -30,21 +30,37 @@ public class BusinessTableService {
     private final ProcessConfigRepository processConfigRepository;
     private final ColumnMappingService columnMappingService;
 
+    public static final String DEFAULT_DOCUMENT_TYPE = "main";
+
     // ==================== Document Operations ====================
 
     /**
-     * Save or update document data for a process instance.
+     * Save or update document data for a process instance (default type "main").
      */
     @Transactional
     public Document saveDocument(String processInstanceId, String businessKey,
                                   String processDefKey, String processDefName,
                                   Map<String, Object> variables, String userId) {
+        return saveDocument(processInstanceId, businessKey, processDefKey, processDefName,
+                DEFAULT_DOCUMENT_TYPE, variables, userId);
+    }
 
-        // Get or create document
-        Document document = documentRepository.findByProcessInstanceId(processInstanceId)
+    /**
+     * Save or update document data for a process instance with specific type.
+     */
+    @Transactional
+    public Document saveDocument(String processInstanceId, String businessKey,
+                                  String processDefKey, String processDefName,
+                                  String documentType, Map<String, Object> variables, String userId) {
+
+        String docType = documentType != null ? documentType : DEFAULT_DOCUMENT_TYPE;
+
+        // Get or create document by process instance ID and type
+        Document document = documentRepository.findByProcessInstanceIdAndType(processInstanceId, docType)
                 .orElseGet(() -> {
                     Document newDoc = new Document();
                     newDoc.setProcessInstanceId(processInstanceId);
+                    newDoc.setType(docType);
                     newDoc.setCreatedBy(userId);
                     return newDoc;
                 });
@@ -68,7 +84,7 @@ public class BusinessTableService {
                 // Determine field type and get/create mapping
                 FieldType fieldType = columnMappingService.determineFieldType(value);
                 ColumnMapping mapping = columnMappingService.getOrCreateDocumentMapping(
-                        processDefKey, fieldName, fieldType);
+                        processDefKey, docType, fieldName, fieldType);
 
                 // Set value in appropriate column
                 int columnIndex = mapping.getColumnIndex();
@@ -83,43 +99,88 @@ public class BusinessTableService {
         }
 
         document = documentRepository.save(document);
-        log.info("Saved document for process instance: {}", processInstanceId);
+        log.info("Saved document type '{}' for process instance: {}", docType, processInstanceId);
 
         return document;
     }
 
     /**
-     * Get document by process instance ID.
+     * Get all documents for a process instance.
      */
     @Transactional(readOnly = true)
-    public Optional<DocumentDTO> getDocumentByProcessInstanceId(String processInstanceId) {
-        return documentRepository.findByProcessInstanceId(processInstanceId)
+    public List<DocumentDTO> getDocumentsByProcessInstanceId(String processInstanceId) {
+        return documentRepository.findByProcessInstanceId(processInstanceId).stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Get specific document by process instance ID and type.
+     */
+    @Transactional(readOnly = true)
+    public Optional<DocumentDTO> getDocument(String processInstanceId, String documentType) {
+        String docType = documentType != null ? documentType : DEFAULT_DOCUMENT_TYPE;
+        return documentRepository.findByProcessInstanceIdAndType(processInstanceId, docType)
                 .map(this::convertToDTO);
     }
 
     /**
-     * Get document by business key.
+     * Get document by process instance ID (default type "main").
+     * @deprecated Use getDocument(processInstanceId, type) instead
+     */
+    @Deprecated
+    @Transactional(readOnly = true)
+    public Optional<DocumentDTO> getDocumentByProcessInstanceId(String processInstanceId) {
+        return getDocument(processInstanceId, DEFAULT_DOCUMENT_TYPE);
+    }
+
+    /**
+     * Get document by business key and type.
      */
     @Transactional(readOnly = true)
-    public Optional<DocumentDTO> getDocumentByBusinessKey(String businessKey) {
-        return documentRepository.findByBusinessKey(businessKey)
+    public Optional<DocumentDTO> getDocumentByBusinessKey(String businessKey, String documentType) {
+        String docType = documentType != null ? documentType : DEFAULT_DOCUMENT_TYPE;
+        return documentRepository.findByBusinessKeyAndType(businessKey, docType)
                 .map(this::convertToDTO);
+    }
+
+    /**
+     * Get all documents by business key.
+     */
+    @Transactional(readOnly = true)
+    public List<DocumentDTO> getDocumentsByBusinessKey(String businessKey) {
+        return documentRepository.findByBusinessKey(businessKey).stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
     }
 
     // ==================== Grid Row Operations ====================
 
     /**
-     * Save grid rows for a document.
+     * Save grid rows for a document (default type "main").
      * Replaces existing rows for the specified grid.
      */
     @Transactional
     public List<GridRow> saveGridRows(String processInstanceId, String processDefKey,
                                        String gridName, List<Map<String, Object>> rows) {
+        return saveGridRows(processInstanceId, processDefKey, DEFAULT_DOCUMENT_TYPE, gridName, rows);
+    }
 
-        // Get document
-        Document document = documentRepository.findByProcessInstanceId(processInstanceId)
+    /**
+     * Save grid rows for a document with specific type.
+     * Replaces existing rows for the specified grid.
+     */
+    @Transactional
+    public List<GridRow> saveGridRows(String processInstanceId, String processDefKey,
+                                       String documentType, String gridName,
+                                       List<Map<String, Object>> rows) {
+
+        String docType = documentType != null ? documentType : DEFAULT_DOCUMENT_TYPE;
+
+        // Get document by type
+        Document document = documentRepository.findByProcessInstanceIdAndType(processInstanceId, docType)
                 .orElseThrow(() -> new IllegalArgumentException(
-                        "Document not found for process instance: " + processInstanceId));
+                        "Document type '" + docType + "' not found for process instance: " + processInstanceId));
 
         // Delete existing rows for this grid
         gridRowRepository.deleteByDocumentIdAndGridName(document.getId(), gridName);
@@ -151,7 +212,7 @@ public class BusinessTableService {
                 // Determine field type and get/create mapping
                 FieldType fieldType = columnMappingService.determineFieldType(value);
                 ColumnMapping mapping = columnMappingService.getOrCreateGridMapping(
-                        processDefKey, gridName, fieldName, fieldType);
+                        processDefKey, docType, gridName, fieldName, fieldType);
 
                 // Set value in appropriate column
                 int columnIndex = mapping.getColumnIndex();
@@ -167,16 +228,28 @@ public class BusinessTableService {
             savedRows.add(gridRowRepository.save(gridRow));
         }
 
-        log.info("Saved {} rows for grid '{}' in process {}", savedRows.size(), gridName, processInstanceId);
+        log.info("Saved {} rows for grid '{}' in document type '{}' for process {}",
+                savedRows.size(), gridName, docType, processInstanceId);
         return savedRows;
     }
 
     /**
-     * Get grid rows for a document.
+     * Get grid rows for a document (default type "main").
      */
     @Transactional(readOnly = true)
     public List<GridRowDTO> getGridRows(String processInstanceId, String gridName) {
-        Document document = documentRepository.findByProcessInstanceId(processInstanceId).orElse(null);
+        return getGridRows(processInstanceId, DEFAULT_DOCUMENT_TYPE, gridName);
+    }
+
+    /**
+     * Get grid rows for a document with specific type.
+     */
+    @Transactional(readOnly = true)
+    public List<GridRowDTO> getGridRows(String processInstanceId, String documentType, String gridName) {
+        String docType = documentType != null ? documentType : DEFAULT_DOCUMENT_TYPE;
+
+        Document document = documentRepository.findByProcessInstanceIdAndType(processInstanceId, docType)
+                .orElse(null);
         if (document == null) {
             return Collections.emptyList();
         }
@@ -185,11 +258,27 @@ public class BusinessTableService {
                 document.getId(), gridName);
 
         String processDefKey = document.getProcessDefinitionKey();
-        Map<String, ColumnMapping> mappings = columnMappingService.getGridMappings(processDefKey, gridName);
+        Map<String, ColumnMapping> mappings = columnMappingService.getGridMappings(processDefKey, docType, gridName);
 
         return rows.stream()
                 .map(row -> convertGridRowToDTO(row, mappings))
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Delete grid rows for a document type.
+     */
+    @Transactional
+    public void deleteGridRows(String processInstanceId, String documentType, String gridName) {
+        String docType = documentType != null ? documentType : DEFAULT_DOCUMENT_TYPE;
+
+        Document document = documentRepository.findByProcessInstanceIdAndType(processInstanceId, docType)
+                .orElse(null);
+        if (document != null) {
+            gridRowRepository.deleteByDocumentIdAndGridName(document.getId(), gridName);
+            log.info("Deleted grid '{}' rows from document type '{}' for process {}",
+                    gridName, docType, processInstanceId);
+        }
     }
 
     // ==================== Process Config Operations ====================
@@ -296,7 +385,8 @@ public class BusinessTableService {
 
     private DocumentDTO convertToDTO(Document document) {
         String processDefKey = document.getProcessDefinitionKey();
-        Map<String, ColumnMapping> mappings = columnMappingService.getDocumentMappings(processDefKey);
+        String docType = document.getType() != null ? document.getType() : DEFAULT_DOCUMENT_TYPE;
+        Map<String, ColumnMapping> mappings = columnMappingService.getDocumentMappings(processDefKey, docType);
 
         // Convert column values back to field names
         Map<String, Object> fields = new HashMap<>();
@@ -330,7 +420,7 @@ public class BusinessTableService {
 
         for (Map.Entry<String, List<GridRow>> entry : groupedRows.entrySet()) {
             String gridName = entry.getKey();
-            Map<String, ColumnMapping> gridMappings = columnMappingService.getGridMappings(processDefKey, gridName);
+            Map<String, ColumnMapping> gridMappings = columnMappingService.getGridMappings(processDefKey, docType, gridName);
 
             List<Map<String, Object>> rowData = entry.getValue().stream()
                     .map(row -> convertGridRowToMap(row, gridMappings))
@@ -345,6 +435,7 @@ public class BusinessTableService {
                 .businessKey(document.getBusinessKey())
                 .processDefinitionKey(document.getProcessDefinitionKey())
                 .processDefinitionName(document.getProcessDefinitionName())
+                .type(docType)
                 .fields(fields)
                 .grids(grids)
                 .createdAt(document.getCreatedAt())

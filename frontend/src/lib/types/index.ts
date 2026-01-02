@@ -420,6 +420,63 @@ export interface RuntimeGridColumn extends GridColumn {
 }
 
 // ============================================
+// Document Types (Process Data Storage)
+// ============================================
+
+/**
+ * Document DTO - represents stored process data
+ * Multiple documents per process (one per type)
+ */
+export interface DocumentDTO {
+  id: number;
+  processInstanceId: string;
+  businessKey: string | null;
+  processDefinitionKey: string | null;
+  processDefinitionName: string | null;
+  type: string; // Document type: "main", "contract", "invoice", etc.
+  fields: Record<string, unknown>;
+  grids: Record<string, Array<Record<string, unknown>>>;
+  createdAt: string;
+  updatedAt: string;
+  createdBy: string | null;
+  updatedBy: string | null;
+}
+
+/**
+ * Grid row DTO - represents a single row in a grid
+ */
+export interface GridRowDTO {
+  id: number;
+  documentId: number;
+  processInstanceId: string;
+  gridName: string;
+  rowIndex: number;
+  fields: Record<string, unknown>;
+}
+
+/**
+ * Request to save document data
+ */
+export interface SaveDocumentRequest {
+  processInstanceId: string;
+  businessKey?: string;
+  processDefinitionKey?: string;
+  processDefinitionName?: string;
+  documentType?: string;
+  variables: Record<string, unknown>;
+  userId?: string;
+}
+
+/**
+ * Request to save grid rows
+ */
+export interface SaveGridRowsRequest {
+  processDefinitionKey?: string;
+  documentType?: string;
+  rows: Array<Record<string, unknown>>;
+}
+
+// ============================================
 // Database Table Viewer Types
 // ============================================
 
