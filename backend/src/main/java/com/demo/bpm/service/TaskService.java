@@ -1,6 +1,8 @@
 package com.demo.bpm.service;
 
+import com.demo.bpm.dto.DocumentDTO;
 import com.demo.bpm.dto.TaskDTO;
+import com.demo.bpm.util.VariableStorageUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.engine.HistoryService;
@@ -16,6 +18,7 @@ import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -77,8 +80,60 @@ public class TaskService {
         return convertToDTO(task);
     }
 
+    /**
+     * Get all variables for a task, merging:
+     * 1. System variables from Flowable (variables starting with _)
+     * 2. Business data from document/grid_rows tables
+     */
     public Map<String, Object> getTaskVariables(String taskId) {
-        return flowableTaskService.getVariables(taskId);
+        Task task = flowableTaskService.createTaskQuery()
+                .taskId(taskId)
+                .singleResult();
+
+        if (task == null) {
+            throw new RuntimeException("Task not found: " + taskId);
+        }
+
+        return getMergedVariables(task.getProcessInstanceId());
+    }
+
+    /**
+     * Get merged variables from both Flowable (system vars) and document tables (business data).
+     */
+    private Map<String, Object> getMergedVariables(String processInstanceId) {
+        Map<String, Object> mergedVars = new HashMap<>();
+
+        // Get system variables from Flowable (variables starting with _)
+        try {
+            Map<String, Object> flowableVars = runtimeService.getVariables(processInstanceId);
+            if (flowableVars != null) {
+                mergedVars.putAll(flowableVars);
+            }
+        } catch (Exception e) {
+            log.debug("Could not get Flowable variables, process may have ended: {}", e.getMessage());
+        }
+
+        // Get business data from document table
+        try {
+            Optional<DocumentDTO> documentOpt = businessTableService.getDocument(processInstanceId, "main");
+            if (documentOpt.isPresent()) {
+                DocumentDTO document = documentOpt.get();
+
+                // Add document fields
+                if (document.getFields() != null) {
+                    mergedVars.putAll(document.getFields());
+                }
+
+                // Add grid data
+                if (document.getGrids() != null) {
+                    mergedVars.putAll(document.getGrids());
+                }
+            }
+        } catch (Exception e) {
+            log.debug("Could not get document data: {}", e.getMessage());
+        }
+
+        return mergedVars;
     }
 
     public String getProcessDefinitionIdForTask(String taskId) {
@@ -145,40 +200,33 @@ public class TaskService {
         String processDefName = processDefinition != null ? processDefinition.getName() : null;
         String businessKey = processInstance != null ? processInstance.getBusinessKey() : null;
 
-        // Add completion metadata
-        Map<String, Object> completeVars = new HashMap<>(variables != null ? variables : Map.of());
-        completeVars.put("completedBy", userId);
-        completeVars.put("completedAt", java.time.LocalDateTime.now().toString());
+        // Collect all variables (both system and business)
+        Map<String, Object> allVars = new HashMap<>(variables != null ? variables : Map.of());
 
-        flowableTaskService.complete(taskId, completeVars);
-        log.info("Task {} completed by {} with variables: {}", taskId, userId, variables);
+        // Add completion metadata with _ prefix so they're stored in Flowable
+        allVars.put("_completedBy", userId);
+        allVars.put("_completedAt", java.time.LocalDateTime.now().toString());
+
+        // Only pass system variables (starting with _) to Flowable
+        // Business variables will be stored in document/grid_rows tables only
+        Map<String, Object> systemVars = VariableStorageUtil.filterSystemVariables(allVars);
+
+        flowableTaskService.complete(taskId, systemVars);
+        log.info("Task {} completed by {}. System vars: {}, Total vars: {}", taskId, userId, systemVars.size(), allVars.size());
 
         // Persist to business tables if configured
         if (processDefKey != null && businessTableService.shouldPersistOnTaskComplete(processDefKey)) {
             try {
-                // Merge existing process variables with new ones for complete picture
-                Map<String, Object> allVariables = new HashMap<>();
-
-                // Get all process variables (includes previously set values)
-                try {
-                    Map<String, Object> processVars = runtimeService.getVariables(processInstanceId);
-                    allVariables.putAll(processVars);
-                } catch (Exception e) {
-                    // Process might have ended, that's ok
-                    log.debug("Could not get process variables, process may have ended: {}", e.getMessage());
-                }
-
-                // Overlay with submitted variables (latest values take precedence)
-                if (variables != null) {
-                    allVariables.putAll(variables);
-                }
-
+                // Save all submitted variables to business tables
+                // Note: System variables (starting with _) are stored in Flowable
+                // Business variables are stored only in document/grid_rows
+                // We pass all variables here so system metadata is also available in document if needed
                 businessTableService.saveAllData(
                         processInstanceId,
                         businessKey,
                         processDefKey,
                         processDefName,
-                        allVariables,
+                        allVars,
                         userId
                 );
                 log.info("Business table data saved for process instance: {}", processInstanceId);
@@ -190,7 +238,8 @@ public class TaskService {
     }
 
     private TaskDTO convertToDTO(Task task) {
-        Map<String, Object> variables = flowableTaskService.getVariables(task.getId());
+        // Get merged variables from both Flowable (system vars) and document tables (business data)
+        Map<String, Object> variables = getMergedVariables(task.getProcessInstanceId());
 
         ProcessInstance processInstance = runtimeService.createProcessInstanceQuery()
                 .processInstanceId(task.getProcessInstanceId())

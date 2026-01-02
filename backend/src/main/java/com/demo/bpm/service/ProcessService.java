@@ -2,6 +2,7 @@ package com.demo.bpm.service;
 
 import com.demo.bpm.dto.ProcessDTO;
 import com.demo.bpm.dto.ProcessInstanceDTO;
+import com.demo.bpm.util.VariableStorageUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.engine.HistoryService;
@@ -40,22 +41,29 @@ public class ProcessService {
     @Transactional
     public ProcessInstanceDTO startProcess(String processKey, String businessKey,
                                            Map<String, Object> variables, String userId) {
-        Map<String, Object> processVars = new HashMap<>(variables != null ? variables : Map.of());
-        processVars.put("initiator", userId);
-        processVars.put("startedBy", userId);
-        processVars.put("startedAt", java.time.LocalDateTime.now().toString());
+        // Collect all variables (for business table storage if needed later)
+        Map<String, Object> allVars = new HashMap<>(variables != null ? variables : Map.of());
+
+        // Add system metadata with _ prefix so they're stored in Flowable
+        allVars.put("_initiator", userId);
+        allVars.put("_startedBy", userId);
+        allVars.put("_startedAt", java.time.LocalDateTime.now().toString());
 
         String finalBusinessKey = businessKey != null ? businessKey
                 : processKey.toUpperCase() + "-" + System.currentTimeMillis();
 
+        // Only pass system variables (starting with _) to Flowable
+        // Business variables will be stored in document/grid_rows tables only
+        Map<String, Object> systemVars = VariableStorageUtil.filterSystemVariables(allVars);
+
         ProcessInstance instance = runtimeService.startProcessInstanceByKey(
                 processKey,
                 finalBusinessKey,
-                processVars
+                systemVars
         );
 
-        log.info("Started process {} with business key {} by user {}",
-                processKey, finalBusinessKey, userId);
+        log.info("Started process {} with business key {} by user {}. System vars: {}, Total vars: {}",
+                processKey, finalBusinessKey, userId, systemVars.size(), allVars.size());
 
         return getProcessInstance(instance.getId());
     }
@@ -80,7 +88,7 @@ public class ProcessService {
                     .startTime(instance.getStartTime().toInstant()
                             .atZone(ZoneId.systemDefault())
                             .toLocalDateTime())
-                    .startUserId((String) variables.get("startedBy"))
+                    .startUserId((String) variables.get("_startedBy"))
                     .variables(variables)
                     .ended(false)
                     .build();
@@ -110,7 +118,7 @@ public class ProcessService {
 
     public List<ProcessInstanceDTO> getActiveProcesses(String userId) {
         return runtimeService.createProcessInstanceQuery()
-                .variableValueEquals("startedBy", userId)
+                .variableValueEquals("_startedBy", userId)
                 .orderByStartTime().desc()
                 .list()
                 .stream()
