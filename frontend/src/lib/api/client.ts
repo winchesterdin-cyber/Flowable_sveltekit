@@ -15,7 +15,11 @@ import type {
   FormDefinition,
   TaskFormWithConfig,
   TableColumn,
-  TableDataResponse
+  TableDataResponse,
+  DocumentDTO,
+  GridRowDTO,
+  SaveDocumentRequest,
+  SaveGridRowsRequest
 } from '$lib/types';
 import { createLogger } from '$lib/utils/logger';
 import { backendStatus } from '$lib/stores/backendStatus';
@@ -605,7 +609,8 @@ export const api = {
     variables: Record<string, unknown>,
     userId: string,
     processInstanceId?: string,
-    businessKey?: string
+    businessKey?: string,
+    documentType?: string
   ): Promise<{ message: string; processInstanceId: string }> {
     return fetchApi('/api/business/save-draft', {
       method: 'POST',
@@ -614,9 +619,94 @@ export const api = {
         businessKey,
         processDefinitionKey,
         processDefinitionName,
+        documentType,
         variables,
         userId
       })
     });
+  },
+
+  // ==================== Document Operations ====================
+
+  /**
+   * Get all documents for a process instance
+   */
+  async getDocuments(processInstanceId: string): Promise<DocumentDTO[]> {
+    return fetchApi(`/api/business/processes/${processInstanceId}/documents`);
+  },
+
+  /**
+   * Get a specific document by type
+   */
+  async getDocument(processInstanceId: string, documentType: string): Promise<DocumentDTO> {
+    return fetchApi(`/api/business/processes/${processInstanceId}/documents/${documentType}`);
+  },
+
+  /**
+   * Save a document with specific type
+   */
+  async saveDocument(
+    processInstanceId: string,
+    documentType: string,
+    request: SaveDocumentRequest
+  ): Promise<DocumentDTO> {
+    return fetchApi(`/api/business/processes/${processInstanceId}/documents/${documentType}`, {
+      method: 'POST',
+      body: JSON.stringify(request)
+    });
+  },
+
+  /**
+   * Get grid rows for a document type
+   */
+  async getGridRows(
+    processInstanceId: string,
+    documentType: string,
+    gridName: string
+  ): Promise<GridRowDTO[]> {
+    return fetchApi(
+      `/api/business/processes/${processInstanceId}/documents/${documentType}/grids/${gridName}`
+    );
+  },
+
+  /**
+   * Save grid rows for a document type
+   */
+  async saveGridRows(
+    processInstanceId: string,
+    documentType: string,
+    gridName: string,
+    request: SaveGridRowsRequest
+  ): Promise<GridRowDTO[]> {
+    return fetchApi(
+      `/api/business/processes/${processInstanceId}/documents/${documentType}/grids/${gridName}`,
+      {
+        method: 'POST',
+        body: JSON.stringify(request)
+      }
+    );
+  },
+
+  /**
+   * Delete grid rows for a document type
+   */
+  async deleteGridRows(
+    processInstanceId: string,
+    documentType: string,
+    gridName: string
+  ): Promise<void> {
+    await fetchApi(
+      `/api/business/processes/${processInstanceId}/documents/${documentType}/grids/${gridName}`,
+      {
+        method: 'DELETE'
+      }
+    );
+  },
+
+  /**
+   * Get all documents by business key
+   */
+  async getDocumentsByBusinessKey(businessKey: string): Promise<DocumentDTO[]> {
+    return fetchApi(`/api/business/documents/all/by-business-key/${businessKey}`);
   }
 };

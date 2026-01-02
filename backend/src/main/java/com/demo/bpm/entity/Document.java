@@ -10,7 +10,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "document")
+@Table(name = "document",
+       uniqueConstraints = @UniqueConstraint(
+           name = "uk_document_process_type",
+           columnNames = {"process_instance_id", "type"}
+       ))
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -20,7 +24,7 @@ public class Document {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "process_instance_id", nullable = false, unique = true, length = 64)
+    @Column(name = "process_instance_id", nullable = false, length = 64)
     private String processInstanceId;
 
     @Column(name = "business_key", length = 255)
@@ -31,6 +35,9 @@ public class Document {
 
     @Column(name = "process_definition_name", length = 255)
     private String processDefinitionName;
+
+    @Column(name = "type", nullable = false, length = 100)
+    private String type = "main";
 
     // 30 VARCHAR columns
     @Column(name = "varchar_1", length = 4000)

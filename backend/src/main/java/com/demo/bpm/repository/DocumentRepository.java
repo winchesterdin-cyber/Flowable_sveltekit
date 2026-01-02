@@ -10,11 +10,22 @@ import java.util.Optional;
 @Repository
 public interface DocumentRepository extends JpaRepository<Document, Long> {
 
-    Optional<Document> findByProcessInstanceId(String processInstanceId);
+    // Find all documents for a process instance
+    List<Document> findByProcessInstanceId(String processInstanceId);
 
-    Optional<Document> findByBusinessKey(String businessKey);
+    // Find specific document by process instance ID and type
+    Optional<Document> findByProcessInstanceIdAndType(String processInstanceId, String type);
+
+    // Find all documents of a specific type by business key
+    Optional<Document> findByBusinessKeyAndType(String businessKey, String type);
+
+    // Find all documents by business key
+    List<Document> findByBusinessKey(String businessKey);
 
     List<Document> findByProcessDefinitionKey(String processDefinitionKey);
 
-    boolean existsByProcessInstanceId(String processInstanceId);
+    boolean existsByProcessInstanceIdAndType(String processInstanceId, String type);
+
+    // Delete all documents for a process instance
+    void deleteByProcessInstanceId(String processInstanceId);
 }

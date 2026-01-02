@@ -2,7 +2,7 @@
 -- This file is executed on application startup
 
 -- ============================================
--- 1. DOCUMENT TABLE - One record per process
+-- 1. DOCUMENT TABLE - Multiple documents per process (one per type)
 -- ============================================
 CREATE TABLE IF NOT EXISTS document (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -14,6 +14,9 @@ CREATE TABLE IF NOT EXISTS document (
     -- Process metadata
     process_definition_key VARCHAR(255),
     process_definition_name VARCHAR(255),
+
+    -- Document type (allows multiple documents per process)
+    type VARCHAR(100) NOT NULL DEFAULT 'main',
 
     -- 30 VARCHAR columns (max length for H2)
     varchar_1 VARCHAR(4000),
@@ -117,10 +120,12 @@ CREATE TABLE IF NOT EXISTS document (
     created_by VARCHAR(255),
     updated_by VARCHAR(255),
 
-    -- Unique constraint on process instance
-    CONSTRAINT uk_document_process_instance UNIQUE (process_instance_id)
+    -- Unique constraint: one document per type per process
+    CONSTRAINT uk_document_process_type UNIQUE (process_instance_id, type)
 );
 
+CREATE INDEX IF NOT EXISTS idx_document_process_instance ON document(process_instance_id);
+CREATE INDEX IF NOT EXISTS idx_document_type ON document(type);
 CREATE INDEX IF NOT EXISTS idx_document_business_key ON document(business_key);
 CREATE INDEX IF NOT EXISTS idx_document_process_def_key ON document(process_definition_key);
 
@@ -259,6 +264,7 @@ CREATE TABLE IF NOT EXISTS column_mapping (
     -- Scope: process-level for document fields, grid-level for grid columns
     scope_type VARCHAR(20) NOT NULL,           -- 'DOCUMENT' or 'GRID'
     process_definition_key VARCHAR(255) NOT NULL,
+    document_type VARCHAR(100),                -- Document type for document-specific mappings
     grid_name VARCHAR(255),                    -- NULL for document fields
 
     -- Field info
@@ -271,12 +277,13 @@ CREATE TABLE IF NOT EXISTS column_mapping (
     -- Metadata
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
-    -- Unique constraint: one mapping per field per scope
-    CONSTRAINT uk_column_mapping UNIQUE (scope_type, process_definition_key, grid_name, field_name)
+    -- Unique constraint: one mapping per field per scope (includes document_type)
+    CONSTRAINT uk_column_mapping UNIQUE (scope_type, process_definition_key, document_type, grid_name, field_name)
 );
 
 CREATE INDEX IF NOT EXISTS idx_column_mapping_process ON column_mapping(process_definition_key);
-CREATE INDEX IF NOT EXISTS idx_column_mapping_lookup ON column_mapping(scope_type, process_definition_key, grid_name);
+CREATE INDEX IF NOT EXISTS idx_column_mapping_document_type ON column_mapping(document_type);
+CREATE INDEX IF NOT EXISTS idx_column_mapping_lookup ON column_mapping(scope_type, process_definition_key, document_type, grid_name);
 
 
 -- ============================================

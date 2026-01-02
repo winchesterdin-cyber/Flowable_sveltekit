@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
 @Table(name = "column_mapping",
        uniqueConstraints = @UniqueConstraint(
            name = "uk_column_mapping",
-           columnNames = {"scope_type", "process_definition_key", "grid_name", "field_name"}
+           columnNames = {"scope_type", "process_definition_key", "document_type", "grid_name", "field_name"}
        ))
 @Data
 @NoArgsConstructor
@@ -30,6 +30,9 @@ public class ColumnMapping {
 
     @Column(name = "process_definition_key", nullable = false, length = 255)
     private String processDefinitionKey;
+
+    @Column(name = "document_type", length = 100)
+    private String documentType;
 
     @Column(name = "grid_name", length = 255)
     private String gridName;

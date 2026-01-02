@@ -21,6 +21,7 @@ public class DocumentDTO {
     private String businessKey;
     private String processDefinitionKey;
     private String processDefinitionName;
+    private String type;
 
     // Field values mapped by field name
     @Builder.Default

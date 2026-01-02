@@ -29,21 +29,39 @@ public class ColumnMappingService {
     private final ColumnMappingRepository columnMappingRepository;
 
     /**
-     * Get or create column mapping for a document field.
+     * Get or create column mapping for a document field (legacy - no document type).
      */
     @Transactional
     public ColumnMapping getOrCreateDocumentMapping(String processDefKey, String fieldName, FieldType fieldType) {
-        // 1. Check for existing mapping
-        Optional<ColumnMapping> existing = columnMappingRepository.findDocumentFieldMapping(processDefKey, fieldName);
-        if (existing.isPresent()) {
-            return existing.get();
+        return getOrCreateDocumentMapping(processDefKey, null, fieldName, fieldType);
+    }
+
+    /**
+     * Get or create column mapping for a document field with document type.
+     */
+    @Transactional
+    public ColumnMapping getOrCreateDocumentMapping(String processDefKey, String documentType,
+                                                     String fieldName, FieldType fieldType) {
+        // 1. Check for existing mapping (with document type specificity)
+        List<ColumnMapping> existingMappings = columnMappingRepository.findDocumentFieldMappings(
+                processDefKey, documentType, fieldName);
+        if (!existingMappings.isEmpty()) {
+            // Return the most specific mapping (document-type-specific first)
+            return existingMappings.get(0);
+        }
+
+        // Fallback: check legacy mapping without document type
+        Optional<ColumnMapping> legacyMapping = columnMappingRepository.findDocumentFieldMapping(processDefKey, fieldName);
+        if (legacyMapping.isPresent()) {
+            return legacyMapping.get();
         }
 
         // 2. Calculate preferred column from hash
         int preferredColumn = calculatePreferredColumn(fieldName);
 
         // 3. Get used columns for this scope and type
-        Set<Integer> usedColumns = columnMappingRepository.findUsedDocumentColumnIndices(processDefKey, fieldType);
+        Set<Integer> usedColumns = columnMappingRepository.findUsedDocumentColumnIndices(
+                processDefKey, documentType, fieldType);
 
         // 4. Find available column (nearest to preferred)
         int assignedColumn = findNearestAvailable(preferredColumn, usedColumns);
@@ -54,6 +72,7 @@ public class ColumnMappingService {
         ColumnMapping mapping = ColumnMapping.builder()
                 .scopeType(ScopeType.DOCUMENT)
                 .processDefinitionKey(processDefKey)
+                .documentType(documentType)
                 .gridName(null)
                 .fieldName(fieldName)
                 .fieldType(fieldType)
@@ -61,27 +80,48 @@ public class ColumnMappingService {
                 .build();
 
         mapping = columnMappingRepository.save(mapping);
-        log.info("Created document column mapping: {} -> {} for process {}", fieldName, columnName, processDefKey);
+        log.info("Created document column mapping: {} -> {} for process {} (type: {})",
+                fieldName, columnName, processDefKey, documentType);
 
         return mapping;
     }
 
     /**
-     * Get or create column mapping for a grid field.
+     * Get or create column mapping for a grid field (legacy - no document type).
      */
     @Transactional
-    public ColumnMapping getOrCreateGridMapping(String processDefKey, String gridName, String fieldName, FieldType fieldType) {
-        // 1. Check for existing mapping
-        Optional<ColumnMapping> existing = columnMappingRepository.findGridFieldMapping(processDefKey, gridName, fieldName);
-        if (existing.isPresent()) {
-            return existing.get();
+    public ColumnMapping getOrCreateGridMapping(String processDefKey, String gridName,
+                                                 String fieldName, FieldType fieldType) {
+        return getOrCreateGridMapping(processDefKey, null, gridName, fieldName, fieldType);
+    }
+
+    /**
+     * Get or create column mapping for a grid field with document type.
+     */
+    @Transactional
+    public ColumnMapping getOrCreateGridMapping(String processDefKey, String documentType,
+                                                 String gridName, String fieldName, FieldType fieldType) {
+        // 1. Check for existing mapping (with document type specificity)
+        List<ColumnMapping> existingMappings = columnMappingRepository.findGridFieldMappings(
+                processDefKey, documentType, gridName, fieldName);
+        if (!existingMappings.isEmpty()) {
+            // Return the most specific mapping (document-type-specific first)
+            return existingMappings.get(0);
+        }
+
+        // Fallback: check legacy mapping without document type
+        Optional<ColumnMapping> legacyMapping = columnMappingRepository.findGridFieldMapping(
+                processDefKey, gridName, fieldName);
+        if (legacyMapping.isPresent()) {
+            return legacyMapping.get();
         }
 
         // 2. Calculate preferred column from hash
         int preferredColumn = calculatePreferredColumn(fieldName);
 
         // 3. Get used columns for this scope and type
-        Set<Integer> usedColumns = columnMappingRepository.findUsedGridColumnIndices(processDefKey, gridName, fieldType);
+        Set<Integer> usedColumns = columnMappingRepository.findUsedGridColumnIndices(
+                processDefKey, documentType, gridName, fieldType);
 
         // 4. Find available column (nearest to preferred)
         int assignedColumn = findNearestAvailable(preferredColumn, usedColumns);
@@ -92,6 +132,7 @@ public class ColumnMappingService {
         ColumnMapping mapping = ColumnMapping.builder()
                 .scopeType(ScopeType.GRID)
                 .processDefinitionKey(processDefKey)
+                .documentType(documentType)
                 .gridName(gridName)
                 .fieldName(fieldName)
                 .fieldType(fieldType)
@@ -99,17 +140,26 @@ public class ColumnMappingService {
                 .build();
 
         mapping = columnMappingRepository.save(mapping);
-        log.info("Created grid column mapping: {}.{} -> {} for process {}", gridName, fieldName, columnName, processDefKey);
+        log.info("Created grid column mapping: {}.{} -> {} for process {} (type: {})",
+                gridName, fieldName, columnName, processDefKey, documentType);
 
         return mapping;
     }
 
     /**
-     * Get all document mappings for a process, keyed by field name.
+     * Get all document mappings for a process (legacy), keyed by field name.
      */
     @Transactional(readOnly = true)
     public Map<String, ColumnMapping> getDocumentMappings(String processDefKey) {
-        List<ColumnMapping> mappings = columnMappingRepository.findAllDocumentMappings(processDefKey);
+        return getDocumentMappings(processDefKey, null);
+    }
+
+    /**
+     * Get all document mappings for a process and document type, keyed by field name.
+     */
+    @Transactional(readOnly = true)
+    public Map<String, ColumnMapping> getDocumentMappings(String processDefKey, String documentType) {
+        List<ColumnMapping> mappings = columnMappingRepository.findAllDocumentMappings(processDefKey, documentType);
         Map<String, ColumnMapping> result = new HashMap<>();
         for (ColumnMapping mapping : mappings) {
             result.put(mapping.getFieldName(), mapping);
@@ -118,11 +168,19 @@ public class ColumnMappingService {
     }
 
     /**
-     * Get all grid mappings for a specific grid, keyed by field name.
+     * Get all grid mappings for a specific grid (legacy), keyed by field name.
      */
     @Transactional(readOnly = true)
     public Map<String, ColumnMapping> getGridMappings(String processDefKey, String gridName) {
-        List<ColumnMapping> mappings = columnMappingRepository.findAllGridMappings(processDefKey, gridName);
+        return getGridMappings(processDefKey, null, gridName);
+    }
+
+    /**
+     * Get all grid mappings for a specific grid with document type, keyed by field name.
+     */
+    @Transactional(readOnly = true)
+    public Map<String, ColumnMapping> getGridMappings(String processDefKey, String documentType, String gridName) {
+        List<ColumnMapping> mappings = columnMappingRepository.findAllGridMappings(processDefKey, documentType, gridName);
         Map<String, ColumnMapping> result = new HashMap<>();
         for (ColumnMapping mapping : mappings) {
             result.put(mapping.getFieldName(), mapping);
