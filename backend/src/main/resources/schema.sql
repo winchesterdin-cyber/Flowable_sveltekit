@@ -320,3 +320,18 @@ CREATE TABLE IF NOT EXISTS process_config (
 );
 
 CREATE INDEX IF NOT EXISTS idx_process_config_key ON process_config(process_definition_key);
+
+-- ============================================
+-- 5. DOCUMENT_TYPE_DEFINITION TABLE - Definitions for reusable document types
+-- ============================================
+CREATE TABLE IF NOT EXISTS document_type_definition (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    key_id VARCHAR(255) NOT NULL UNIQUE,
+    name VARCHAR(255) NOT NULL,
+    description VARCHAR(1000),
+    schema_json TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_document_type_def_key ON document_type_definition(key_id);

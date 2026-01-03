@@ -7,6 +7,9 @@
   import BpmnModeler from 'bpmn-js/lib/Modeler';
   import 'bpmn-js/dist/assets/diagram-js.css';
   import 'bpmn-js/dist/assets/bpmn-font/css/bpmn-embedded.css';
+  // @ts-ignore
+  import TokenSimulationModule from 'bpmn-js-token-simulation';
+  import 'bpmn-js-token-simulation/assets/css/bpmn-js-token-simulation.css';
   import { flowableModdle } from '$lib/utils/flowable-moddle';
   import { demoProcesses, getDemoProcessesByCategory, type DemoProcess } from '$lib/utils/demo-processes';
   import type { ProcessFieldLibrary, FieldConditionRule, FormField, FormGrid } from '$lib/types';
@@ -401,7 +404,9 @@
       keyboard: {
         bindTo: document
       },
-      additionalModules: [],
+      additionalModules: [
+        TokenSimulationModule
+      ],
       moddleExtensions: {
         flowable: flowableModdle
       }
