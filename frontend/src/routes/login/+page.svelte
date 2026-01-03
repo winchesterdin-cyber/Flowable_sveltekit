@@ -20,6 +20,7 @@
 	 * Get diagnostic information about current cookies
 	 */
 	function getCookieDiagnostics(): string {
+		if (typeof document === 'undefined') return 'Cookie diagnostics not available during SSR';
 		const cookies = document.cookie.split(';').filter(c => c.trim());
 		const totalSize = document.cookie.length;
 		const cookieNames = cookies.map(c => c.split('=')[0].trim()).join(', ');
@@ -73,6 +74,8 @@
 	 * Uses multiple fallback strategies when headers are too large.
 	 */
 	async function clearAllCookies(): Promise<void> {
+		if (typeof document === 'undefined' || typeof window === 'undefined') return;
+
 		clearingCookies = true;
 		error = '';
 		errorDetails = '';
