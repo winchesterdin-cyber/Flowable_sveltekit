@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import { backendStatus, type BackendState } from '$lib/stores/backendStatus';
 	import { onMount } from 'svelte';
 
@@ -12,17 +13,20 @@
 		maxAttempts > 0 ? Math.round((currentAttempt / maxAttempts) * 100) : 0
 	);
 
-	onMount(() => {
-		const unsubscribe = backendStatus.subscribe((status) => {
-			backendState = status.state;
-			currentAttempt = status.currentAttempt;
-			maxAttempts = status.maxAttempts;
-			errorMessage = status.errorMessage;
-			visible = status.state !== 'ready';
-		});
+	// Only subscribe to backend status in browser
+	if (browser) {
+		onMount(() => {
+			const unsubscribe = backendStatus.subscribe((status) => {
+				backendState = status.state;
+				currentAttempt = status.currentAttempt;
+				maxAttempts = status.maxAttempts;
+				errorMessage = status.errorMessage;
+				visible = status.state !== 'ready';
+			});
 
-		return unsubscribe;
-	});
+			return unsubscribe;
+		});
+	}
 </script>
 
 {#if visible}

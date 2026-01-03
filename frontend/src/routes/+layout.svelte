@@ -1,5 +1,6 @@
 <script lang="ts">
 	import '../app.css';
+	import { browser } from '$app/environment';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
@@ -23,9 +24,9 @@
 		}
 	});
 
-	// Redirect logic based on auth state
+	// Redirect logic based on auth state - only run in browser
 	$effect(() => {
-		if (!authStore.loading) {
+		if (browser && !authStore.loading) {
 			const isPublicRoute = publicRoutes.includes($page.url.pathname);
 
 			if (!authStore.isAuthenticated && !isPublicRoute) {
