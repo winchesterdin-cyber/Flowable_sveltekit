@@ -1,5 +1,5 @@
--- Business Tables Schema for Variable Storage (PostgreSQL)
--- This file is executed on application startup when using PostgreSQL profile
+-- Business Tables Schema for Variable Storage
+-- This file is executed on application startup
 
 -- ============================================
 -- 1. DOCUMENT TABLE - Multiple documents per process (one per type)
@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS document (
     -- Document type (allows multiple documents per process)
     type VARCHAR(100) NOT NULL DEFAULT 'main',
 
-    -- 30 VARCHAR columns (TEXT in PostgreSQL for flexibility)
+    -- 30 VARCHAR columns
     varchar_1 TEXT,
     varchar_2 TEXT,
     varchar_3 TEXT,
@@ -50,7 +50,7 @@ CREATE TABLE IF NOT EXISTS document (
     varchar_29 TEXT,
     varchar_30 TEXT,
 
-    -- 30 FLOAT columns (DOUBLE PRECISION in PostgreSQL)
+    -- 30 FLOAT columns
     float_1 DOUBLE PRECISION,
     float_2 DOUBLE PRECISION,
     float_3 DOUBLE PRECISION,
@@ -320,3 +320,18 @@ CREATE TABLE IF NOT EXISTS process_config (
 );
 
 CREATE INDEX IF NOT EXISTS idx_process_config_key ON process_config(process_definition_key);
+
+-- ============================================
+-- 5. DOCUMENT_TYPE_DEFINITION TABLE - Definitions for reusable document types
+-- ============================================
+CREATE TABLE IF NOT EXISTS document_type_definition (
+    id BIGSERIAL PRIMARY KEY,
+    key_id VARCHAR(255) NOT NULL UNIQUE,
+    name VARCHAR(255) NOT NULL,
+    description VARCHAR(1000),
+    schema_json TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_document_type_def_key ON document_type_definition(key_id);

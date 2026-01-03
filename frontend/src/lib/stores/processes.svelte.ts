@@ -186,19 +186,10 @@ class ProcessStore {
    * This provides optimistic update while cache is invalidated
    */
   addDeployedProcess(process: ProcessDefinition) {
-    // Check if we already have this process key
-    const existingIndex = this.definitions.findIndex((p) => p.key === process.key);
-    if (existingIndex >= 0) {
-      // Replace with new version
-      this.definitions = [
-        ...this.definitions.slice(0, existingIndex),
-        process,
-        ...this.definitions.slice(existingIndex + 1)
-      ];
-    } else {
-      // Add new process
-      this.definitions = [...this.definitions, process];
-    }
+    // We append the new process to the list.
+    // Since we now support multiple versions, we just add it.
+    // The grouping logic will handle version sorting.
+    this.definitions = [...this.definitions, process];
     this.invalidateDefinitions();
   }
 
@@ -206,6 +197,12 @@ class ProcessStore {
    * Remove a process definition from the store
    */
   removeProcess(processId: string) {
+    // If we are showing all versions, removing by ID just removes that version.
+    // However, the backend logic for deletion might cascade to all versions if we are not careful
+    // or if the user requested cascade.
+    // The current UI logic in manage page calls deleteProcess with cascade=false usually,
+    // or it might intend to delete the deployment which removes all contained processes.
+    // For safety, let's just filter out by ID.
     this.definitions = this.definitions.filter((p) => p.id !== processId);
     this.invalidateDefinitions();
   }

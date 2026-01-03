@@ -1,0 +1,202 @@
+<script lang="ts">
+  import { onMount } from 'svelte';
+  import { page } from '$app/stores';
+  import { api } from '$lib/api/client';
+
+  import BpmnViewer from 'bpmn-js/lib/Viewer';
+  // @ts-ignore
+  import BpmnDiffer from 'bpmn-js-differ';
+
+  let leftId = $state('');
+  let rightId = $state('');
+  let leftBpmn = $state('');
+  let rightBpmn = $state('');
+
+  let isLoading = $state(true);
+  let error = $state('');
+  let viewerContainer: HTMLDivElement;
+  let viewer: any = null;
+
+  // Diff statistics
+  let added = $state(0);
+  let removed = $state(0);
+  let changed = $state(0);
+  let layoutChanged = $state(0);
+
+  onMount(async () => {
+    leftId = $page.url.searchParams.get('left') || '';
+    rightId = $page.url.searchParams.get('right') || '';
+
+    if (!leftId || !rightId) {
+      error = 'Please select two process versions to compare.';
+      isLoading = false;
+      return;
+    }
+
+    await loadData();
+  });
+
+  async function loadData() {
+    isLoading = true;
+    try {
+      const [leftRes, rightRes] = await Promise.all([
+        api.getProcessBpmn(leftId),
+        api.getProcessBpmn(rightId)
+      ]);
+
+      leftBpmn = leftRes.bpmn;
+      rightBpmn = rightRes.bpmn;
+
+      initializeViewer();
+    } catch (err) {
+      console.error(err);
+      error = 'Failed to load BPMN definitions.';
+    } finally {
+      isLoading = false;
+    }
+  }
+
+  function initializeViewer() {
+    if (!viewerContainer) return;
+
+    viewer = new BpmnViewer({
+      container: viewerContainer,
+      additionalModules: [
+        BpmnDiffer
+      ]
+    });
+
+    // Import the "left" (older/base) diagram first
+    viewer.importXML(leftBpmn).then(() => {
+        // Compute diff against "right" (newer) diagram
+        // The API for bpmn-js-differ usually works by importing one and then diffing against another object tree
+        // However, the standard usage in examples is:
+        // viewer.importXML(oldXML, function(err) { ... });
+        // const diff = viewer.get('diff');
+        // diff.diff(newDefinitions);
+
+        // Actually, looking at bpmn-js-differ documentation, it provides a 'diffing' service
+        // that can compare two moddle definitions.
+
+        // We need to parse the second XML manually into definitions
+        const moddle = viewer.get('moddle');
+        moddle.fromXML(rightBpmn, 'bpmn:Definitions').then((result: any) => {
+             const newDefinitions = result.rootElement;
+
+             // Get the canvas to zoom fit
+             const canvas = viewer.get('canvas');
+             canvas.zoom('fit-viewport');
+
+             // Visual Diffing?
+             // bpmn-js-differ is a toolkit. To VISUALIZE, we usually need overlays.
+             // The module adds visual markers if integrated correctly.
+
+             // Let's try to verify if the module is active
+             try {
+                // This call might depend on exact version/API of bpmn-js-differ
+                // Typically: viewer.get('diff').diff(newDefinitions);
+                const diffing = viewer.get('diff');
+                const changes = diffing.diff(newDefinitions);
+
+                // Calculate stats
+                // changes is an object with keys for added, removed, changed...
+                // e.g. { _added: {...}, _removed: {...}, ... }
+                // or a flat list of change objects.
+
+                // Debug log
+                console.log('Diff result:', changes);
+
+                // Let's count them roughly
+                let a = 0, r = 0, c = 0, l = 0;
+
+                // Helper to walk changes
+                // The structure is usually { <elementId>: { changeType: 'added'|'removed'|'changed' } }
+                for (const key in changes) {
+                    const change = changes[key];
+                    if (change.changeType === 'added') a++;
+                    else if (change.changeType === 'removed') r++;
+                    else if (change.changeType === 'changed') c++;
+                    else if (change.changeType === 'layout-changed') l++;
+                }
+
+                added = a;
+                removed = r;
+                changed = c;
+                layoutChanged = l;
+
+             } catch (e) {
+                console.error('Diff calculation failed', e);
+                // Fallback or specific handling
+             }
+        });
+    });
+  }
+</script>
+
+<style>
+  :global(.djs-visual-diff-added) .djs-visual > :first-child {
+    stroke: #4caf50 !important;
+    stroke-width: 2px !important;
+    fill: rgba(76, 175, 80, 0.1) !important;
+  }
+  :global(.djs-visual-diff-removed) .djs-visual > :first-child {
+    stroke: #f44336 !important;
+    stroke-width: 2px !important;
+    fill: rgba(244, 67, 54, 0.1) !important;
+  }
+  :global(.djs-visual-diff-changed) .djs-visual > :first-child {
+    stroke: #ff9800 !important;
+    stroke-width: 2px !important;
+    fill: rgba(255, 152, 0, 0.1) !important;
+  }
+  :global(.djs-visual-diff-layout-changed) .djs-visual > :first-child {
+    stroke: #9c27b0 !important;
+    stroke-width: 2px !important;
+    stroke-dasharray: 4;
+  }
+</style>
+
+<div class="h-screen flex flex-col bg-white">
+  <div class="border-b border-gray-200 bg-gray-50 px-6 py-4 flex justify-between items-center">
+    <div>
+      <h1 class="text-xl font-bold text-gray-900">Process Comparison</h1>
+      <p class="text-sm text-gray-500">Comparing versions {leftId} vs {rightId}</p>
+    </div>
+
+    <div class="flex gap-6 text-sm">
+       <div class="flex items-center gap-1">
+          <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+          <span>Added: {added}</span>
+       </div>
+       <div class="flex items-center gap-1">
+          <div class="w-3 h-3 bg-red-500 rounded-full"></div>
+          <span>Removed: {removed}</span>
+       </div>
+       <div class="flex items-center gap-1">
+          <div class="w-3 h-3 bg-orange-500 rounded-full"></div>
+          <span>Changed: {changed}</span>
+       </div>
+    </div>
+
+    <a href="/processes/manage" class="text-blue-600 hover:underline text-sm">Back to Manage</a>
+  </div>
+
+  {#if error}
+    <div class="p-6">
+      <div class="rounded-md bg-red-50 p-4 text-red-700">{error}</div>
+    </div>
+  {:else}
+    <div class="flex-1 relative">
+      <div bind:this={viewerContainer} class="w-full h-full"></div>
+
+      {#if isLoading}
+        <div class="absolute inset-0 flex items-center justify-center bg-white bg-opacity-80 z-10">
+          <div class="text-center">
+             <div class="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
+             <p class="mt-2 text-gray-600">Loading diagrams...</p>
+          </div>
+        </div>
+      {/if}
+    </div>
+  {/if}
+</div>

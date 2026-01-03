@@ -438,6 +438,10 @@ export const api = {
     return fetchApi('/api/processes');
   },
 
+  async getAllProcessDefinitions(): Promise<ProcessDefinition[]> {
+      return fetchApi('/api/processes/definitions');
+  },
+
   async startProcess(
     processKey: string,
     variables: Record<string, unknown>
@@ -586,6 +590,21 @@ export const api = {
   ): Promise<{ message: string }> {
     return fetchApi(`/api/processes/${processDefinitionId}?cascade=${cascade}`, {
       method: 'DELETE'
+    });
+  },
+
+  async suspendProcess(processDefinitionId: string): Promise<{ message: string }> {
+    return fetchApi(`/api/processes/${processDefinitionId}/suspend`, { method: 'PUT' });
+  },
+
+  async activateProcess(processDefinitionId: string): Promise<{ message: string }> {
+    return fetchApi(`/api/processes/${processDefinitionId}/activate`, { method: 'PUT' });
+  },
+
+  async updateProcessCategory(processDefinitionId: string, category: string): Promise<{ message: string }> {
+    return fetchApi(`/api/processes/${processDefinitionId}/category`, {
+        method: 'PUT',
+        body: JSON.stringify({ category })
     });
   },
 
@@ -758,5 +777,32 @@ export const api = {
     return fetchApi(
       `/api/business/documents/all/by-business-key/${businessKey}?${params.toString()}`
     );
+  },
+
+  // ==================== Document Type Definitions ====================
+  async getDocumentTypes(): Promise<any[]> {
+    return fetchApi('/api/document-types');
+  },
+
+  async getDocumentType(key: string): Promise<any> {
+    return fetchApi(`/api/document-types/${key}`);
+  },
+
+  async createDocumentType(data: any): Promise<any> {
+    return fetchApi('/api/document-types', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+  },
+
+  async updateDocumentType(key: string, data: any): Promise<any> {
+    return fetchApi(`/api/document-types/${key}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+  },
+
+  async deleteDocumentType(key: string): Promise<void> {
+    await fetchApi(`/api/document-types/${key}`, { method: 'DELETE' });
   }
 };

@@ -33,8 +33,22 @@ public class ProcessService {
     private final HistoryService historyService;
 
     public List<ProcessDTO> getAvailableProcesses() {
+        // Return ALL processes (all versions) if needed, but usually we just want active or latest
+        // For management, we might want all.
+        // The previous implementation returned latest versions only.
+        // We'll stick to latest for "available to start", but add a method for "all definitions"
         return repositoryService.createProcessDefinitionQuery()
                 .latestVersion()
+                .list()
+                .stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+    }
+
+    // New method to get ALL definitions including older versions
+    public List<ProcessDTO> getAllProcessDefinitions() {
+        return repositoryService.createProcessDefinitionQuery()
+                .orderByProcessDefinitionVersion().desc()
                 .list()
                 .stream()
                 .map(this::convertToDTO)
@@ -143,6 +157,8 @@ public class ProcessService {
                 .name(definition.getName())
                 .description(definition.getDescription())
                 .version(definition.getVersion())
+                .category(definition.getCategory())
+                .suspended(definition.isSuspended())
                 .build();
     }
 
@@ -203,5 +219,23 @@ public class ProcessService {
             log.error("Error retrieving BPMN for process: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to retrieve process BPMN: " + e.getMessage(), e);
         }
+    }
+
+    @Transactional
+    public void suspendProcessDefinition(String processDefinitionId) {
+        repositoryService.suspendProcessDefinitionById(processDefinitionId);
+        log.info("Suspended process definition: {}", processDefinitionId);
+    }
+
+    @Transactional
+    public void activateProcessDefinition(String processDefinitionId) {
+        repositoryService.activateProcessDefinitionById(processDefinitionId);
+        log.info("Activated process definition: {}", processDefinitionId);
+    }
+
+    @Transactional
+    public void updateProcessDefinitionCategory(String processDefinitionId, String category) {
+        repositoryService.setProcessDefinitionCategory(processDefinitionId, category);
+        log.info("Updated category for process definition {}: {}", processDefinitionId, category);
     }
 }

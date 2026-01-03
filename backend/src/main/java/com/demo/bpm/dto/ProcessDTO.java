@@ -3,8 +3,6 @@ package com.demo.bpm.dto;
 import lombok.Builder;
 import lombok.Data;
 
-import java.util.Map;
-
 @Data
 @Builder
 public class ProcessDTO {
@@ -13,4 +11,6 @@ public class ProcessDTO {
     private String name;
     private String description;
     private Integer version;
+    private String category;
+    private boolean suspended;
 }

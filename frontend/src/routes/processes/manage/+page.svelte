@@ -18,6 +18,14 @@
   let variablesJson = $state('{}');
   let variablesError = $state('');
 
+  // Category Edit State
+  let editingCategory = $state<string | null>(null);
+  let newCategory = $state('');
+
+  // Comparison State
+  let selectionMode = $state(false);
+  let selectedForCompare: string[] = $state([]);
+
   // Subscribe to process changes for reactive updates
   let unsubscribe: (() => void) | null = null;
 
@@ -41,7 +49,8 @@
     isLoading = true;
     error = '';
     try {
-      await processStore.loadDefinitions(() => api.getProcesses(), forceRefresh);
+      // We want ALL definitions for management, so we use the new endpoint
+      await processStore.loadDefinitions(() => api.getAllProcessDefinitions(), forceRefresh);
     } catch (err) {
       console.error('Error loading processes:', err);
       error = err instanceof Error ? err.message : 'Failed to load processes';
@@ -62,9 +71,7 @@
     try {
       await api.deleteProcess(processDefId, false);
       success = `Process "${processName}" deleted successfully`;
-      // Update the store to remove the process and invalidate cache
       processStore.removeProcess(processDefId);
-      // Force refresh to ensure we have latest data
       await loadProcesses(true);
     } catch (err) {
       console.error('Error deleting process:', err);
@@ -74,8 +81,39 @@
     }
   }
 
+  async function handleSuspend(processDefId: string) {
+    try {
+      await api.suspendProcess(processDefId);
+      success = 'Process suspended';
+      await loadProcesses(true);
+    } catch (err) {
+      error = 'Failed to suspend process';
+    }
+  }
+
+  async function handleActivate(processDefId: string) {
+    try {
+      await api.activateProcess(processDefId);
+      success = 'Process activated';
+      await loadProcesses(true);
+    } catch (err) {
+      error = 'Failed to activate process';
+    }
+  }
+
+  async function updateCategory(processDefId: string) {
+    if (!newCategory.trim()) return;
+    try {
+      await api.updateProcessCategory(processDefId, newCategory.trim());
+      success = 'Category updated';
+      editingCategory = null;
+      await loadProcesses(true);
+    } catch (err) {
+      error = 'Failed to update category';
+    }
+  }
+
   function handleEdit(processDefId: string, processKey: string) {
-    // Navigate to designer with the process definition ID
     goto(`/processes/designer?edit=${processKey}&processDefinitionId=${processDefId}`);
   }
 
@@ -105,8 +143,6 @@
 
   async function handleStartInstance() {
     variablesError = '';
-
-    // Parse variables JSON
     let variables: Record<string, unknown> = {};
     try {
       const parsed = JSON.parse(variablesJson);
@@ -120,7 +156,6 @@
       return;
     }
 
-    // Add business key to variables if provided
     if (businessKey.trim()) {
       variables.businessKey = businessKey.trim();
     }
@@ -141,6 +176,22 @@
     }
   }
 
+  function toggleCompareSelection(id: string) {
+    if (selectedForCompare.includes(id)) {
+      selectedForCompare = selectedForCompare.filter(pid => pid !== id);
+    } else {
+      if (selectedForCompare.length < 2) {
+        selectedForCompare = [...selectedForCompare, id];
+      }
+    }
+  }
+
+  function runComparison() {
+    if (selectedForCompare.length === 2) {
+      goto(`/processes/compare?left=${selectedForCompare[0]}&right=${selectedForCompare[1]}`);
+    }
+  }
+
   // Use the store's grouped definitions
   const groupedProcesses = $derived(() => processStore.groupedDefinitions);
 </script>
@@ -157,12 +208,39 @@
         <h1 class="text-3xl font-bold text-gray-900">Manage Processes</h1>
         <p class="mt-2 text-gray-600">View and manage all deployed process definitions</p>
       </div>
-      <button
-        onclick={handleCreate}
-        class="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-      >
-        + Create New Process
-      </button>
+      <div class="flex gap-2">
+        {#if selectionMode}
+          <div class="flex items-center gap-2 bg-blue-50 px-3 py-1 rounded border border-blue-200">
+             <span class="text-sm font-medium text-blue-800">{selectedForCompare.length}/2 selected</span>
+             <button
+               disabled={selectedForCompare.length !== 2}
+               onclick={runComparison}
+               class="rounded bg-blue-600 px-3 py-1 text-xs font-bold text-white disabled:opacity-50 hover:bg-blue-700"
+             >
+               Compare
+             </button>
+             <button
+               onclick={() => { selectionMode = false; selectedForCompare = []; }}
+               class="ml-2 text-xs text-blue-600 hover:underline"
+             >
+               Cancel
+             </button>
+          </div>
+        {:else}
+          <button
+             onclick={() => selectionMode = true}
+             class="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+             Compare Versions
+          </button>
+        {/if}
+        <button
+          onclick={handleCreate}
+          class="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+        >
+          + Create New Process
+        </button>
+      </div>
     </div>
 
     <!-- Alerts -->
@@ -170,13 +248,9 @@
       <div class="mb-4 rounded-md bg-red-50 p-4">
         <div class="flex">
           <div class="flex-shrink-0">
-            <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-              <path
-                fill-rule="evenodd"
-                d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                clip-rule="evenodd"
-              />
-            </svg>
+             <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+               <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+             </svg>
           </div>
           <div class="ml-3">
             <p class="text-sm text-red-800">{error}</p>
@@ -190,11 +264,7 @@
         <div class="flex">
           <div class="flex-shrink-0">
             <svg class="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
-              <path
-                fill-rule="evenodd"
-                d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                clip-rule="evenodd"
-              />
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
             </svg>
           </div>
           <div class="ml-3">
@@ -208,35 +278,20 @@
     {#if isLoading}
       <div class="flex items-center justify-center py-12">
         <div class="text-center">
-          <div
-            class="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"
-          ></div>
+          <div class="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
           <p class="mt-2 text-gray-600">Loading processes...</p>
         </div>
       </div>
     {:else if groupedProcesses().length === 0}
       <!-- Empty State -->
       <div class="rounded-lg bg-white p-12 text-center shadow">
-        <svg
-          class="mx-auto h-12 w-12 text-gray-400"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-          />
+        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
         </svg>
         <h3 class="mt-2 text-sm font-medium text-gray-900">No processes</h3>
         <p class="mt-1 text-sm text-gray-500">Get started by creating a new process.</p>
         <div class="mt-6">
-          <button
-            onclick={handleCreate}
-            class="inline-flex items-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-          >
+          <button onclick={handleCreate} class="inline-flex items-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
             + Create Process
           </button>
         </div>
@@ -245,24 +300,53 @@
       <!-- Process List -->
       <div class="space-y-4">
         {#each groupedProcesses() as { key, versions, latest }}
-          <div class="rounded-lg bg-white p-6 shadow">
+          <div class="rounded-lg bg-white p-6 shadow border border-transparent {selectedForCompare.includes(latest.id) ? '!border-blue-500 ring-1 ring-blue-500' : ''}">
             <div class="flex items-start justify-between">
+              <!-- Left Side -->
               <div class="flex-1">
                 <div class="flex items-center gap-3">
+                  {#if selectionMode}
+                    <input
+                      type="checkbox"
+                      checked={selectedForCompare.includes(latest.id)}
+                      onchange={() => toggleCompareSelection(latest.id)}
+                      class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                  {/if}
+
                   <h3 class="text-lg font-semibold text-gray-900">
                     {latest.name || key}
                   </h3>
-                  <span
-                    class="rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-800"
-                  >
+                  <span class="rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-800">
                     v{latest.version}
                   </span>
-                  {#if versions.length > 1}
-                    <span class="text-xs text-gray-500">
-                      ({versions.length} version{versions.length === 1 ? '' : 's'})
-                    </span>
+                  {#if latest.suspended}
+                    <span class="rounded-full bg-red-100 px-3 py-1 text-xs font-medium text-red-800">Suspended</span>
+                  {:else}
+                    <span class="rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-800">Active</span>
+                  {/if}
+
+                  {#if editingCategory === latest.id}
+                    <div class="flex items-center gap-1">
+                      <input
+                        type="text"
+                        bind:value={newCategory}
+                        class="h-6 w-32 rounded border border-gray-300 px-2 text-xs"
+                        placeholder="Category"
+                      />
+                      <button onclick={() => updateCategory(latest.id)} class="text-green-600 hover:text-green-800">✓</button>
+                      <button onclick={() => editingCategory = null} class="text-gray-400 hover:text-gray-600">✕</button>
+                    </div>
+                  {:else}
+                    <button
+                      onclick={() => { editingCategory = latest.id; newCategory = latest.category || ''; }}
+                      class="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600 hover:bg-gray-200"
+                    >
+                      {latest.category || '+ Add Category'}
+                    </button>
                   {/if}
                 </div>
+
                 <p class="mt-1 text-sm text-gray-600">
                   <span class="font-medium">Key:</span>
                   <code class="rounded bg-gray-100 px-1">{key}</code>
@@ -279,10 +363,21 @@
                     </summary>
                     <div class="mt-2 space-y-1 pl-4">
                       {#each versions as version}
-                        <div class="text-sm text-gray-600">
-                          Version {version.version}
-                          {#if version === latest}
+                        <div class="flex items-center gap-2 text-sm text-gray-600">
+                          {#if selectionMode}
+                            <input
+                              type="checkbox"
+                              checked={selectedForCompare.includes(version.id)}
+                              onchange={() => toggleCompareSelection(version.id)}
+                              class="h-3 w-3 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            />
+                          {/if}
+                          <span>Version {version.version}</span>
+                          {#if version.id === latest.id}
                             <span class="text-xs text-blue-600">(latest)</span>
+                          {/if}
+                          {#if version.suspended}
+                             <span class="text-xs text-red-500">[Suspended]</span>
                           {/if}
                         </div>
                       {/each}
@@ -291,7 +386,8 @@
                 {/if}
               </div>
 
-              <div class="ml-4 flex gap-2">
+              <!-- Action Buttons -->
+              <div class="ml-4 flex flex-wrap justify-end gap-2 max-w-[400px]">
                 <a
                   href="/processes/start/{latest.id}"
                   class="rounded-md bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-700"
@@ -313,8 +409,31 @@
                 >
                   View
                 </button>
+                <a
+                  href="/processes/docs/{latest.id}"
+                  class="rounded-md bg-purple-100 px-3 py-1.5 text-sm font-medium text-purple-700 hover:bg-purple-200"
+                >
+                  Docs
+                </a>
+
+                {#if latest.suspended}
+                  <button
+                    onclick={() => handleActivate(latest.id)}
+                    class="rounded-md bg-yellow-100 px-3 py-1.5 text-sm font-medium text-yellow-700 hover:bg-yellow-200"
+                  >
+                    Activate
+                  </button>
+                {:else}
+                  <button
+                    onclick={() => handleSuspend(latest.id)}
+                    class="rounded-md bg-orange-100 px-3 py-1.5 text-sm font-medium text-orange-700 hover:bg-orange-200"
+                  >
+                    Suspend
+                  </button>
+                {/if}
+
                 {#if deleteConfirm === key}
-                  <div class="flex gap-2">
+                  <div class="flex gap-2 w-full justify-end mt-2">
                     <button
                       onclick={() => handleDelete(latest.id, key, latest.name || key)}
                       class="rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700"
@@ -350,26 +469,15 @@
       <ul class="space-y-2 text-sm text-blue-800">
         <li class="flex items-start">
           <span class="mr-2">•</span>
-          <span
-            >Each process can have multiple versions. The latest version is used when starting new
-            process instances.</span
-          >
+          <span>Each process can have multiple versions. The latest version is used when starting new process instances.</span>
         </li>
         <li class="flex items-start">
           <span class="mr-2">•</span>
-          <span
-            >Click "Start Instance" to create a new running instance of a process with custom variables.</span
-          >
+          <span><b>Suspended</b> processes cannot be started but existing instances continue.</span>
         </li>
         <li class="flex items-start">
           <span class="mr-2">•</span>
-          <span
-            >Deleting a process will remove all versions and may affect running process instances.</span
-          >
-        </li>
-        <li class="flex items-start">
-          <span class="mr-2">•</span>
-          <span>Use the Process Designer to create new processes or modify existing ones.</span>
+          <span>Use <b>Compare Versions</b> to see visual differences between two process definitions.</span>
         </li>
       </ul>
     </div>

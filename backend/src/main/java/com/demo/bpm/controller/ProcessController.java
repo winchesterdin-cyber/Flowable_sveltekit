@@ -32,7 +32,15 @@ public class ProcessController {
 
     @GetMapping
     public ResponseEntity<List<ProcessDTO>> getAvailableProcesses() {
+        // Return active latest processes for starting new instances
         List<ProcessDTO> processes = processService.getAvailableProcesses();
+        return ResponseEntity.ok(processes);
+    }
+
+    @GetMapping("/definitions")
+    public ResponseEntity<List<ProcessDTO>> getAllProcessDefinitions() {
+        // Return ALL definitions for management
+        List<ProcessDTO> processes = processService.getAllProcessDefinitions();
         return ResponseEntity.ok(processes);
     }
 
@@ -155,6 +163,39 @@ public class ProcessController {
             return ResponseEntity.badRequest().body(Map.of(
                     "error", e.getMessage()
             ));
+        }
+    }
+
+    @PutMapping("/{processDefinitionId}/suspend")
+    public ResponseEntity<?> suspendProcess(@PathVariable String processDefinitionId) {
+        try {
+            processService.suspendProcessDefinition(processDefinitionId);
+            return ResponseEntity.ok(Map.of("message", "Process definition suspended"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PutMapping("/{processDefinitionId}/activate")
+    public ResponseEntity<?> activateProcess(@PathVariable String processDefinitionId) {
+        try {
+            processService.activateProcessDefinition(processDefinitionId);
+            return ResponseEntity.ok(Map.of("message", "Process definition activated"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PutMapping("/{processDefinitionId}/category")
+    public ResponseEntity<?> updateCategory(
+            @PathVariable String processDefinitionId,
+            @RequestBody Map<String, String> body) {
+        try {
+            String category = body.get("category");
+            processService.updateProcessDefinitionCategory(processDefinitionId, category);
+            return ResponseEntity.ok(Map.of("message", "Category updated"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
 
