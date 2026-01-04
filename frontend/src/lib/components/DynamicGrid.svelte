@@ -323,149 +323,155 @@
     </div>
   {/if}
 
-  <div class="rounded-md border">
-    <Table.Root>
-      <Table.Header>
-        <Table.Row>
-          {#each visibleColumns as column}
-            <Table.Head>
-              {column.label}
-              {#if column.required}
-                <span class="text-destructive">*</span>
-              {/if}
-              {#if isColumnReadonly(column.name) && !readonly}
-                <span class="text-muted-foreground text-xs ml-1">(read-only)</span>
-              {/if}
-            </Table.Head>
-          {/each}
-          {#if !readonly}
-            <Table.Head class="text-right">Actions</Table.Head>
-          {/if}
-        </Table.Row>
-      </Table.Header>
-      <Table.Body>
-        {#if rows.length === 0}
-          <Table.Row>
-            <Table.Cell
-              colspan={visibleColumns.length + (readonly ? 0 : 1)}
-              class="text-center py-8 text-muted-foreground"
-            >
-              No rows added yet. {#if !readonly}Click "Add Row" to get started.{/if}
-            </Table.Cell>
-          </Table.Row>
-        {/if}
-
-        {#each rows as row (row.id)}
+  <div class="rounded-md border overflow-x-auto">
+    <div class="min-w-[800px]">
+      <Table.Root>
+        <Table.Header>
           <Table.Row>
             {#each visibleColumns as column}
-              {@const colReadonly = isColumnReadonly(column.name)}
-              <Table.Cell>
-                {#if row.isEditing && !readonly && !colReadonly}
-                  <div class="space-y-1">
-                    {#if column.type === 'select'}
-                      <Select.Root
-                        type="single"
-                        value={String(row.data[column.name] ?? '')}
-                        onValueChange={(v) => handleSelectChange(row, column.name, v)}
-                      >
-                        <Select.Trigger class={row.errors[column.name] ? 'border-destructive' : ''}>
-                          <span class="block truncate">
-                            {row.data[column.name] || 'Select...'}
-                          </span>
-                        </Select.Trigger>
-                        <Select.Content>
-                          {#each column.options || [] as option}
-                            <Select.Item value={option} label={option} />
-                          {/each}
-                        </Select.Content>
-                      </Select.Root>
-                    {:else if column.type === 'textarea'}
-                      <Textarea
-                        bind:value={
-                          () => String(row.data[column.name] ?? ''),
-                          (v) => handleCellChange(row, column.name, v)
-                        }
-                        rows={2}
-                        placeholder={column.placeholder}
-                        class={row.errors[column.name] ? 'border-destructive' : ''}
-                      />
-                    {:else if column.type === 'number'}
-                      <Input
-                        type="number"
-                        value={row.data[column.name] !== null && row.data[column.name] !== undefined
-                          ? String(row.data[column.name])
-                          : ''}
-                        oninput={(e) => {
-                          const val = e.currentTarget.value;
-                          handleCellChange(row, column.name, val === '' ? null : Number(val));
-                        }}
-                        min={column.min}
-                        max={column.max}
-                        step={column.step}
-                        placeholder={column.placeholder}
-                        class={row.errors[column.name] ? 'border-destructive' : ''}
-                      />
-                    {:else if column.type === 'date'}
-                      <Input
-                        type="date"
-                        value={String(row.data[column.name] ?? '')}
-                        oninput={(e) => handleCellChange(row, column.name, e.currentTarget.value)}
-                        class={row.errors[column.name] ? 'border-destructive' : ''}
-                      />
-                    {:else}
-                      <Input
-                        type="text"
-                        value={String(row.data[column.name] ?? '')}
-                        oninput={(e) => handleCellChange(row, column.name, e.currentTarget.value)}
-                        placeholder={column.placeholder}
-                        class={row.errors[column.name] ? 'border-destructive' : ''}
-                      />
-                    {/if}
-                    {#if row.errors[column.name]}
-                      <p class="text-xs text-destructive">{row.errors[column.name]}</p>
-                    {/if}
-                  </div>
-                {:else}
-                  <span class="text-sm {colReadonly ? 'text-muted-foreground' : ''}">
-                    {getRowValue(row, column.name) || '-'}
-                  </span>
+              <Table.Head>
+                {column.label}
+                {#if column.required}
+                  <span class="text-destructive">*</span>
                 {/if}
-              </Table.Cell>
+                {#if isColumnReadonly(column.name) && !readonly}
+                  <span class="text-muted-foreground text-xs ml-1">(read-only)</span>
+                {/if}
+              </Table.Head>
             {/each}
             {#if !readonly}
-              <Table.Cell class="text-right">
-                <div class="flex justify-end gap-2">
-                  {#if row.isEditing}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onclick={() => saveRow(row.id)}
-                      class="text-green-600 hover:text-green-700 hover:bg-green-50"
-                    >
-                      Save
-                    </Button>
-                    <Button variant="ghost" size="sm" onclick={() => cancelEdit(row.id)}>
-                      Cancel
-                    </Button>
-                  {:else}
-                    <Button variant="ghost" size="sm" onclick={() => editRow(row.id)}>Edit</Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onclick={() => deleteRow(row.id)}
-                      disabled={minRows > 0 && rows.length <= minRows}
-                      class="text-destructive hover:text-destructive hover:bg-destructive/10"
-                    >
-                      Delete
-                    </Button>
-                  {/if}
-                </div>
-              </Table.Cell>
+              <Table.Head class="text-right">Actions</Table.Head>
             {/if}
           </Table.Row>
-        {/each}
-      </Table.Body>
-    </Table.Root>
+        </Table.Header>
+        <Table.Body>
+          {#if rows.length === 0}
+            <Table.Row>
+              <Table.Cell
+                colspan={visibleColumns.length + (readonly ? 0 : 1)}
+                class="text-center py-8 text-muted-foreground"
+              >
+                No rows added yet. {#if !readonly}Click "Add Row" to get started.{/if}
+              </Table.Cell>
+            </Table.Row>
+          {/if}
+
+          {#each rows as row (row.id)}
+            <Table.Row>
+              {#each visibleColumns as column}
+                {@const colReadonly = isColumnReadonly(column.name)}
+                <Table.Cell>
+                  {#if row.isEditing && !readonly && !colReadonly}
+                    <div class="space-y-1">
+                      {#if column.type === 'select'}
+                        <Select.Root
+                          type="single"
+                          value={String(row.data[column.name] ?? '')}
+                          onValueChange={(v) => handleSelectChange(row, column.name, v)}
+                        >
+                          <Select.Trigger
+                            class={row.errors[column.name] ? 'border-destructive' : ''}
+                          >
+                            <span class="block truncate">
+                              {row.data[column.name] || 'Select...'}
+                            </span>
+                          </Select.Trigger>
+                          <Select.Content>
+                            {#each column.options || [] as option}
+                              <Select.Item value={option} label={option} />
+                            {/each}
+                          </Select.Content>
+                        </Select.Root>
+                      {:else if column.type === 'textarea'}
+                        <Textarea
+                          bind:value={
+                            () => String(row.data[column.name] ?? ''),
+                            (v) => handleCellChange(row, column.name, v)
+                          }
+                          rows={2}
+                          placeholder={column.placeholder}
+                          class={row.errors[column.name] ? 'border-destructive' : ''}
+                        />
+                      {:else if column.type === 'number'}
+                        <Input
+                          type="number"
+                          value={row.data[column.name] !== null &&
+                          row.data[column.name] !== undefined
+                            ? String(row.data[column.name])
+                            : ''}
+                          oninput={(e) => {
+                            const val = e.currentTarget.value;
+                            handleCellChange(row, column.name, val === '' ? null : Number(val));
+                          }}
+                          min={column.min}
+                          max={column.max}
+                          step={column.step}
+                          placeholder={column.placeholder}
+                          class={row.errors[column.name] ? 'border-destructive' : ''}
+                        />
+                      {:else if column.type === 'date'}
+                        <Input
+                          type="date"
+                          value={String(row.data[column.name] ?? '')}
+                          oninput={(e) => handleCellChange(row, column.name, e.currentTarget.value)}
+                          class={row.errors[column.name] ? 'border-destructive' : ''}
+                        />
+                      {:else}
+                        <Input
+                          type="text"
+                          value={String(row.data[column.name] ?? '')}
+                          oninput={(e) => handleCellChange(row, column.name, e.currentTarget.value)}
+                          placeholder={column.placeholder}
+                          class={row.errors[column.name] ? 'border-destructive' : ''}
+                        />
+                      {/if}
+                      {#if row.errors[column.name]}
+                        <p class="text-xs text-destructive">{row.errors[column.name]}</p>
+                      {/if}
+                    </div>
+                  {:else}
+                    <span class="text-sm {colReadonly ? 'text-muted-foreground' : ''}">
+                      {getRowValue(row, column.name) || '-'}
+                    </span>
+                  {/if}
+                </Table.Cell>
+              {/each}
+              {#if !readonly}
+                <Table.Cell class="text-right">
+                  <div class="flex justify-end gap-2">
+                    {#if row.isEditing}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onclick={() => saveRow(row.id)}
+                        class="text-green-600 hover:text-green-700 hover:bg-green-50"
+                      >
+                        Save
+                      </Button>
+                      <Button variant="ghost" size="sm" onclick={() => cancelEdit(row.id)}>
+                        Cancel
+                      </Button>
+                    {:else}
+                      <Button variant="ghost" size="sm" onclick={() => editRow(row.id)}>Edit</Button
+                      >
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onclick={() => deleteRow(row.id)}
+                        disabled={minRows > 0 && rows.length <= minRows}
+                        class="text-destructive hover:text-destructive hover:bg-destructive/10"
+                      >
+                        Delete
+                      </Button>
+                    {/if}
+                  </div>
+                </Table.Cell>
+              {/if}
+            </Table.Row>
+          {/each}
+        </Table.Body>
+      </Table.Root>
+    </div>
   </div>
 
   {#if !readonly}

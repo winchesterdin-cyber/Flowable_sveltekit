@@ -546,480 +546,580 @@
 											stroke-linecap="round"
 											stroke-linejoin="round"
 											stroke-width="2"
-											d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
 										/>
 									</svg>
 								</button>
 							</div>
-						</div>
-					{/each}
-				</div>
-			{/if}
-		</div>
-	{/if}
+						</script>
 
-	<!-- Grids Tab -->
-	{#if activeTab === 'grids'}
-		<div class="p-4">
-			<div class="flex justify-end mb-4">
-				<button
-					type="button"
-					onclick={handleAddGrid}
-					class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-				>
-					<svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M12 4v16m8-8H4"
-						/>
-					</svg>
-					Add Grid
-				</button>
-			</div>
+<div class="flex flex-col gap-6">
+  <!-- Tabs -->
+  <div class="border-b border-gray-200">
+    <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+      <button
+        onclick={() => (activeTab = 'fields')}
+        class="border-b-2 py-4 px-1 text-sm font-medium {activeTab === 'fields'
+          ? 'border-blue-500 text-blue-600'
+          : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'}"
+      >
+        Form Fields
+      </button>
+      <button
+        onclick={() => (activeTab = 'grids')}
+        class="border-b-2 py-4 px-1 text-sm font-medium {activeTab === 'grids'
+          ? 'border-blue-500 text-blue-600'
+          : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'}"
+      >
+        Data Grids
+      </button>
+    </nav>
+  </div>
 
-			{#if library.grids.length === 0}
-				<div class="text-center py-8 text-gray-500">
-					<svg
-						class="w-12 h-12 mx-auto mb-4 text-gray-300"
-						fill="none"
-						viewBox="0 0 24 24"
-						stroke="currentColor"
-					>
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
-						/>
-					</svg>
-					<p>No grids defined yet.</p>
-					<p class="text-sm mt-1">Add grids for tabular data entry.</p>
-				</div>
-			{:else}
-				<div class="space-y-3">
-					{#each library.grids as grid, gridIndex}
-						<div class="border rounded-lg">
-							<div
-								class="flex items-center justify-between p-3 bg-gray-50 rounded-t-lg cursor-pointer"
-								role="button"
-								tabindex="0"
-								onclick={() =>
-									(expandedGridIndex = expandedGridIndex === gridIndex ? null : gridIndex)}
-								onkeydown={(e) => {
-									if (e.key === 'Enter' || e.key === ' ') {
-										e.preventDefault();
-										expandedGridIndex = expandedGridIndex === gridIndex ? null : gridIndex;
-									}
-								}}
-							>
-								<div class="flex items-center gap-3">
-									<svg
-										class="w-5 h-5 text-gray-400 transition-transform {expandedGridIndex ===
-										gridIndex
-											? 'rotate-90'
-											: ''}"
-										fill="none"
-										viewBox="0 0 24 24"
-										stroke="currentColor"
-									>
-										<path
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											stroke-width="2"
-											d="M9 5l7 7-7 7"
-										/>
-									</svg>
-									<span class="font-medium text-gray-900">{grid.label || grid.name}</span>
-									<span class="px-2 py-0.5 text-xs rounded-full bg-blue-100 text-blue-600">
-										{grid.columns.length} columns
-									</span>
-								</div>
-								<div class="flex items-center gap-2">
-									<button
-										type="button"
-										onclick={(e) => { e.stopPropagation(); handleEditGrid(grid); }}
-										class="p-2 text-gray-400 hover:text-blue-600 rounded"
-										title="Edit Grid"
-									>
-										<svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-											<path
-												stroke-linecap="round"
-												stroke-linejoin="round"
-												stroke-width="2"
-												d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-											/>
-										</svg>
-									</button>
-									<button
-										type="button"
-										onclick={(e) => { e.stopPropagation(); handleDeleteGrid(grid.id); }}
-										class="p-2 text-gray-400 hover:text-red-600 rounded"
-										title="Delete Grid"
-									>
-										<svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-											<path
-												stroke-linecap="round"
-												stroke-linejoin="round"
-												stroke-width="2"
-												d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-											/>
-										</svg>
-									</button>
-								</div>
-							</div>
+  {#if activeTab === 'fields'}
+    <div class="flex justify-end">
+      <button
+        onclick={() => {
+          editingField = null;
+          resetFieldForm();
+          showFieldEditor = true;
+        }}
+        class="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+      >
+        + Add Field
+      </button>
+    </div>
 
-							{#if expandedGridIndex === gridIndex}
-								<div class="p-3 border-t">
-									<div class="flex justify-between items-center mb-3">
-										<span class="text-sm font-medium text-gray-700">Columns</span>
-										<button
-											type="button"
-											onclick={() => handleAddColumn(gridIndex)}
-											class="text-sm text-blue-600 hover:text-blue-700"
-										>
-											+ Add Column
-										</button>
-									</div>
+    <!-- Fields List -->
+    {#if library.fields.length === 0}
+      <div class="text-center py-12 rounded-lg border-2 border-dashed border-gray-300">
+        <p class="text-sm text-gray-500">No fields defined yet.</p>
+        <button
+          onclick={() => {
+            editingField = null;
+            resetFieldForm();
+            showFieldEditor = true;
+          }}
+          class="mt-2 text-sm font-medium text-blue-600 hover:text-blue-500"
+        >
+          Add your first field
+        </button>
+      </div>
+    {:else}
+      <div class="overflow-hidden rounded-md border border-gray-200 bg-white">
+        <ul class="divide-y divide-gray-200">
+          {#each library.fields as field}
+            <li class="flex items-center justify-between p-4 hover:bg-gray-50">
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2">
+                  <span class="font-medium text-gray-900">{field.label}</span>
+                  {#if field.required}
+                    <span class="rounded bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800"
+                      >Required</span
+                    >
+                  {/if}
+                  <span class="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600"
+                    >{field.type}</span
+                  >
+                  {#if field.logic && field.logic.type !== 'None'}
+                     <span class="rounded bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-800"
+                      >Logic: {field.logic.type}</span
+                    >
+                  {/if}
+                </div>
+                <div class="mt-1 flex gap-4 text-xs text-gray-500">
+                  <span>ID: {field.name}</span>
+                  {#if field.placeholder}
+                    <span>Placeholder: {field.placeholder}</span>
+                  {/if}
+                </div>
+              </div>
+              <div class="ml-4 flex gap-2">
+                <button
+                  onclick={() => {
+                    editingField = field;
+                    fieldForm = {
+                      ...field,
+                      validation: field.validation || {
+                        minLength: null,
+                        maxLength: null,
+                        min: null,
+                        max: null,
+                        pattern: '',
+                        patternMessage: ''
+                      },
+                      logic: field.logic || {
+                        type: 'None',
+                        content: '',
+                        dependencies: [],
+                        autoCalculate: false
+                      }
+                    };
+                    showFieldEditor = true;
+                  }}
+                  class="text-gray-400 hover:text-blue-600"
+                >
+                  Edit
+                </button>
+                <button
+                  onclick={() => {
+                    if (confirm('Delete this field?')) {
+                      library.fields = library.fields.filter((f) => f.id !== field.id);
+                      onChange(library);
+                    }
+                  }}
+                  class="text-gray-400 hover:text-red-600"
+                >
+                  Delete
+                </button>
+              </div>
+            </li>
+          {/each}
+        </ul>
+      </div>
+    {/if}
+  {:else}
+    <!-- Grids Tab -->
+    <div class="flex justify-end">
+      <button
+        onclick={() => {
+          editingGrid = null;
+          resetGridForm();
+          showGridEditor = true;
+        }}
+        class="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+      >
+        + Add Grid
+      </button>
+    </div>
 
-									{#if grid.columns.length === 0}
-										<p class="text-sm text-gray-500 italic">No columns defined</p>
-									{:else}
-										<div class="space-y-2">
-											{#each grid.columns as column}
-												<div
-													class="flex items-center justify-between p-2 bg-gray-50 rounded"
-												>
-													<div class="flex items-center gap-2">
-														<span class="text-sm font-medium">{column.label}</span>
-														<span
-															class="px-2 py-0.5 text-xs rounded bg-gray-200 text-gray-600"
-														>
-															{getColumnTypeLabel(column.type)}
-														</span>
-														{#if column.required}
-															<span class="text-xs text-red-500">*</span>
-														{/if}
-													</div>
-													<div class="flex items-center gap-1">
-														<button
-															type="button"
-															onclick={() => handleEditColumn(gridIndex, column)}
-															class="p-1 text-gray-400 hover:text-blue-600"
-															title="Edit Column"
-														>
-															<svg
-																class="w-4 h-4"
-																fill="none"
-																viewBox="0 0 24 24"
-																stroke="currentColor"
-															>
-																<path
-																	stroke-linecap="round"
-																	stroke-linejoin="round"
-																	stroke-width="2"
-																	d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-																/>
-															</svg>
-														</button>
-														<button
-															type="button"
-															onclick={() => handleDeleteColumn(gridIndex, column.id)}
-															class="p-1 text-gray-400 hover:text-red-600"
-															title="Delete Column"
-														>
-															<svg
-																class="w-4 h-4"
-																fill="none"
-																viewBox="0 0 24 24"
-																stroke="currentColor"
-															>
-																<path
-																	stroke-linecap="round"
-																	stroke-linejoin="round"
-																	stroke-width="2"
-																	d="M6 18L18 6M6 6l12 12"
-																/>
-															</svg>
-														</button>
-													</div>
-												</div>
-											{/each}
-										</div>
-									{/if}
-								</div>
-							{/if}
-						</div>
-					{/each}
-				</div>
-			{/if}
-		</div>
-	{/if}
+    {#if library.grids.length === 0}
+      <div class="text-center py-12 rounded-lg border-2 border-dashed border-gray-300">
+        <p class="text-sm text-gray-500">No data grids defined yet.</p>
+        <button
+          onclick={() => {
+            editingGrid = null;
+            resetGridForm();
+            showGridEditor = true;
+          }}
+          class="mt-2 text-sm font-medium text-blue-600 hover:text-blue-500"
+        >
+          Add your first grid
+        </button>
+      </div>
+    {:else}
+      <div class="space-y-4">
+        {#each library.grids as grid, index}
+          <div class="overflow-hidden rounded-md border border-gray-200 bg-white">
+            <div class="flex items-center justify-between bg-gray-50 p-4">
+              <div>
+                <h4 class="font-medium text-gray-900">{grid.label}</h4>
+                <p class="text-xs text-gray-500">{grid.description || 'No description'}</p>
+              </div>
+              <div class="flex items-center gap-3">
+                <button
+                  onclick={() => {
+                    editingGrid = grid;
+                    gridForm = { ...grid };
+                    showGridEditor = true;
+                  }}
+                  class="text-sm text-blue-600 hover:text-blue-800"
+                >
+                  Edit Settings
+                </button>
+                <button
+                  onclick={() => {
+                    if (confirm('Delete this grid?')) {
+                      library.grids = library.grids.filter((g) => g.id !== grid.id);
+                      onChange(library);
+                    }
+                  }}
+                  class="text-sm text-red-600 hover:text-red-800"
+                >
+                  Delete
+                </button>
+                <button
+                  onclick={() => (expandedGridIndex = expandedGridIndex === index ? null : index)}
+                  class="ml-2 text-gray-400"
+                >
+                  {expandedGridIndex === index ? 'Collapse' : 'Expand Columns'}
+                </button>
+              </div>
+            </div>
+
+            {#if expandedGridIndex === index}
+              <div class="border-t border-gray-200 p-4">
+                <div class="mb-4 flex items-center justify-between">
+                  <h5 class="text-sm font-medium text-gray-700">Columns</h5>
+                  <button
+                    onclick={() => {
+                      editingColumn = null;
+                      resetColumnForm();
+                      // We need to store context for which grid (index) we are editing
+                      // Hacky way: store in transient state or pass through
+                      // Ideally we'd have normalized state or proper components
+                      // For now, we'll assume editingColumn stores gridIndex too
+                      showColumnEditor = true;
+                      editingColumn = { gridIndex: index, column: {} as GridColumn };
+                    }}
+                    class="text-xs font-medium text-blue-600 hover:text-blue-800"
+                  >
+                    + Add Column
+                  </button>
+                </div>
+
+                {#if grid.columns.length === 0}
+                  <p class="text-sm text-gray-500 italic">No columns defined.</p>
+                {:else}
+                  <table class="min-w-full divide-y divide-gray-200">
+                    <thead>
+                      <tr>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase"
+                          >Label</th
+                        >
+                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase"
+                          >Type</th
+                        >
+                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase"
+                          >Logic</th
+                        >
+                        <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase"
+                          >Actions</th
+                        >
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200">
+                      {#each grid.columns as col}
+                        <tr>
+                          <td class="px-3 py-2 text-sm text-gray-900">{col.label}</td>
+                          <td class="px-3 py-2 text-sm text-gray-500">{col.type}</td>
+                          <td class="px-3 py-2 text-sm text-gray-500">
+                            {#if col.logic && col.logic.type !== 'None'}
+                              <span class="rounded bg-indigo-50 px-1.5 py-0.5 text-xs text-indigo-700"
+                                >{col.logic.type}</span
+                              >
+                            {/if}
+                          </td>
+                          <td class="px-3 py-2 text-right text-sm">
+                            <button
+                              onclick={() => {
+                                editingColumn = { gridIndex: index, column: col };
+                                columnForm = { ...col, options: col.options || [] };
+                                showColumnEditor = true;
+                              }}
+                              class="text-blue-600 hover:text-blue-800 mr-2"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onclick={() => {
+                                if (confirm('Delete this column?')) {
+                                  grid.columns = grid.columns.filter((c) => c.id !== col.id);
+                                  onChange(library);
+                                }
+                              }}
+                              class="text-red-600 hover:text-red-800"
+                            >
+                              Delete
+                            </button>
+                          </td>
+                        </tr>
+                      {/each}
+                    </tbody>
+                  </table>
+                {/if}
+              </div>
+            {/if}
+          </div>
+        {/each}
+      </div>
+    {/if}
+  {/if}
 </div>
 
-<!-- Field Editor Modal -->
-<Modal
-	open={showFieldEditor}
-	title={editingField ? 'Edit Field' : 'Add Field'}
-	onClose={() => (showFieldEditor = false)}
-	maxWidth="lg"
->
-	<div class="space-y-4">
-		<div class="grid grid-cols-2 gap-4">
-			<div>
-				<label for="fieldLabel" class="block text-sm font-medium text-gray-700 mb-1">Label</label>
-				<input
-					id="fieldLabel"
-					type="text"
-					bind:value={fieldForm.label}
-					class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-					placeholder="e.g., Customer Name"
-				/>
-			</div>
-			<div>
-				<label for="fieldName" class="block text-sm font-medium text-gray-700 mb-1">Name</label>
-				<input
-					id="fieldName"
-					type="text"
-					bind:value={fieldForm.name}
-					class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-					placeholder="e.g., customerName"
-				/>
-				<p class="text-xs text-gray-500 mt-1">Variable name (auto-generated if empty)</p>
-			</div>
-		</div>
+<!-- Modal Dialogs -->
+<Modal bind:open={showFieldEditor} title={editingField ? 'Edit Field' : 'Add Field'} size="lg">
+  <div class="space-y-6 max-h-[70vh] overflow-y-auto px-1">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <label for="f_name" class="block text-sm font-medium text-gray-700">Field ID (Name)</label>
+        <input
+          id="f_name"
+          type="text"
+          bind:value={fieldForm.name}
+          class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+          placeholder="e.g. customerName"
+        />
+      </div>
+      <div>
+        <label for="f_label" class="block text-sm font-medium text-gray-700">Label</label>
+        <input
+          id="f_label"
+          type="text"
+          bind:value={fieldForm.label}
+          class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+          placeholder="e.g. Customer Name"
+        />
+      </div>
+      <div>
+        <label for="f_type" class="block text-sm font-medium text-gray-700">Type</label>
+        <select
+          id="f_type"
+          bind:value={fieldForm.type}
+          class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+        >
+          {#each fieldTypes as type}
+            <option value={type.value}>{type.label}</option>
+          {/each}
+        </select>
+      </div>
+      <div>
+        <label for="f_placeholder" class="block text-sm font-medium text-gray-700"
+          >Placeholder</label
+        >
+        <input
+          id="f_placeholder"
+          type="text"
+          bind:value={fieldForm.placeholder}
+          class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+        />
+      </div>
+    </div>
 
-		<div class="grid grid-cols-2 gap-4">
-			<div>
-				<label for="fieldType" class="block text-sm font-medium text-gray-700 mb-1">Type</label>
-				<select
-					id="fieldType"
-					bind:value={fieldForm.type}
-					class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:ring-2 focus:ring-blue-500"
-				>
-					{#each fieldTypes as type}
-						<option value={type.value}>{type.label}</option>
-					{/each}
-				</select>
-			</div>
-			<div>
-				<label for="fieldPlaceholder" class="block text-sm font-medium text-gray-700 mb-1"
-					>Placeholder</label
-				>
-				<input
-					id="fieldPlaceholder"
-					type="text"
-					bind:value={fieldForm.placeholder}
-					class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-					placeholder="e.g., Enter name..."
-				/>
-			</div>
-		</div>
+    <!-- Options for Choice Types (Select, Radio, etc.) -->
+    {#if ['select', 'multiselect', 'radio'].includes(fieldForm.type)}
+      <div class="border rounded-md p-4 bg-gray-50">
+        <label class="block text-sm font-medium text-gray-700 mb-2">Options</label>
+        {#each fieldForm.options as option, i}
+          <div class="flex gap-2 mb-2">
+            <input
+              type="text"
+              bind:value={option.label}
+              placeholder="Label"
+              class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+            />
+            <input
+              type="text"
+              bind:value={option.value}
+              placeholder="Value"
+              class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+            />
+            <button
+              onclick={() => {
+                fieldForm.options = fieldForm.options.filter((_, idx) => idx !== i);
+              }}
+              class="text-red-600 hover:text-red-800 text-sm"
+            >
+              ×
+            </button>
+          </div>
+        {/each}
+        <button
+          onclick={() => {
+            fieldForm.options = [...fieldForm.options, { value: '', label: '' }];
+          }}
+          class="text-sm text-blue-600 hover:text-blue-800"
+        >
+          + Add Option
+        </button>
+      </div>
+    {/if}
 
-		{#if fieldForm.type === 'select' || fieldForm.type === 'multiselect' || fieldForm.type === 'radio'}
-			<div>
-				<span class="block text-sm font-medium text-gray-700 mb-2">Options</span>
-				<div class="space-y-2">
-					{#each fieldForm.options as _option, index}
-						<div class="flex items-center gap-2">
-							<input
-								type="text"
-								bind:value={fieldForm.options[index].value}
-								class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-								placeholder="Value"
-							/>
-							<input
-								type="text"
-								bind:value={fieldForm.options[index].label}
-								class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-								placeholder="Label"
-							/>
-							<button
-								type="button"
-								onclick={() => removeFieldOption(index)}
-								class="p-2 text-red-500 hover:bg-red-50 rounded"
-								title="Remove Option"
-							>
-								<svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										stroke-width="2"
-										d="M6 18L18 6M6 6l12 12"
-									/>
-								</svg>
-							</button>
-						</div>
-					{/each}
-					<button
-						type="button"
-						onclick={addFieldOption}
-						class="text-sm text-blue-600 hover:text-blue-700"
-					>
-						+ Add Option
-					</button>
-				</div>
-			</div>
-		{/if}
+    <!-- Validation Rules -->
+    <div class="border rounded-md p-4 bg-gray-50">
+      <h4 class="text-sm font-medium text-gray-900 mb-3">Validation Rules</h4>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="flex items-center">
+          <input
+            id="f_required"
+            type="checkbox"
+            bind:checked={fieldForm.required}
+            class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+          />
+          <label for="f_required" class="ml-2 block text-sm text-gray-900">Required Field</label>
+        </div>
 
-		<!-- Validation Rules -->
-		<div class="border-t pt-4 mt-4">
-			<h4 class="text-sm font-medium text-gray-900 mb-3">Validation Rules</h4>
-			<div class="space-y-3">
-				{#if fieldForm.type === 'text' || fieldForm.type === 'textarea' || fieldForm.type === 'email' || fieldForm.type === 'password'}
-					<div class="grid grid-cols-2 gap-4">
-						<div>
-							<label for="minLength" class="block text-xs font-medium text-gray-700 mb-1">Min Length</label>
-							<input
-								id="minLength"
-								type="number"
-								bind:value={fieldForm.validation.minLength}
-								class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-							/>
-						</div>
-						<div>
-							<label for="maxLength" class="block text-xs font-medium text-gray-700 mb-1">Max Length</label>
-							<input
-								id="maxLength"
-								type="number"
-								bind:value={fieldForm.validation.maxLength}
-								class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-							/>
-						</div>
-					</div>
-					<div>
-						<label for="pattern" class="block text-xs font-medium text-gray-700 mb-1">Regex Pattern</label>
-						<input
-							id="pattern"
-							type="text"
-							bind:value={fieldForm.validation.pattern}
-							class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-							placeholder="e.g. ^[A-Z0-9]+@[A-Z0-9]+\.[A-Z]+$"
-						/>
-					</div>
-					<div>
-						<label for="patternMessage" class="block text-xs font-medium text-gray-700 mb-1">Error Message</label>
-						<input
-							id="patternMessage"
-							type="text"
-							bind:value={fieldForm.validation.patternMessage}
-							class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-							placeholder="Custom error message when pattern doesn't match"
-						/>
-					</div>
-				{/if}
+        {#if ['text', 'textarea', 'email', 'password'].includes(fieldForm.type)}
+          <div>
+            <label for="f_minlen" class="block text-xs font-medium text-gray-500">Min Length</label>
+            <input
+              id="f_minlen"
+              type="number"
+              bind:value={fieldForm.validation.minLength}
+              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+            />
+          </div>
+          <div>
+            <label for="f_maxlen" class="block text-xs font-medium text-gray-500">Max Length</label>
+            <input
+              id="f_maxlen"
+              type="number"
+              bind:value={fieldForm.validation.maxLength}
+              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+            />
+          </div>
+          <div class="col-span-2">
+            <label for="f_pattern" class="block text-xs font-medium text-gray-500"
+              >Regex Pattern</label
+            >
+            <input
+              id="f_pattern"
+              type="text"
+              bind:value={fieldForm.validation.pattern}
+              placeholder="e.g. ^[A-Z]+$"
+              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+            />
+          </div>
+          <div class="col-span-2">
+            <label for="f_patmsg" class="block text-xs font-medium text-gray-500"
+              >Pattern Error Message</label
+            >
+            <input
+              id="f_patmsg"
+              type="text"
+              bind:value={fieldForm.validation.patternMessage}
+              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+            />
+          </div>
+        {/if}
 
-				{#if fieldForm.type === 'number' || fieldForm.type === 'currency' || fieldForm.type === 'percentage'}
-					<div class="grid grid-cols-2 gap-4">
-						<div>
-							<label for="min" class="block text-xs font-medium text-gray-700 mb-1">Minimum Value</label>
-							<input
-								id="min"
-								type="number"
-								bind:value={fieldForm.validation.min}
-								class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-							/>
-						</div>
-						<div>
-							<label for="max" class="block text-xs font-medium text-gray-700 mb-1">Maximum Value</label>
-							<input
-								id="max"
-								type="number"
-								bind:value={fieldForm.validation.max}
-								class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-							/>
-						</div>
-					</div>
-				{/if}
-			</div>
+        {#if ['number', 'currency', 'percentage', 'date', 'datetime'].includes(fieldForm.type)}
+          <div>
+            <label for="f_min" class="block text-xs font-medium text-gray-500">Minimum Value</label>
+            <input
+              id="f_min"
+              type="number"
+              bind:value={fieldForm.validation.min}
+              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+            />
+          </div>
+          <div>
+            <label for="f_max" class="block text-xs font-medium text-gray-500">Maximum Value</label>
+            <input
+              id="f_max"
+              type="number"
+              bind:value={fieldForm.validation.max}
+              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+            />
+          </div>
+        {/if}
+      </div>
+    </div>
 
+    <!-- Logic & Dependencies -->
+    <div class="border rounded-md p-4 bg-indigo-50 border-indigo-100">
+      <h4 class="text-sm font-medium text-indigo-900 mb-3">Logic & Dependencies</h4>
+      <div class="space-y-4">
+        <div>
+          <label for="f_logictype" class="block text-sm font-medium text-gray-700">Logic Type</label
+          >
+          <select
+            id="f_logictype"
+            bind:value={fieldForm.logic.type}
+            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+          >
+            <option value="None">None</option>
+            <option value="JS">JavaScript Code</option>
+            <option value="SQL">SQL Query</option>
+          </select>
+        </div>
 
-		<!-- Logic Configuration -->
-		<div class="border-t pt-4">
-			<h4 class="text-sm font-medium text-gray-900 mb-3">Logic & Dependencies</h4>
-			
-			<div class="space-y-4">
-				<div class="flex gap-4">
-					<div class="w-1/3">
-						<label class="block text-xs font-medium text-gray-700 mb-1">Logic Type</label>
-						<select
-							bind:value={fieldForm.logic.type}
-							class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-						>
-							<option value="None">None</option>
-							<option value="JS">JavaScript Code</option>
-							<option value="SQL">SQL Query</option>
-						</select>
-					</div>
+        {#if fieldForm.logic.type !== 'None'}
+          <div>
+            <label for="f_deps" class="block text-sm font-medium text-gray-700"
+              >Dependencies (Field Names)</label
+            >
+            <select
+              id="f_deps"
+              multiple
+              bind:value={fieldForm.logic.dependencies}
+              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+              size="3"
+            >
+              {#each library.fields as f}
+                {#if f.name !== fieldForm.name}
+                  <option value={f.name}>{f.label} ({f.name})</option>
+                {/if}
+              {/each}
+            </select>
+            <p class="text-xs text-gray-500 mt-1">Hold Ctrl/Cmd to select multiple.</p>
+          </div>
 
-					{#if fieldForm.logic.type !== 'None'}
-						<div class="w-2/3">
-							<label class="block text-xs font-medium text-gray-700 mb-1">Dependencies</label>
-							<div class="h-10 px-3 py-2 border border-gray-300 rounded-md overflow-y-auto text-sm">
-								{#each library.fields.filter(f => f.name !== fieldForm.name) as depField}
-									<label class="inline-flex items-center mr-3 mb-1">
-										<input
-											type="checkbox"
-											checked={fieldForm.logic.dependencies.includes(depField.name)}
-											onchange={(e) => {
-												if (e.currentTarget.checked) {
-													fieldForm.logic.dependencies = [...fieldForm.logic.dependencies, depField.name];
-												} else {
-													fieldForm.logic.dependencies = fieldForm.logic.dependencies.filter(d => d !== depField.name);
-												}
-											}}
-											class="rounded mr-1"
-										/>
-										<span class="text-xs">{depField.name}</span>
-									</label>
-								{/each}
-							</div>
-						</div>
-					{/if}
-				</div>
+          <div>
+            <label for="f_logiccontent" class="block text-sm font-medium text-gray-700">
+              {fieldForm.logic.type === 'JS' ? 'JavaScript Code' : 'SQL Query'}
+            </label>
+            <textarea
+              id="f_logiccontent"
+              bind:value={fieldForm.logic.content}
+              rows="5"
+              class="mt-1 block w-full font-mono text-sm rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              placeholder={fieldForm.logic.type === 'JS'
+                ? "return (Number(form.price) || 0) * (Number(form.qty) || 0);"
+                : "SELECT name FROM users WHERE id = ${form.userId}"}
+            ></textarea>
+            <p class="text-xs text-gray-500 mt-1">
+              {fieldForm.logic.type === 'JS'
+                ? 'Available variables: value, form (values), db (query), lib (functions)'
+                : 'Use ${form.fieldName} to inject values'}
+            </p>
+          </div>
 
-				{#if fieldForm.logic.type !== 'None'}
-					<div>
-						<div class="flex items-center justify-between mb-1">
-							<label class="block text-xs font-medium text-gray-700" for="logic-content">
-								{fieldForm.logic.type === 'JS' ? 'JavaScript Code' : 'SQL Query'}
-							</label>
-							<label class="flex items-center gap-2">
-								<input type="checkbox" bind:checked={fieldForm.logic.autoCalculate} class="rounded" />
-								<span class="text-xs text-gray-600">Auto-calculate on dependency change</span>
-							</label>
-						</div>
-						<textarea
-							id="logic-content"
-							bind:value={fieldForm.logic.content}
-							rows="5"
-							class="w-full px-3 py-2 border border-gray-300 rounded-md font-mono text-sm focus:ring-2 focus:ring-blue-500"
-							placeholder={fieldForm.logic.type === 'JS' 
-								? "// value = current value\\n// form = other fields values\\n// lib = function library\\n// db = database access\\nreturn form.price * form.qty;" 
-								: "SELECT name FROM users WHERE id = ${form.userId}"}
-						></textarea>
-						<p class="mt-1 text-xs text-gray-500">
-							{fieldForm.logic.type === 'JS' 
-								? 'Available variables: value, form, db, lib' 
-								: 'Use ${form.fieldName} to inject parameters safely.'}
-						</p>
-					</div>
-				{/if}
-			</div>
-		</div>
+          <div class="flex items-center">
+            <input
+              id="f_autocalc"
+              type="checkbox"
+              bind:checked={fieldForm.logic.autoCalculate}
+              class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            <label for="f_autocalc" class="ml-2 block text-sm text-gray-900"
+              >Auto-calculate on dependency change</label
+            >
+          </div>
+        {/if}
+      </div>
+    </div>
+    
+    <div class="flex items-center space-x-4">
+      <div class="flex items-center">
+        <input
+          id="f_readonly"
+          type="checkbox"
+          bind:checked={fieldForm.readonly}
+          class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+        />
+        <label for="f_readonly" class="ml-2 block text-sm text-gray-900">Read-only</label>
+      </div>
+      <div class="flex items-center">
+        <input
+          id="f_hidden"
+          type="checkbox"
+          bind:checked={fieldForm.hidden}
+          class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+        />
+        <label for="f_hidden" class="ml-2 block text-sm text-gray-900">Hidden</label>
+      </div>
+    </div>
+  </div>
 
-
-		<div class="flex items-center gap-6">
-			<label class="flex items-center gap-2">
-				<input type="checkbox" bind:checked={fieldForm.required} class="rounded" />
-				<span class="text-sm text-gray-700">Required</span>
-			</label>
+  <div class="mt-5 sm:mt-6 sm:grid sm:grid-flow-row-dense sm:grid-cols-2 sm:gap-3">
+    <button
+      onclick={handleSaveField}
+      class="inline-flex w-full justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-base font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:col-start-2 sm:text-sm"
+    >
+      Save Field
+    </button>
+    <button
+      onclick={() => (showFieldEditor = false)}
+      class="mt-3 inline-flex w-full justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-base font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:col-start-1 sm:mt-0 sm:text-sm"
+    >
+      Cancel
+    </button>
+  </div>
+</Modal>
 			<label class="flex items-center gap-2">
 				<input type="checkbox" bind:checked={fieldForm.readonly} class="rounded" />
 				<span class="text-sm text-gray-700">Read-only</span>
 			</label>
-			<label class="flex items-center gap-2">
 				<input type="checkbox" bind:checked={fieldForm.hidden} class="rounded" />
 				<span class="text-sm text-gray-700">Hidden</span>
 			</label>

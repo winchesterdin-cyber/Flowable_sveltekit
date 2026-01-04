@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { api } from '$lib/api/client';
+  import { demoDocumentTypes } from '$lib/utils/demo-document-types';
 
   let documentTypes = $state<any[]>([]);
   let isLoading = $state(true);
@@ -32,6 +33,42 @@
     } catch (err) {
       error = 'Failed to delete document type';
     }
+      error = 'Failed to delete document type';
+    }
+  }
+
+  async function handleLoadDemos() {
+    isLoading = true;
+    error = '';
+    let loadCount = 0;
+    
+    try {
+      // First, get existing types to avoid duplicates/errors
+      const existing = await api.getDocumentTypes();
+      const existingKeys = new Set(existing.map(d => d.key));
+
+      for (const demo of demoDocumentTypes) {
+        if (!existingKeys.has(demo.key)) {
+          await api.createDocumentType({
+            key: demo.key,
+            name: demo.name,
+            description: demo.description,
+            schemaJson: JSON.stringify(demo.schema)
+          });
+          loadCount++;
+        }
+      }
+      
+      await loadDocumentTypes();
+      if (loadCount === 0) {
+        alert('All demo types are already installed.');
+      }
+    } catch (err) {
+      console.error('Error loading demos:', err);
+      error = 'Failed to load some demo document types';
+    } finally {
+      isLoading = false;
+    }
   }
 </script>
 
@@ -42,12 +79,23 @@
         <h1 class="text-3xl font-bold text-gray-900">Document Types</h1>
         <p class="mt-2 text-gray-600">Define reusable document structures (fields and grids)</p>
       </div>
-      <a
+        <p class="mt-2 text-gray-600">Define reusable document structures (fields and grids)</p>
+      </div>
+      <div class="flex gap-2">
+        <button
+          onclick={handleLoadDemos}
+          class="rounded-md bg-white border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+        >
+          Load Demo Content
+        </button>
+        <a
         href="/documents/types/designer"
         class="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
       >
         + Create Document Type
+        + Create Document Type
       </a>
+      </div>
     </div>
 
     {#if error}

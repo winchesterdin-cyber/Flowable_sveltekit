@@ -141,9 +141,11 @@
     </div>
   </div>
 
-  <div class="flex-1 flex overflow-hidden">
+  <div class="flex-1 flex flex-col md:flex-row overflow-hidden">
     <!-- Metadata Sidebar -->
-    <div class="w-80 bg-white border-r border-gray-200 p-6 overflow-y-auto">
+    <div
+      class="w-full md:w-80 bg-white border-r border-gray-200 p-6 overflow-y-auto md:h-full h-auto border-b md:border-b-0 flex-shrink-0"
+    >
       <h3 class="font-semibold text-gray-900 mb-4">Basic Information</h3>
 
       <div class="space-y-4">
@@ -199,8 +201,8 @@
     </div>
 
     <!-- Designer Area -->
-    <div class="flex-1 overflow-y-auto bg-gray-50 p-6">
-      <div class="h-full flex gap-6">
+    <div class="flex-1 overflow-y-auto bg-gray-50 p-4 md:p-6">
+      <div class="h-full flex flex-col xl:flex-row gap-6">
         <!-- Editor Column -->
         <div class="flex-1 min-w-0 flex flex-col gap-6">
           <div class="bg-white rounded-lg shadow p-6 flex-1">
@@ -220,8 +222,8 @@
 
         <!-- Preview Column -->
         {#if showPreview}
-          <div class="w-96 flex-shrink-0 flex flex-col gap-6">
-            <div class="bg-white rounded-lg shadow p-6 flex-1 overflow-y-auto sticky top-6">
+          <div class="w-full xl:w-96 flex-shrink-0 flex flex-col gap-6">
+            <div class="bg-white rounded-lg shadow p-6 flex-1 overflow-y-auto xl:sticky xl:top-6">
               <div class="flex items-center justify-between mb-4">
                 <h3 class="text-lg font-semibold text-gray-900">Live Preview</h3>
                 <span
