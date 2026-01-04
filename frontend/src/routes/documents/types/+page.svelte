@@ -39,11 +39,11 @@
     isLoading = true;
     error = '';
     let loadCount = 0;
-    
+
     try {
       // First, get existing types to avoid duplicates/errors
       const existing = await api.getDocumentTypes();
-      const existingKeys = new Set(existing.map(d => d.key));
+      const existingKeys = new Set(existing.map((d) => d.key));
 
       for (const demo of demoDocumentTypes) {
         if (!existingKeys.has(demo.key)) {
@@ -56,7 +56,7 @@
           loadCount++;
         }
       }
-      
+
       await loadDocumentTypes();
       if (loadCount === 0) {
         alert('All demo types are already installed.');
@@ -77,8 +77,6 @@
         <h1 class="text-3xl font-bold text-gray-900">Document Types</h1>
         <p class="mt-2 text-gray-600">Define reusable document structures (fields and grids)</p>
       </div>
-        <p class="mt-2 text-gray-600">Define reusable document structures (fields and grids)</p>
-      </div>
       <div class="flex gap-2">
         <button
           onclick={handleLoadDemos}
@@ -87,12 +85,11 @@
           Load Demo Content
         </button>
         <a
-        href="/documents/types/designer"
-        class="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-      >
-        + Create Document Type
-        + Create Document Type
-      </a>
+          href="/documents/types/designer"
+          class="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+        >
+          + Create Document Type
+        </a>
       </div>
     </div>
 
@@ -112,7 +109,9 @@
           <div class="rounded-lg bg-white p-6 shadow">
             <h3 class="text-lg font-semibold text-gray-900">{docType.name}</h3>
             <p class="text-sm text-gray-500 mb-2">Key: {docType.key}</p>
-            <p class="text-sm text-gray-600 mb-4 line-clamp-2">{docType.description || 'No description'}</p>
+            <p class="text-sm text-gray-600 mb-4 line-clamp-2">
+              {docType.description || 'No description'}
+            </p>
 
             <div class="flex justify-end gap-2">
               <a
