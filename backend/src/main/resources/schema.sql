@@ -381,6 +381,34 @@ INSERT INTO DEMO_PRODUCTS (name, category, price, stock)
 SELECT 'Ergo Chair', 'Furniture', 299.99, 100
 WHERE NOT EXISTS (SELECT 1 FROM DEMO_PRODUCTS WHERE name = 'Ergo Chair');
 
-INSERT INTO DEMO_PRODUCTS (name, category, price, stock) 
+INSERT INTO DEMO_PRODUCTS (name, category, price, stock)
 SELECT 'Wireless Mouse', 'Electronics', 29.99, 200
 WHERE NOT EXISTS (SELECT 1 FROM DEMO_PRODUCTS WHERE name = 'Wireless Mouse');
+
+
+-- ============================================
+-- 7. APP_PERMISSIONS TABLE - Permission definitions
+-- ============================================
+CREATE TABLE IF NOT EXISTS app_permissions (
+    name VARCHAR(255) PRIMARY KEY,
+    description VARCHAR(1000)
+);
+
+-- ============================================
+-- 8. APP_ROLES TABLE - Role definitions
+-- ============================================
+CREATE TABLE IF NOT EXISTS app_roles (
+    name VARCHAR(255) PRIMARY KEY,
+    description VARCHAR(1000)
+);
+
+-- ============================================
+-- 9. APP_ROLE_PERMISSIONS TABLE - Role-Permission mapping (join table)
+-- ============================================
+CREATE TABLE IF NOT EXISTS app_role_permissions (
+    role_name VARCHAR(255) NOT NULL,
+    permission_name VARCHAR(255) NOT NULL,
+    PRIMARY KEY (role_name, permission_name),
+    CONSTRAINT fk_role_permission_role FOREIGN KEY (role_name) REFERENCES app_roles(name) ON DELETE CASCADE,
+    CONSTRAINT fk_role_permission_perm FOREIGN KEY (permission_name) REFERENCES app_permissions(name) ON DELETE CASCADE
+);
