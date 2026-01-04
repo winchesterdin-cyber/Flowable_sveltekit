@@ -691,7 +691,7 @@
 </div>
 
 <!-- Modal Dialogs -->
-<Modal bind:open={showFieldEditor} title={editingField ? 'Edit Field' : 'Add Field'} size="lg">
+<Modal open={showFieldEditor} title={editingField ? 'Edit Field' : 'Add Field'} onClose={() => (showFieldEditor = false)} maxWidth="lg">
   <div class="space-y-6 max-h-[70vh] overflow-y-auto px-1">
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
       <div>
@@ -742,19 +742,21 @@
     <!-- Options for Choice Types (Select, Radio, etc.) -->
     {#if ['select', 'multiselect', 'radio'].includes(fieldForm.type)}
       <div class="border rounded-md p-4 bg-gray-50">
-        <label class="block text-sm font-medium text-gray-700 mb-2">Options</label>
+        <span class="block text-sm font-medium text-gray-700 mb-2">Options</span>
         {#each fieldForm.options as option, i}
           <div class="flex gap-2 mb-2">
             <input
               type="text"
               bind:value={option.label}
               placeholder="Label"
+              aria-label="Option label"
               class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
             />
             <input
               type="text"
               bind:value={option.value}
               placeholder="Value"
+              aria-label="Option value"
               class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
             />
             <button
@@ -970,47 +972,6 @@
     </button>
   </div>
 </Modal>
-			<label class="flex items-center gap-2">
-				<input type="checkbox" bind:checked={fieldForm.readonly} class="rounded" />
-				<span class="text-sm text-gray-700">Read-only</span>
-			</label>
-				<input type="checkbox" bind:checked={fieldForm.hidden} class="rounded" />
-				<span class="text-sm text-gray-700">Hidden</span>
-			</label>
-		</div>
-
-		<div>
-			<label for="fieldTooltip" class="block text-sm font-medium text-gray-700 mb-1"
-				>Tooltip (optional)</label
-			>
-			<input
-				id="fieldTooltip"
-				type="text"
-				bind:value={fieldForm.tooltip}
-				class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-				placeholder="Help text for users"
-			/>
-		</div>
-	</div>
-
-	{#snippet footer()}
-		<button
-			type="button"
-			onclick={() => (showFieldEditor = false)}
-			class="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md"
-		>
-			Cancel
-		</button>
-		<button
-			type="button"
-			onclick={handleSaveField}
-			class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-			disabled={!fieldForm.label}
-		>
-			{editingField ? 'Save' : 'Add Field'}
-		</button>
-	{/snippet}
-</Modal>
 
 <!-- Grid Editor Modal -->
 <Modal
@@ -1167,6 +1128,7 @@
 								bind:value={columnForm.options[index]}
 								class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
 								placeholder="Option value"
+								aria-label="Column option value"
 							/>
 							<button
 								type="button"
