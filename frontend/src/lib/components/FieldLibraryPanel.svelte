@@ -866,7 +866,7 @@
 							type="text"
 							bind:value={fieldForm.validation.pattern}
 							class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-							placeholder="e.g. ^[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}$"
+							placeholder="e.g. ^[A-Z0-9]+@[A-Z0-9]+\.[A-Z]+$"
 						/>
 					</div>
 					<div>
