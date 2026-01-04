@@ -507,10 +507,16 @@
                   Edit
                 </button>
                 <button
+                  onclick={() => handleDuplicateField(field)}
+                  class="text-gray-400 hover:text-green-600"
+                  title="Duplicate Field"
+                >
+                  Copy
+                </button>
+                <button
                   onclick={() => {
                     if (confirm('Delete this field?')) {
-                      library.fields = library.fields.filter((f) => f.id !== field.id);
-                      onChange(library);
+                      handleDeleteField(field.id);
                     }
                   }}
                   class="text-gray-400 hover:text-red-600"
@@ -555,11 +561,7 @@
               </div>
               <div class="flex items-center gap-3">
                 <button
-                  onclick={() => {
-                    editingGrid = grid;
-                    gridForm = { ...grid };
-                    showGridEditor = true;
-                  }}
+                  onclick={() => handleEditGrid(grid)}
                   class="text-sm text-blue-600 hover:text-blue-800"
                 >
                   Edit Settings
@@ -567,8 +569,7 @@
                 <button
                   onclick={() => {
                     if (confirm('Delete this grid?')) {
-                      library.grids = library.grids.filter((g) => g.id !== grid.id);
-                      onChange(library);
+                      handleDeleteGrid(grid.id);
                     }
                   }}
                   class="text-sm text-red-600 hover:text-red-800"
@@ -630,11 +631,7 @@
                           </td>
                           <td class="px-3 py-2 text-right text-sm">
                             <button
-                              onclick={() => {
-                                editingColumn = { gridIndex: index, column: col };
-                                columnForm = { ...col, options: col.options || [] };
-                                showColumnEditor = true;
-                              }}
+                              onclick={() => handleEditColumn(index, col)}
                               class="text-blue-600 hover:text-blue-800 mr-2"
                             >
                               Edit
@@ -642,8 +639,7 @@
                             <button
                               onclick={() => {
                                 if (confirm('Delete this column?')) {
-                                  grid.columns = grid.columns.filter((c) => c.id !== col.id);
-                                  onChange(library);
+                                  handleDeleteColumn(index, col.id);
                                 }
                               }}
                               class="text-red-600 hover:text-red-800"
@@ -735,9 +731,7 @@
               class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
             />
             <button
-              onclick={() => {
-                fieldForm.options = fieldForm.options.filter((_, idx) => idx !== i);
-              }}
+              onclick={() => removeFieldOption(i)}
               class="text-red-600 hover:text-red-800 text-sm"
             >
               ×
@@ -745,9 +739,7 @@
           </div>
         {/each}
         <button
-          onclick={() => {
-            fieldForm.options = [...fieldForm.options, { value: '', label: '' }];
-          }}
+          onclick={addFieldOption}
           class="text-sm text-blue-600 hover:text-blue-800"
         >
           + Add Option

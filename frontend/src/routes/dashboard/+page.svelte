@@ -6,6 +6,7 @@
 	import type { WorkflowHistory, Page } from '$lib/types';
 	import ProcessTimeline from '$lib/components/ProcessTimeline.svelte';
 	import EscalationBadge from '$lib/components/EscalationBadge.svelte';
+	import SLAStats from '$lib/components/SLAStats.svelte';
 	import Pagination from '$lib/components/Pagination.svelte';
 
 	let loading = $state(true);
@@ -202,6 +203,8 @@
 			</div>
 		</div>
 	{:else if dashboard}
+		<SLAStats />
+		
 		<!-- Stats Overview -->
 		<div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-8">
 			<div class="card text-center">

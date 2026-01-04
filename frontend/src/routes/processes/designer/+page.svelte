@@ -77,7 +77,12 @@
     loopCardinality: string;
     collection: string;
     elementVariable: string;
+
     completionCondition: string;
+    documentType: string;
+    timeDate: string;
+    timeDuration: string;
+    timeCycle: string;
   }>({
     id: '',
     name: '',
@@ -106,10 +111,12 @@
     loopCardinality: '',
     collection: '',
     elementVariable: '',
-    collection: '',
-    elementVariable: '',
+
     completionCondition: '',
-    documentType: ''
+    documentType: '',
+    timeDate: '',
+    timeDuration: '',
+    timeCycle: ''
   });
 
   // Form Builder State - Enhanced with grid support
@@ -641,9 +648,13 @@
       loopCardinality: getLoopCardinality(businessObject),
       collection: getCollection(businessObject),
       elementVariable: getElementVariable(businessObject),
-      elementVariable: getElementVariable(businessObject),
+
       completionCondition: getCompletionCondition(businessObject),
-      documentType: businessObject.get('flowable:documentType') || ''
+
+      documentType: businessObject.get('flowable:documentType') || '',
+      timeDate: getTimerDefinition(businessObject, 'timeDate'),
+      timeDuration: getTimerDefinition(businessObject, 'timeDuration'),
+      timeCycle: getTimerDefinition(businessObject, 'timeCycle')
     };
 
     // Update the state
@@ -690,6 +701,15 @@
     const loopCharacteristics = businessObject.loopCharacteristics;
     if (!loopCharacteristics) return '';
     return loopCharacteristics.completionCondition?.body || '';
+  }
+
+  function getTimerDefinition(businessObject: any, type: string): string {
+    const eventDefinitions = businessObject.eventDefinitions;
+    if (eventDefinitions && eventDefinitions[0] && eventDefinitions[0].$type === 'bpmn:TimerEventDefinition') {
+      const timerDef = eventDefinitions[0];
+      return timerDef[type]?.body || '';
+    }
+    return '';
   }
 
   function loadFormFields(businessObject: any) {
@@ -810,7 +830,11 @@
       loopCardinality: '',
       collection: '',
       elementVariable: '',
-      completionCondition: ''
+      elementVariable: '',
+      completionCondition: '',
+      timeDate: '',
+      timeDuration: '',
+      timeCycle: ''
     };
     formFields = [];
     formGrids = [];
@@ -1186,6 +1210,8 @@
         property === 'completionCondition'
       ) {
         updateMultiInstanceProperty(property, value as string);
+      } else if (property === 'timeDate' || property === 'timeDuration' || property === 'timeCycle') {
+        updateTimerDefinition(property, value as string);
       } else if (property.startsWith('flowable:')) {
         // Update Flowable extension attributes
         modeling.updateProperties(selectedElement, { [property]: value });
@@ -1251,6 +1277,30 @@
     }
 
     modeling.updateProperties(selectedElement, { loopCharacteristics });
+  }
+
+  function updateTimerDefinition(property: string, value: string) {
+    if (!modeler || !selectedElement) return;
+
+    const modeling = modeler.get('modeling');
+    const moddle = modeler.get('moddle');
+    const businessObject = selectedElement.businessObject;
+    const eventDefinitions = businessObject.eventDefinitions;
+
+    if (!eventDefinitions || !eventDefinitions[0] || eventDefinitions[0].$type !== 'bpmn:TimerEventDefinition') {
+      return;
+    }
+
+    const timerDef = eventDefinitions[0];
+    const newProps: any = {};
+    
+    if (value) {
+      newProps[property] = moddle.create('bpmn:FormalExpression', { body: value });
+    } else {
+      newProps[property] = undefined;
+    }
+    
+    modeling.updateModdleProperties(selectedElement, timerDef, newProps);
   }
 
   function extractProcessVariables() {
@@ -2502,6 +2552,7 @@
             <button
               onclick={() => (validationErrors = [])}
               class="ml-auto flex-shrink-0 text-red-600 hover:text-red-800"
+              aria-label="Clear validation errors"
             >
               <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path
@@ -2981,10 +3032,11 @@
                       </div>
                     {:else}
                       <div class="mb-3">
-                        <label class="mb-1 block text-xs font-medium text-gray-700"
+                        <label for="delegateExpression" class="mb-1 block text-xs font-medium text-gray-700"
                           >Delegate Expression</label
                         >
                         <input
+                          id="delegateExpression"
                           type="text"
                           value={elementProperties.delegateExpression}
                           oninput={(e) =>
@@ -3008,6 +3060,49 @@
                         oninput={(e) =>
                           updateElementProperty('flowable:resultVariable', e.currentTarget.value)}
                         placeholder="result"
+                        class="w-full rounded border border-gray-300 px-2 py-1 text-sm focus:border-blue-500 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                {/if}
+
+                <!-- Timer Event Properties -->
+                {#if (elementProperties.type === 'bpmn:BoundaryEvent' || elementProperties.type === 'bpmn:IntermediateCatchEvent' || elementProperties.type === 'bpmn:StartEvent') && selectedElement?.businessObject?.eventDefinitions?.[0]?.$type === 'bpmn:TimerEventDefinition'}
+                  <div class="rounded-lg bg-blue-50 p-3 mb-3">
+                    <h4 class="mb-2 text-xs font-semibold text-blue-900 uppercase tracking-wide">
+                      Timer Configuration
+                    </h4>
+                    
+                    <div class="mb-3">
+                      <label class="mb-1 block text-xs font-medium text-gray-700">Time Duration (ISO 8601)</label>
+                      <input
+                        type="text"
+                        value={elementProperties.timeDuration || ''}
+                        oninput={(e) => updateElementProperty('timeDuration', e.currentTarget.value)}
+                        placeholder="PT1H (1 Hour)"
+                        class="w-full rounded border border-gray-300 px-2 py-1 text-sm focus:border-blue-500 focus:outline-none"
+                      />
+                      <p class="mt-1 text-xs text-gray-500">e.g., PT15M (15 min), P2D (2 days)</p>
+                    </div>
+
+                    <div class="mb-3">
+                      <label class="mb-1 block text-xs font-medium text-gray-700">Time Date (ISO 8601)</label>
+                      <input
+                        type="text"
+                        value={elementProperties.timeDate || ''}
+                        oninput={(e) => updateElementProperty('timeDate', e.currentTarget.value)}
+                        placeholder="2023-01-01T12:00:00Z"
+                        class="w-full rounded border border-gray-300 px-2 py-1 text-sm focus:border-blue-500 focus:outline-none"
+                      />
+                    </div>
+
+                    <div class="mb-3">
+                      <label class="mb-1 block text-xs font-medium text-gray-700">Time Cycle (Cron/ISO)</label>
+                      <input
+                        type="text"
+                        value={elementProperties.timeCycle || ''}
+                        oninput={(e) => updateElementProperty('timeCycle', e.currentTarget.value)}
+                        placeholder="R3/PT10H (3 times, every 10 hours)"
                         class="w-full rounded border border-gray-300 px-2 py-1 text-sm focus:border-blue-500 focus:outline-none"
                       />
                     </div>
@@ -4775,7 +4870,7 @@ execution.setVariable('total', total)`
         </div>
 
         <div class="mb-4">
-          <label class="mb-2 block text-sm font-medium text-gray-700">Insert Variable</label>
+          <span class="mb-2 block text-sm font-medium text-gray-700">Insert Variable</span>
           <div class="flex flex-wrap gap-2">
             {#each processVariables as variable}
               <button
@@ -4842,6 +4937,7 @@ execution.setVariable('total', total)`
           <button
             onclick={() => (showTemplateModal = false)}
             class="text-gray-400 hover:text-gray-600"
+            aria-label="Close template modal"
           >
             <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path

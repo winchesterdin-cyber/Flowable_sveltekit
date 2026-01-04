@@ -2,6 +2,7 @@
   import { goto } from '$app/navigation';
   import { api } from '$lib/api/client';
   import { authStore } from '$lib/stores/auth.svelte';
+  import NotificationBell from './NotificationBell.svelte';
 
   async function handleLogout() {
     try {
@@ -84,6 +85,7 @@
 
       {#if authStore.isAuthenticated && authStore.user}
         <div class="flex items-center space-x-4">
+          <NotificationBell />
           <div class="flex items-center space-x-2">
             <span class="text-sm text-gray-600">{authStore.user.displayName}</span>
             {#each authStore.user.roles as role}

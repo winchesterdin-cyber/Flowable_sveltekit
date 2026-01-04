@@ -19,7 +19,8 @@ import type {
   DocumentDTO,
   GridRowDTO,
   SaveDocumentRequest,
-  SaveGridRowsRequest
+  SaveGridRowsRequest,
+  Page
 } from '$lib/types';
 import { createLogger } from '$lib/utils/logger';
 import { backendStatus } from '$lib/stores/backendStatus';
@@ -439,7 +440,7 @@ export const api = {
   },
 
   async getAllProcessDefinitions(): Promise<ProcessDefinition[]> {
-      return fetchApi('/api/processes/definitions');
+    return fetchApi('/api/processes/definitions');
   },
 
   async startProcess(
@@ -603,8 +604,8 @@ export const api = {
 
   async updateProcessCategory(processDefinitionId: string, category: string): Promise<{ message: string }> {
     return fetchApi(`/api/processes/${processDefinitionId}/category`, {
-        method: 'PUT',
-        body: JSON.stringify({ category })
+      method: 'PUT',
+      body: JSON.stringify({ category })
     });
   },
 
@@ -804,5 +805,48 @@ export const api = {
 
   async deleteDocumentType(key: string): Promise<void> {
     await fetchApi(`/api/document-types/${key}`, { method: 'DELETE' });
+  },
+
+  // ==================== SLA Operations ====================
+  async createOrUpdateSLA(
+    name: string,
+    targetKey: string,
+    targetType: 'PROCESS' | 'TASK',
+    duration: string,
+    warningThreshold?: number
+  ): Promise<void> {
+    const params = new URLSearchParams();
+    params.append('name', name);
+    params.append('targetKey', targetKey);
+    params.append('targetType', targetType);
+    params.append('duration', duration);
+    if (warningThreshold) {
+      params.append('warningThreshold', warningThreshold.toString());
+    }
+
+    await fetchApi(`/api/slas?${params.toString()}`, {
+      method: 'POST'
+    });
+  },
+
+  async checkSLABreaches(): Promise<void> {
+    await fetchApi('/api/slas/check', { method: 'POST' });
+  },
+
+  // ==================== Notifications ====================
+  async getNotifications(): Promise<any[]> {
+    return fetchApi('/api/notifications');
+  },
+
+  async markNotificationAsRead(id: string): Promise<void> {
+    await fetchApi(`/api/notifications/${id}/read`, { method: 'POST' });
+  },
+
+  async markAllNotificationsAsRead(): Promise<void> {
+    await fetchApi('/api/notifications/read-all', { method: 'POST' });
+  },
+
+  async getUnreadNotificationCount(): Promise<number> {
+    return fetchApi('/api/notifications/unread-count');
   }
 };

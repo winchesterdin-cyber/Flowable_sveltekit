@@ -149,3 +149,59 @@ export interface Approval {
   comments: string | null;
   timestamp: string;
 }
+
+export interface FormField {
+  id?: string;
+  name: string;
+  label: string;
+  type: string;
+  required?: boolean;
+  readonly?: boolean;
+  placeholder?: string;
+  defaultValue?: string;
+  tooltip?: string;
+  options?: Array<{ label: string; value: string }>;
+  validation?: {
+    min?: number;
+    max?: number;
+    minLength?: number;
+    maxLength?: number;
+    pattern?: string;
+    message?: string;
+  };
+  gridColumn?: number;
+  gridWidth?: number;
+  cssClass?: string;
+}
+
+export interface GridColumn {
+  id?: string;
+  name: string;
+  label: string;
+  type: string;
+  width?: number;
+  required?: boolean;
+  options?: Array<{ label: string; value: string }>;
+  validation?: any;
+}
+
+export interface FormGrid {
+  id?: string;
+  name: string;
+  label: string;
+  columns: GridColumn[];
+}
+
+export interface ProcessFieldLibrary {
+  fields: FormField[];
+  grids: FormGrid[];
+}
+
+export interface FieldConditionRule {
+  id: string;
+  fieldId: string;
+  operator: string;
+  value: string;
+  action: 'show' | 'hide' | 'enable' | 'disable' | 'require';
+  targetFieldId: string;
+}
