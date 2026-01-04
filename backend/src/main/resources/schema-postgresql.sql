@@ -335,3 +335,78 @@ CREATE TABLE IF NOT EXISTS document_type_definition (
 );
 
 CREATE INDEX IF NOT EXISTS idx_document_type_def_key ON document_type_definition(key_id);
+
+
+-- ============================================
+-- 6. DEMO TABLES - For showcasing SQL Logic features
+-- ============================================
+
+CREATE TABLE IF NOT EXISTS DEMO_CUSTOMERS (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    email VARCHAR(255),
+    segment VARCHAR(50),
+    credit_limit DECIMAL(10, 2)
+);
+
+CREATE TABLE IF NOT EXISTS DEMO_PRODUCTS (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    category VARCHAR(50),
+    price DECIMAL(10, 2),
+    stock INT
+);
+
+-- Seed Data for DEMO_CUSTOMERS
+INSERT INTO DEMO_CUSTOMERS (name, email, segment, credit_limit)
+SELECT 'Acme Corp', 'contact@acme.com', 'Enterprise', 50000.00
+WHERE NOT EXISTS (SELECT 1 FROM DEMO_CUSTOMERS WHERE name = 'Acme Corp');
+
+INSERT INTO DEMO_CUSTOMERS (name, email, segment, credit_limit)
+SELECT 'Global Tech', 'info@globaltech.com', 'SMB', 10000.00
+WHERE NOT EXISTS (SELECT 1 FROM DEMO_CUSTOMERS WHERE name = 'Global Tech');
+
+INSERT INTO DEMO_CUSTOMERS (name, email, segment, credit_limit)
+SELECT 'John Doe', 'john@example.com', 'Individual', 1000.00
+WHERE NOT EXISTS (SELECT 1 FROM DEMO_CUSTOMERS WHERE name = 'John Doe');
+
+-- Seed Data for DEMO_PRODUCTS
+INSERT INTO DEMO_PRODUCTS (name, category, price, stock)
+SELECT 'Laptop Pro', 'Electronics', 1299.99, 50
+WHERE NOT EXISTS (SELECT 1 FROM DEMO_PRODUCTS WHERE name = 'Laptop Pro');
+
+INSERT INTO DEMO_PRODUCTS (name, category, price, stock)
+SELECT 'Ergo Chair', 'Furniture', 299.99, 100
+WHERE NOT EXISTS (SELECT 1 FROM DEMO_PRODUCTS WHERE name = 'Ergo Chair');
+
+INSERT INTO DEMO_PRODUCTS (name, category, price, stock)
+SELECT 'Wireless Mouse', 'Electronics', 29.99, 200
+WHERE NOT EXISTS (SELECT 1 FROM DEMO_PRODUCTS WHERE name = 'Wireless Mouse');
+
+
+-- ============================================
+-- 7. APP_PERMISSIONS TABLE - Permission definitions
+-- ============================================
+CREATE TABLE IF NOT EXISTS app_permissions (
+    name VARCHAR(255) PRIMARY KEY,
+    description VARCHAR(1000)
+);
+
+-- ============================================
+-- 8. APP_ROLES TABLE - Role definitions
+-- ============================================
+CREATE TABLE IF NOT EXISTS app_roles (
+    name VARCHAR(255) PRIMARY KEY,
+    description VARCHAR(1000)
+);
+
+-- ============================================
+-- 9. APP_ROLE_PERMISSIONS TABLE - Role-Permission mapping (join table)
+-- ============================================
+CREATE TABLE IF NOT EXISTS app_role_permissions (
+    role_name VARCHAR(255) NOT NULL,
+    permission_name VARCHAR(255) NOT NULL,
+    PRIMARY KEY (role_name, permission_name),
+    CONSTRAINT fk_role_permission_role FOREIGN KEY (role_name) REFERENCES app_roles(name) ON DELETE CASCADE,
+    CONSTRAINT fk_role_permission_perm FOREIGN KEY (permission_name) REFERENCES app_permissions(name) ON DELETE CASCADE
+);
