@@ -102,7 +102,10 @@
     loopCardinality: '',
     collection: '',
     elementVariable: '',
-    completionCondition: ''
+    collection: '',
+    elementVariable: '',
+    completionCondition: '',
+    documentType: ''
   });
 
   // Form Builder State - Enhanced with grid support
@@ -601,7 +604,9 @@
       loopCardinality: getLoopCardinality(businessObject),
       collection: getCollection(businessObject),
       elementVariable: getElementVariable(businessObject),
-      completionCondition: getCompletionCondition(businessObject)
+      elementVariable: getElementVariable(businessObject),
+      completionCondition: getCompletionCondition(businessObject),
+      documentType: businessObject.get('flowable:documentType') || ''
     };
 
     // Update the state
@@ -769,6 +774,117 @@
     formFields = [];
     formGrids = [];
     scriptCode = '';
+  }
+
+  async function handleDocumentTypeChange(newDocumentType: string) {
+    if (!modeler || !selectedElement) return;
+
+    // Update the property immediately for UI responsiveness
+    elementProperties.documentType = newDocumentType;
+    updateElementProperty('flowable:documentType', newDocumentType);
+
+    if (!newDocumentType) {
+        return;
+    }
+
+    try {
+        // Find the document type definition
+        const docType = documentTypes.find(dt => dt.key === newDocumentType);
+        if (!docType || !docType.schemaJson) return;
+
+        const schema = JSON.parse(docType.schemaJson);
+
+        // Populate fields
+        if (schema.fields && Array.isArray(schema.fields)) {
+             formFields = schema.fields.map((field: any, index: number) => ({
+                 id: field.id || `field_${Date.now()}_${index}`,
+                 name: field.name || '',
+                 label: field.label || '',
+                 type: field.type || 'text',
+                 required: Boolean(field.required),
+                 validation: field.validation || {},
+                 options: field.options || [],
+                 placeholder: field.placeholder || '',
+                 defaultValue: field.defaultValue || '',
+                 defaultExpression: field.defaultExpression || '',
+                 tooltip: field.tooltip || '',
+                 readonly: Boolean(field.readonly),
+                 hidden: Boolean(field.hidden),
+                 hiddenExpression: field.hiddenExpression || '',
+                 readonlyExpression: field.readonlyExpression || '',
+                 requiredExpression: field.requiredExpression || '',
+                 gridColumn: field.gridColumn || 1,
+                 gridRow: field.gridRow || index + 1,
+                 gridWidth: field.gridWidth || 1,
+                 cssClass: field.cssClass || '',
+                 onChange: field.onChange || '',
+                 onBlur: field.onBlur || ''
+             }));
+
+             // Save form fields to BPMN
+             const fieldsToSave = formFields.map((field, index) => ({
+               ...field,
+               ...(index === 0 ? { _gridConfig: { columns: formGridColumns, gap: formGridGap } } : {})
+             }));
+
+             updateElementProperty('flowable:formFields', JSON.stringify(fieldsToSave));
+             
+             // Update process variables
+             formFields.forEach(field => {
+               if (field.name && !processVariables.includes(field.name)) {
+                 processVariables = [...processVariables, field.name];
+               }
+             });
+        }
+
+        // Populate grids
+        if (schema.grids && Array.isArray(schema.grids)) {
+             formGrids = schema.grids.map((grid: any, index: number) => ({
+                  id: grid.id || `grid_${Date.now()}_${index}`,
+                  name: grid.name || '',
+                  label: grid.label || '',
+                  description: grid.description || '',
+                  minRows: grid.minRows || 0,
+                  maxRows: grid.maxRows || 0,
+                  columns: Array.isArray(grid.columns) ? grid.columns.map((col: any, colIndex: number) => ({
+                    id: col.id || `col_${Date.now()}_${colIndex}`,
+                    name: col.name || '',
+                    label: col.label || '',
+                    type: col.type || 'text',
+                    required: Boolean(col.required),
+                    placeholder: col.placeholder || '',
+                    options: Array.isArray(col.options) ? col.options : [],
+                    min: col.min,
+                    max: col.max,
+                    step: col.step,
+                    validation: col.validation || {}
+                  })) : [],
+                  gridColumn: grid.gridColumn || 1,
+                  gridRow: grid.gridRow || index + 1,
+                  gridWidth: grid.gridWidth || formGridColumns,
+                  cssClass: grid.cssClass || ''
+             }));
+
+             // Save form grids to BPMN
+             updateElementProperty('flowable:formGrids', JSON.stringify(formGrids));
+
+             // Update process variables
+             formGrids.forEach(grid => {
+               if (grid.name && !processVariables.includes(grid.name)) {
+                 processVariables = [...processVariables, grid.name];
+               }
+               grid.columns.forEach(column => {
+                 const fullName = `${grid.name}_${column.name}`;
+                 if (column.name && !processVariables.includes(fullName)) {
+                   processVariables = [...processVariables, fullName];
+                 }
+               });
+             });
+        }
+        
+    } catch (err) {
+        console.error('Error applying document type schema:', err);
+    }
   }
 
   function updateProcessDocumentType() {
@@ -2294,6 +2410,23 @@
 
                   <div class="rounded-lg bg-indigo-50 p-3">
                     <h4 class="mb-2 text-xs font-semibold text-indigo-900 uppercase tracking-wide">Form</h4>
+
+                    <div class="mb-3">
+                        <label class="mb-1 block text-xs font-medium text-gray-700">Document Type</label>
+                        <select
+                          value={elementProperties.documentType}
+                          onchange={(e) => handleDocumentTypeChange(e.currentTarget.value)}
+                          class="w-full rounded border border-gray-300 px-2 py-1 text-sm focus:border-blue-500 focus:outline-none"
+                        >
+                          <option value="">-- Select Document Type --</option>
+                          {#each documentTypes as docType}
+                            <option value={docType.key}>{docType.name}</option>
+                          {/each}
+                        </select>
+                        <p class="mt-1 text-[10px] text-gray-500">
+                           Selecting a document type will overwrite existing form fields.
+                        </p>
+                    </div>
 
                     <div class="mb-3">
                       <label class="mb-1 block text-xs font-medium text-gray-700">Form Key</label>
