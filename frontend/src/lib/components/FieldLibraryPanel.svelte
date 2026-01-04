@@ -29,7 +29,15 @@
 		tooltip: '',
 		readonly: false,
 		hidden: false,
-		options: [] as { value: string; label: string }[]
+		options: [] as { value: string; label: string }[],
+		validation: {
+			minLength: null as number | null,
+			maxLength: null as number | null,
+			min: null as number | null,
+			max: null as number | null,
+			pattern: '',
+			patternMessage: ''
+		}
 	});
 
 	// Grid editor state
@@ -98,7 +106,15 @@
 			tooltip: '',
 			readonly: false,
 			hidden: false,
-			options: []
+			options: [],
+			validation: {
+				minLength: null,
+				maxLength: null,
+				min: null,
+				max: null,
+				pattern: '',
+				patternMessage: ''
+			}
 		};
 		showFieldEditor = true;
 	}
@@ -116,7 +132,15 @@
 			tooltip: field.tooltip || '',
 			readonly: field.readonly,
 			hidden: field.hidden,
-			options: field.options || []
+			options: field.options || [],
+			validation: {
+				minLength: field.validation?.minLength ?? null,
+				maxLength: field.validation?.maxLength ?? null,
+				min: field.validation?.min ?? null,
+				max: field.validation?.max ?? null,
+				pattern: field.validation?.pattern ?? '',
+				patternMessage: field.validation?.patternMessage ?? ''
+			}
 		};
 		showFieldEditor = true;
 	}
@@ -128,7 +152,14 @@
 			label: fieldForm.label,
 			type: fieldForm.type,
 			required: fieldForm.required,
-			validation: null,
+			validation: {
+				minLength: fieldForm.validation.minLength || undefined,
+				maxLength: fieldForm.validation.maxLength || undefined,
+				min: fieldForm.validation.min || undefined,
+				max: fieldForm.validation.max || undefined,
+				pattern: fieldForm.validation.pattern || undefined,
+				patternMessage: fieldForm.validation.patternMessage || undefined
+			},
 			options: fieldForm.type === 'select' || fieldForm.type === 'multiselect' || fieldForm.type === 'radio' ? fieldForm.options : null,
 			placeholder: fieldForm.placeholder,
 			defaultValue: fieldForm.defaultValue,
@@ -802,6 +833,79 @@
 				</div>
 			</div>
 		{/if}
+
+		<!-- Validation Rules -->
+		<div class="border-t pt-4 mt-4">
+			<h4 class="text-sm font-medium text-gray-900 mb-3">Validation Rules</h4>
+			<div class="space-y-3">
+				{#if fieldForm.type === 'text' || fieldForm.type === 'textarea' || fieldForm.type === 'email' || fieldForm.type === 'password'}
+					<div class="grid grid-cols-2 gap-4">
+						<div>
+							<label for="minLength" class="block text-xs font-medium text-gray-700 mb-1">Min Length</label>
+							<input
+								id="minLength"
+								type="number"
+								bind:value={fieldForm.validation.minLength}
+								class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+							/>
+						</div>
+						<div>
+							<label for="maxLength" class="block text-xs font-medium text-gray-700 mb-1">Max Length</label>
+							<input
+								id="maxLength"
+								type="number"
+								bind:value={fieldForm.validation.maxLength}
+								class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+							/>
+						</div>
+					</div>
+					<div>
+						<label for="pattern" class="block text-xs font-medium text-gray-700 mb-1">Regex Pattern</label>
+						<input
+							id="pattern"
+							type="text"
+							bind:value={fieldForm.validation.pattern}
+							class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+							placeholder="e.g. ^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$"
+						/>
+					</div>
+					<div>
+						<label for="patternMessage" class="block text-xs font-medium text-gray-700 mb-1">Error Message</label>
+						<input
+							id="patternMessage"
+							type="text"
+							bind:value={fieldForm.validation.patternMessage}
+							class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+							placeholder="Custom error message when pattern doesn't match"
+						/>
+					</div>
+				{/if}
+
+				{#if fieldForm.type === 'number' || fieldForm.type === 'currency' || fieldForm.type === 'percentage'}
+					<div class="grid grid-cols-2 gap-4">
+						<div>
+							<label for="min" class="block text-xs font-medium text-gray-700 mb-1">Minimum Value</label>
+							<input
+								id="min"
+								type="number"
+								bind:value={fieldForm.validation.min}
+								class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+							/>
+						</div>
+						<div>
+							<label for="max" class="block text-xs font-medium text-gray-700 mb-1">Maximum Value</label>
+							<input
+								id="max"
+								type="number"
+								bind:value={fieldForm.validation.max}
+								class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+							/>
+						</div>
+					</div>
+				{/if}
+			</div>
+		</div>
+
 
 		<div class="flex items-center gap-6">
 			<label class="flex items-center gap-2">

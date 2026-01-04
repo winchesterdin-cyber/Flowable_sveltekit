@@ -4,6 +4,7 @@
   import { goto } from '$app/navigation';
   import { api } from '$lib/api/client';
   import FieldLibraryPanel from '$lib/components/FieldLibraryPanel.svelte';
+  import DynamicForm from '$lib/components/DynamicForm.svelte';
 
   // State
   let key = $state('');
@@ -23,6 +24,11 @@
     fields: [],
     grids: []
   });
+
+  // Preview state
+  let showPreview = $state(true);
+  let previewValues = $state({});
+  let previewErrors = $state({});
 
   onMount(async () => {
     const keyParam = $page.url.searchParams.get('key');
@@ -86,7 +92,7 @@
       }
 
       setTimeout(() => {
-          goto('/documents/types');
+        goto('/documents/types');
       }, 1500);
     } catch (err: any) {
       error = err.message || 'Failed to save document type';
@@ -123,6 +129,15 @@
       >
         {isSaving ? 'Saving...' : 'Save Document Type'}
       </button>
+
+      <button
+        onclick={() => (showPreview = !showPreview)}
+        class="rounded-md px-3 py-2 text-sm font-medium {showPreview
+          ? 'bg-indigo-100 text-indigo-700'
+          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}"
+      >
+        {showPreview ? 'Hide Preview' : 'Show Preview'}
+      </button>
     </div>
   </div>
 
@@ -157,7 +172,9 @@
         </div>
 
         <div>
-          <label for="description" class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+          <label for="description" class="block text-sm font-medium text-gray-700 mb-1"
+            >Description</label
+          >
           <textarea
             id="description"
             bind:value={description}
@@ -183,24 +200,56 @@
 
     <!-- Designer Area -->
     <div class="flex-1 overflow-y-auto bg-gray-50 p-6">
-      <div class="max-w-4xl mx-auto">
-        <div class="bg-white rounded-lg shadow p-6 min-h-[500px]">
-           <h3 class="text-lg font-semibold text-gray-900 mb-4">Schema Definition</h3>
-           <p class="text-sm text-gray-600 mb-6">
-             Define the fields and grids that make up this document.
-             These definitions can be used in process forms to automatically generate input fields.
-           </p>
+      <div class="h-full flex gap-6">
+        <!-- Editor Column -->
+        <div class="flex-1 min-w-0 flex flex-col gap-6">
+          <div class="bg-white rounded-lg shadow p-6 flex-1">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Schema Definition</h3>
+            <p class="text-sm text-gray-600 mb-6">
+              Define the fields and grids that make up this document. These definitions can be used
+              in process forms to automatically generate input fields.
+            </p>
 
-           {#if isLoading}
-             <div class="text-center py-12">Loading...</div>
-           {:else}
-             <!-- We reuse the FieldLibraryPanel but treat it as the main editor -->
-             <FieldLibraryPanel
-               library={schema}
-               onChange={handleSchemaChange}
-             />
-           {/if}
+            {#if isLoading}
+              <div class="text-center py-12">Loading...</div>
+            {:else}
+              <FieldLibraryPanel library={schema} onChange={handleSchemaChange} />
+            {/if}
+          </div>
         </div>
+
+        <!-- Preview Column -->
+        {#if showPreview}
+          <div class="w-96 flex-shrink-0 flex flex-col gap-6">
+            <div class="bg-white rounded-lg shadow p-6 flex-1 overflow-y-auto sticky top-6">
+              <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-semibold text-gray-900">Live Preview</h3>
+                <span
+                  class="text-xs font-medium px-2 py-1 bg-indigo-50 text-indigo-700 rounded-full"
+                  >Read-only Test</span
+                >
+              </div>
+
+              <div
+                class="p-4 border border-dashed border-gray-300 rounded-lg bg-gray-50 min-h-[300px]"
+              >
+                <DynamicForm
+                  fields={schema.fields}
+                  grids={schema.grids}
+                  gridConfig={{ columns: 1, gap: 16 }}
+                  values={previewValues}
+                  errors={previewErrors}
+                  onValuesChange={(vals) => (previewValues = vals)}
+                />
+              </div>
+
+              <div class="mt-6 p-4 bg-gray-100 rounded text-xs font-mono overflow-x-auto">
+                <p class="font-bold text-gray-500 mb-2">Form Data (JSON):</p>
+                <pre>{JSON.stringify(previewValues, null, 2)}</pre>
+              </div>
+            </div>
+          </div>
+        {/if}
       </div>
     </div>
   </div>
