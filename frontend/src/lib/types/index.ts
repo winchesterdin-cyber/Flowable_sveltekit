@@ -187,6 +187,13 @@ export interface FormFieldValidation {
   customMessage?: string;
 }
 
+export interface FormElementLogic {
+  type: 'JS' | 'SQL';
+  content: string;
+  dependencies: string[];
+  autoCalculate: boolean;
+}
+
 export interface FormFieldOption {
   value: string;
   label: string;
@@ -206,6 +213,7 @@ export interface FormField {
   tooltip: string;
   readonly: boolean;
   hidden: boolean;
+  logic?: FormElementLogic;
   hiddenExpression: string;
   readonlyExpression: string;
   requiredExpression: string;
@@ -228,7 +236,9 @@ export interface GridColumn {
   min?: number;
   max?: number;
   step?: number;
+  step?: number;
   validation: FormFieldValidation | null;
+  logic?: FormElementLogic;
 }
 
 export interface FormGrid {

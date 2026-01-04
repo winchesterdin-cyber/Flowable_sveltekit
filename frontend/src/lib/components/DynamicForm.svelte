@@ -46,6 +46,69 @@
 	// Computed field and grid states based on condition rules
 	let computedFieldStates = $state<Record<string, ComputedFieldState>>({});
 	let computedGridStates = $state<Record<string, ComputedGridState>>({});
+	
+	// Logic Dependency Map: FieldName -> List of Fields that depend on it
+	let dependencyMap = $state<Record<string, FormField[]>>({});
+
+	$effect(() => {
+		// Build dependency map for auto-calculation
+		const map: Record<string, FormField[]> = {};
+		for (const field of fields) {
+			if (field.logic && field.logic.dependencies) {
+				for (const dep of field.logic.dependencies) {
+					if (!map[dep]) map[dep] = [];
+					map[dep].push(field);
+				}
+			}
+		}
+		dependencyMap = map;
+	});
+
+	async function executeFieldLogic(field: FormField) {
+		if (!field.logic || field.logic.type === 'None' || !field.logic.content) return;
+
+		console.log(`Executing logic for ${field.name} (${field.logic.type})`);
+		
+		try {
+			if (field.logic.type === 'JS') {
+				// prepare safe-ish execution context
+				const contextValues = { ...formValues };
+				
+				// dynamic function creation
+				// signature: (value, form, db, lib) => result
+				const func = new Function('value', 'form', 'db', 'lib', field.logic.content);
+				
+				const dbMock = {
+					query: async (sql: string, params: any[]) => {
+						console.log('SQL Query:', sql, params);
+						return []; // Mock return
+					}
+				};
+				
+				const libMock = {}; // Placeholder for function library
+				
+				const result = await func(
+					formValues[field.name], 
+					contextValues, 
+					dbMock, 
+					libMock
+				);
+
+				if (result !== undefined) {
+					// Update the field with the result (avoiding direct recursion if possible)
+					if (formValues[field.name] !== result) {
+						handleFieldChange(field.name, result, true); // true = key for isAutomated
+					}
+				}
+			} else if (field.logic.type === 'SQL') {
+				// SQL Placeholder - would replace parameters and call API
+				console.log('SQL Logic not fully implemented for execution');
+			}
+		} catch (e) {
+			console.error(`Error executing logic for field ${field.name}:`, e);
+			fieldErrors[field.name] = `Logic Error: ${e.message}`;
+		}
+	}
 
 	// Create evaluation context that updates when form values change
 	function createEvaluationContext(): EvaluationContext {
@@ -142,13 +205,24 @@
 		}
 	});
 
-	function handleFieldChange(fieldName: string, value: unknown) {
+	function handleFieldChange(fieldName: string, value: unknown, isAutomated = false) {
 		formValues = { ...formValues, [fieldName]: value };
 		userHasMadeChanges = true;
 		// Clear error when field is modified
 		if (fieldErrors[fieldName]) {
 			const { [fieldName]: _, ...rest } = fieldErrors;
 			fieldErrors = rest;
+		}
+
+		// Trigger dependencies
+		if (!isAutomated) {
+			const dependents = dependencyMap[fieldName] || [];
+			for (const dep of dependents) {
+				if (dep.logic?.autoCalculate) {
+					// Small delay to allow state propagation or use async
+					setTimeout(() => executeFieldLogic(dep), 0);
+				}
+			}
 		}
 	}
 

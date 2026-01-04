@@ -37,6 +37,12 @@
 			max: null as number | null,
 			pattern: '',
 			patternMessage: ''
+		},
+		logic: {
+			type: 'None' as 'None' | 'JS' | 'SQL',
+			content: '',
+			dependencies: [] as string[],
+			autoCalculate: false
 		}
 	});
 
@@ -114,6 +120,12 @@
 				max: null,
 				pattern: '',
 				patternMessage: ''
+			},
+			logic: {
+				type: 'None',
+				content: '',
+				dependencies: [],
+				autoCalculate: false
 			}
 		};
 		showFieldEditor = true;
@@ -133,13 +145,24 @@
 			readonly: field.readonly,
 			hidden: field.hidden,
 			options: field.options || [],
-			validation: {
-				minLength: field.validation?.minLength ?? null,
-				maxLength: field.validation?.maxLength ?? null,
-				min: field.validation?.min ?? null,
-				max: field.validation?.max ?? null,
-				pattern: field.validation?.pattern ?? '',
-				patternMessage: field.validation?.patternMessage ?? ''
+			validation: field.validation ? { ...field.validation } : {
+				minLength: null,
+				maxLength: null,
+				min: null,
+				max: null,
+				pattern: '',
+				patternMessage: ''
+			},
+			logic: field.logic ? {
+				type: field.logic.type || 'None',
+				content: field.logic.content || '',
+				dependencies: field.logic.dependencies ? [...field.logic.dependencies] : [],
+				autoCalculate: field.logic.autoCalculate || false
+			} : {
+				type: 'None',
+				content: '',
+				dependencies: [],
+				autoCalculate: false
 			}
 		};
 		showFieldEditor = true;
@@ -160,6 +183,12 @@
 				pattern: fieldForm.validation.pattern || undefined,
 				patternMessage: fieldForm.validation.patternMessage || undefined
 			},
+			logic: fieldForm.logic.type !== 'None' ? {
+				type: fieldForm.logic.type,
+				content: fieldForm.logic.content,
+				dependencies: fieldForm.logic.dependencies,
+				autoCalculate: fieldForm.logic.autoCalculate
+			} : undefined,
 			options: fieldForm.type === 'select' || fieldForm.type === 'multiselect' || fieldForm.type === 'radio' ? fieldForm.options : null,
 			placeholder: fieldForm.placeholder,
 			defaultValue: fieldForm.defaultValue,
@@ -901,6 +930,80 @@
 								class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
 							/>
 						</div>
+					</div>
+				{/if}
+			</div>
+
+
+		<!-- Logic Configuration -->
+		<div class="border-t pt-4">
+			<h4 class="text-sm font-medium text-gray-900 mb-3">Logic & Dependencies</h4>
+			
+			<div class="space-y-4">
+				<div class="flex gap-4">
+					<div class="w-1/3">
+						<label class="block text-xs font-medium text-gray-700 mb-1">Logic Type</label>
+						<select
+							bind:value={fieldForm.logic.type}
+							class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+						>
+							<option value="None">None</option>
+							<option value="JS">JavaScript Code</option>
+							<option value="SQL">SQL Query</option>
+						</select>
+					</div>
+
+					{#if fieldForm.logic.type !== 'None'}
+						<div class="w-2/3">
+							<label class="block text-xs font-medium text-gray-700 mb-1">Dependencies</label>
+							<div class="h-10 px-3 py-2 border border-gray-300 rounded-md overflow-y-auto text-sm">
+								{#each library.fields.filter(f => f.name !== fieldForm.name) as depField}
+									<label class="inline-flex items-center mr-3 mb-1">
+										<input
+											type="checkbox"
+											checked={fieldForm.logic.dependencies.includes(depField.name)}
+											onchange={(e) => {
+												if (e.currentTarget.checked) {
+													fieldForm.logic.dependencies = [...fieldForm.logic.dependencies, depField.name];
+												} else {
+													fieldForm.logic.dependencies = fieldForm.logic.dependencies.filter(d => d !== depField.name);
+												}
+											}}
+											class="rounded mr-1"
+										/>
+										<span class="text-xs">{depField.name}</span>
+									</label>
+								{/each}
+							</div>
+						</div>
+					{/if}
+				</div>
+
+				{#if fieldForm.logic.type !== 'None'}
+					<div>
+						<div class="flex items-center justify-between mb-1">
+							<label class="block text-xs font-medium text-gray-700" for="logic-content">
+								{fieldForm.logic.type === 'JS' ? 'JavaScript Code' : 'SQL Query'}
+							</label>
+							<label class="flex items-center gap-2">
+								<input type="checkbox" bind:checked={fieldForm.logic.autoCalculate} class="rounded" />
+								<span class="text-xs text-gray-600">Auto-calculate on dependency change</span>
+							</label>
+						</div>
+						<textarea
+							id="logic-content"
+							bind:value={fieldForm.logic.content}
+							rows="5"
+							class="w-full px-3 py-2 border border-gray-300 rounded-md font-mono text-sm focus:ring-2 focus:ring-blue-500"
+							placeholder={fieldForm.logic.type === 'JS' 
+								? "// value = current value\\n// form = other fields values\\n// lib = function library\\n// db = database access\\nreturn form.price * form.qty;" 
+								: "SELECT name FROM users WHERE id = ${form.userId}"}
+						></textarea>
+						<p class="mt-1 text-xs text-gray-500">
+							{fieldForm.logic.type === 'JS' 
+								? 'Available variables: value, form, db, lib' 
+								: 'Use ${form.fieldName} to inject parameters safely.'}
+						</p>
 					</div>
 				{/if}
 			</div>
