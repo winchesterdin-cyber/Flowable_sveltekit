@@ -32,6 +32,10 @@
 		tooltip: '',
 		readonly: false,
 		hidden: false,
+		hiddenExpression: '',
+		readonlyExpression: '',
+		requiredExpression: '',
+		calculationExpression: '',
 		options: [] as { value: string; label: string }[],
 		validation: {
 			minLength: null as number | null,
@@ -56,7 +60,8 @@
 		label: '',
 		description: '',
 		minRows: 0,
-		maxRows: 10
+		maxRows: 10,
+		visibilityExpression: ''
 	});
 
 	// Column editor state
@@ -70,6 +75,10 @@
 		required: false,
 		placeholder: '',
 		options: [] as string[],
+		hiddenExpression: '',
+		readonlyExpression: '',
+		requiredExpression: '',
+		calculationExpression: '',
 		validation: {
 			minLength: null as number | null,
 			maxLength: null as number | null,
@@ -196,6 +205,10 @@
 			tooltip: '',
 			readonly: false,
 			hidden: false,
+			hiddenExpression: '',
+			readonlyExpression: '',
+			requiredExpression: '',
+			calculationExpression: '',
 			options: [],
 			validation: {
 				minLength: null,
@@ -228,6 +241,10 @@
 			tooltip: field.tooltip || '',
 			readonly: field.readonly,
 			hidden: field.hidden,
+			hiddenExpression: field.hiddenExpression || '',
+			readonlyExpression: field.readonlyExpression || '',
+			requiredExpression: field.requiredExpression || '',
+			calculationExpression: field.calculationExpression || '',
 			options: field.options || [],
 			validation: field.validation ? { ...field.validation } : {
 				minLength: null,
@@ -280,9 +297,10 @@
 			tooltip: fieldForm.tooltip,
 			readonly: fieldForm.readonly,
 			hidden: fieldForm.hidden,
-			hiddenExpression: '',
-			readonlyExpression: '',
-			requiredExpression: '',
+			hiddenExpression: fieldForm.hiddenExpression,
+			readonlyExpression: fieldForm.readonlyExpression,
+			requiredExpression: fieldForm.requiredExpression,
+			calculationExpression: fieldForm.calculationExpression,
 			gridColumn: 1,
 			gridRow: library.fields.length + 1,
 			gridWidth: 1,
@@ -336,7 +354,8 @@
 			label: '',
 			description: '',
 			minRows: 0,
-			maxRows: 10
+			maxRows: 10,
+			visibilityExpression: ''
 		};
 		showGridEditor = true;
 	}
@@ -349,7 +368,8 @@
 			label: grid.label,
 			description: grid.description || '',
 			minRows: grid.minRows,
-			maxRows: grid.maxRows
+			maxRows: grid.maxRows,
+			visibilityExpression: grid.visibilityExpression || ''
 		};
 		showGridEditor = true;
 	}
@@ -362,6 +382,7 @@
 			description: gridForm.description,
 			minRows: gridForm.minRows,
 			maxRows: gridForm.maxRows,
+			visibilityExpression: gridForm.visibilityExpression,
 			columns: editingGrid?.columns || [],
 			gridColumn: 1,
 			gridRow: library.fields.length + library.grids.length + 1,
@@ -403,6 +424,10 @@
 			required: false,
 			placeholder: '',
 			options: [],
+			hiddenExpression: '',
+			readonlyExpression: '',
+			requiredExpression: '',
+			calculationExpression: '',
 			validation: {
 				minLength: null,
 				maxLength: null,
@@ -432,6 +457,10 @@
 			required: column.required,
 			placeholder: column.placeholder || '',
 			options: column.options || [],
+			hiddenExpression: column.hiddenExpression || '',
+			readonlyExpression: column.readonlyExpression || '',
+			requiredExpression: column.requiredExpression || '',
+			calculationExpression: column.calculationExpression || '',
 			validation: column.validation ? { ...column.validation } : {
 				minLength: null,
 				maxLength: null,
@@ -466,6 +495,10 @@
 			required: columnForm.required,
 			placeholder: columnForm.placeholder,
 			options: columnForm.type === 'select' ? columnForm.options : null,
+			hiddenExpression: columnForm.hiddenExpression,
+			readonlyExpression: columnForm.readonlyExpression,
+			requiredExpression: columnForm.requiredExpression,
+			calculationExpression: columnForm.calculationExpression,
 			validation: {
 				minLength: columnForm.validation.minLength || undefined,
 				maxLength: columnForm.validation.maxLength || undefined,
@@ -841,6 +874,53 @@
       </div>
     </div>
 
+    <!-- Advanced Behavior (Expressions) -->
+    <div class="border rounded-md p-4 bg-purple-50 border-purple-100 mb-4">
+      <h4 class="text-sm font-medium text-purple-900 mb-3">Dynamic Behavior (Expressions)</h4>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label for="hiddenExpr" class="block text-xs font-medium text-gray-600">Hidden Expression</label>
+          <input
+            id="hiddenExpr"
+            type="text"
+            bind:value={fieldForm.hiddenExpression}
+            placeholder="${showField == false}"
+            class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 font-mono text-xs"
+          />
+        </div>
+        <div>
+          <label for="readonlyExpr" class="block text-xs font-medium text-gray-600">Readonly Expression</label>
+          <input
+            id="readonlyExpr"
+            type="text"
+            bind:value={fieldForm.readonlyExpression}
+            placeholder="${status == 'approved'}"
+            class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 font-mono text-xs"
+          />
+        </div>
+        <div>
+          <label for="requiredExpr" class="block text-xs font-medium text-gray-600">Required Expression</label>
+          <input
+            id="requiredExpr"
+            type="text"
+            bind:value={fieldForm.requiredExpression}
+            placeholder="${amount > 1000}"
+            class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 font-mono text-xs"
+          />
+        </div>
+        <div>
+          <label for="calcExpr" class="block text-xs font-medium text-gray-600">Calculation Expression</label>
+          <input
+            id="calcExpr"
+            type="text"
+            bind:value={fieldForm.calculationExpression}
+            placeholder="${price * quantity}"
+            class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 font-mono text-xs"
+          />
+        </div>
+      </div>
+    </div>
+
     <!-- Conditional Logic & Visibility -->
     <div class="border rounded-md p-4 bg-indigo-50 border-indigo-100">
       <h4 class="text-sm font-medium text-indigo-900 mb-3">Conditional Logic</h4>
@@ -1209,6 +1289,21 @@
 				/>
 			</div>
 		</div>
+
+		<!-- Advanced Behavior -->
+		<div class="border rounded-md p-4 bg-purple-50 border-purple-100 mt-4">
+			<h4 class="text-sm font-medium text-purple-900 mb-3">Dynamic Behavior</h4>
+			<div>
+				<label for="gridVisExpr" class="block text-xs font-medium text-gray-600">Visibility Expression</label>
+				<input
+					id="gridVisExpr"
+					type="text"
+					bind:value={gridForm.visibilityExpression}
+					placeholder="${showGrid == true}"
+					class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 font-mono text-xs"
+				/>
+			</div>
+		</div>
 	</div>
 
 	{#snippet footer()}
@@ -1397,6 +1492,53 @@
 						/>
 					</div>
 				{/if}
+			</div>
+		</div>
+
+		<!-- Advanced Behavior (Expressions) -->
+		<div class="border rounded-md p-4 bg-purple-50 border-purple-100 mb-4">
+			<h4 class="text-sm font-medium text-purple-900 mb-3">Dynamic Behavior (Expressions)</h4>
+			<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+				<div>
+					<label for="colHiddenExpr" class="block text-xs font-medium text-gray-600">Hidden Expr.</label>
+					<input
+						id="colHiddenExpr"
+						type="text"
+						bind:value={columnForm.hiddenExpression}
+						placeholder="${hideCol}"
+						class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 font-mono text-xs"
+					/>
+				</div>
+				<div>
+					<label for="colReadonlyExpr" class="block text-xs font-medium text-gray-600">Readonly Expr.</label>
+					<input
+						id="colReadonlyExpr"
+						type="text"
+						bind:value={columnForm.readonlyExpression}
+						placeholder="${readonly}"
+						class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 font-mono text-xs"
+					/>
+				</div>
+				<div>
+					<label for="colRequiredExpr" class="block text-xs font-medium text-gray-600">Required Expr.</label>
+					<input
+						id="colRequiredExpr"
+						type="text"
+						bind:value={columnForm.requiredExpression}
+						placeholder="${required}"
+						class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 font-mono text-xs"
+					/>
+				</div>
+				<div>
+					<label for="colCalcExpr" class="block text-xs font-medium text-gray-600">Calculation Expr.</label>
+					<input
+						id="colCalcExpr"
+						type="text"
+						bind:value={columnForm.calculationExpression}
+						placeholder="${row.price * row.qty}"
+						class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 font-mono text-xs"
+					/>
+				</div>
 			</div>
 		</div>
 
