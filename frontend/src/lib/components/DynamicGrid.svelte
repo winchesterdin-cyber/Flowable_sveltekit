@@ -5,7 +5,7 @@
   import { Input } from '$lib/components/ui/input';
   import { Textarea } from '$lib/components/ui/textarea';
   import * as Select from '$lib/components/ui/select';
-  import { Plus } from '@lucide/svelte';
+  import { Plus, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, ChevronsUpDown, MoreHorizontal, Download } from 'lucide-svelte';
 
   interface GridRow {
     id: string;
@@ -31,6 +31,14 @@
     task?: any;
     onDataChange?: (data: Record<string, unknown>[]) => void;
     onSelectionChange?: (selectedRows: Record<string, unknown>[]) => void;
+
+    // New Props
+    enablePagination?: boolean;
+    pageSize?: number;
+    enableSorting?: boolean;
+    enableGrouping?: boolean;
+    groupByColumn?: string;
+    enableRowActions?: boolean;
   }
 
   const {
@@ -49,7 +57,15 @@
     userContext = {},
     task = null,
     onDataChange,
-    onSelectionChange
+    onSelectionChange,
+
+    // Defaults
+    enablePagination = false,
+    pageSize = 10,
+    enableSorting = false,
+    enableGrouping = false,
+    groupByColumn = '',
+    enableRowActions = false
   }: Props = $props();
 
   // Helper to safely evaluate expressions
@@ -76,7 +92,6 @@
     let state = columnStates[column.name] || { isHidden: false, isReadonly: readonly, appliedRules: [] };
 
     if (column.visibilityExpression) {
-        // We try to evaluate without row first for column-level visibility
         const isVisible = safeEvaluate(column.visibilityExpression, {
             value: null,
             row: {}, // Empty row context
@@ -109,7 +124,6 @@
     }
 
     if (column.readonlyExpression) {
-        // Evaluate readonly expression
         const isReadonly = safeEvaluate(column.readonlyExpression, {
             value: rowData ? rowData[column.name] : null,
             row: rowData || {},
@@ -142,9 +156,91 @@
   let userHasMadeChanges = $state(false);
   let selectedRowIds = $state<Set<string>>(new Set());
 
-  // Check if all rows are selected
-  const allSelected = $derived(rows.length > 0 && selectedRowIds.size === rows.length);
-  const someSelected = $derived(selectedRowIds.size > 0 && selectedRowIds.size < rows.length);
+  // Pagination State
+  let currentPage = $state(1);
+  let currentPageSize = $state(pageSize);
+
+  // Sorting State
+  let sortColumn = $state<string | null>(null);
+  let sortDirection = $state<'asc' | 'desc'>('asc');
+
+  // Toggle sorting
+  function toggleSort(columnName: string) {
+      if (!enableSorting) return;
+
+      if (sortColumn === columnName) {
+          if (sortDirection === 'asc') {
+              sortDirection = 'desc';
+          } else {
+              sortColumn = null; // Clear sort
+              sortDirection = 'asc';
+          }
+      } else {
+          sortColumn = columnName;
+          sortDirection = 'asc';
+      }
+  }
+
+  // Derived: Processed Rows (Sorted & Grouped logic preparation)
+  // Note: We don't implement full grouping rendering in the table body yet (complex layout change),
+  // but we can sort by group column first to simulate grouping structure.
+  const processedRows = $derived.by(() => {
+      let result = [...rows];
+
+      // 1. Grouping (Implicit Sort)
+      if (enableGrouping && groupByColumn) {
+          // If sorting is active, we let explicit sort take precedence or secondary?
+          // Usually grouping forces primary sort on group column.
+          result.sort((a, b) => {
+              const valA = String(a.data[groupByColumn] || '');
+              const valB = String(b.data[groupByColumn] || '');
+              return valA.localeCompare(valB);
+          });
+      }
+
+      // 2. Sorting (Explicit)
+      if (sortColumn) {
+          result.sort((a, b) => {
+              const valA = a.data[sortColumn!] as any;
+              const valB = b.data[sortColumn!] as any;
+
+              if (valA === valB) return 0;
+
+              // Handle numbers
+              if (typeof valA === 'number' && typeof valB === 'number') {
+                  return sortDirection === 'asc' ? valA - valB : valB - valA;
+              }
+
+              // Handle strings
+              const strA = String(valA || '');
+              const strB = String(valB || '');
+              return sortDirection === 'asc' ? strA.localeCompare(strB) : strB.localeCompare(strA);
+          });
+      }
+
+      return result;
+  });
+
+  // Derived: Paginated Rows
+  const paginatedRows = $derived.by(() => {
+      if (!enablePagination) return processedRows;
+
+      const startIndex = (currentPage - 1) * currentPageSize;
+      return processedRows.slice(startIndex, startIndex + currentPageSize);
+  });
+
+  const totalPages = $derived(enablePagination ? Math.ceil(processedRows.length / currentPageSize) : 1);
+
+  // Check if all rows (on current page) are selected
+  const allPageSelected = $derived.by(() => {
+      if (paginatedRows.length === 0) return false;
+      return paginatedRows.every(r => selectedRowIds.has(r.id));
+  });
+
+  const somePageSelected = $derived.by(() => {
+      if (paginatedRows.length === 0) return false;
+      return paginatedRows.some(r => selectedRowIds.has(r.id)) && !allPageSelected;
+  });
 
   // Toggle row selection
   function toggleRowSelection(rowId: string) {
@@ -158,13 +254,19 @@
     notifySelectionChange();
   }
 
-  // Toggle all rows selection
-  function toggleAllSelection() {
-    if (allSelected) {
-      selectedRowIds = new Set();
+  // Toggle all rows on current page selection
+  function toggleAllPageSelection() {
+    const newSelected = new Set(selectedRowIds);
+
+    if (allPageSelected) {
+        // Deselect all on this page
+        paginatedRows.forEach(r => newSelected.delete(r.id));
     } else {
-      selectedRowIds = new Set(rows.map(r => r.id));
+        // Select all on this page
+        paginatedRows.forEach(r => newSelected.add(r.id));
     }
+
+    selectedRowIds = newSelected;
     notifySelectionChange();
   }
 
@@ -319,6 +421,12 @@
     };
 
     rows = [...rows, newRow];
+
+    // Jump to last page if pagination enabled
+    if (enablePagination) {
+        currentPage = Math.ceil(rows.length / currentPageSize) || 1;
+    }
+
     userHasMadeChanges = true;
     notifyDataChange();
   }
@@ -489,6 +597,28 @@
     handleCellChange(row, columnName, value ?? '');
   }
 
+  function handleImport(event: Event) {
+      // Mock import for now - would normally parse CSV
+      const input = event.target as HTMLInputElement;
+      if (input.files?.length) {
+          alert(`Import simulated: ${input.files[0].name}`);
+      }
+  }
+
+  function handleExport() {
+      // Mock export
+      const csvContent = "data:text/csv;charset=utf-8,"
+          + columns.map(c => c.label).join(",") + "\n"
+          + rows.map(r => columns.map(c => r.data[c.name]).join(",")).join("\n");
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", "grid_data.csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+  }
+
   export function getData(): Record<string, unknown>[] {
     return rows.map((row) => row.data);
   }
@@ -519,10 +649,17 @@
 
 <div class="w-full">
   {#if label}
-    <div class="mb-4">
-      <h3 class="text-lg font-semibold">{label}</h3>
-      {#if description}
-        <p class="text-sm text-muted-foreground mt-1">{description}</p>
+    <div class="mb-4 flex items-center justify-between">
+      <div>
+          <h3 class="text-lg font-semibold">{label}</h3>
+          {#if description}
+            <p class="text-sm text-muted-foreground mt-1">{description}</p>
+          {/if}
+      </div>
+      {#if gridsContext?.enableImportExport || true /* Assuming prop for now, logic below */}
+          <div class="flex gap-2">
+              <!-- Import/Export Buttons Placeholder if enabled -->
+          </div>
       {/if}
     </div>
   {/if}
@@ -536,43 +673,79 @@
               <Table.Head class="w-10">
                 <input
                   type="checkbox"
-                  checked={allSelected}
-                  indeterminate={someSelected}
-                  onchange={toggleAllSelection}
+                  checked={allPageSelected}
+                  indeterminate={somePageSelected}
+                  onchange={toggleAllPageSelection}
                   class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                  aria-label="Select all rows"
+                  aria-label="Select all rows on page"
                 />
               </Table.Head>
             {/if}
             {#each visibleColumns as column}
               <Table.Head>
-                {column.label}
-                {#if column.required}
-                  <span class="text-destructive">*</span>
-                {/if}
-                {#if isColumnReadonly(column) && !readonly}
-                  <span class="text-muted-foreground text-xs ml-1">(read-only)</span>
-                {/if}
+                <div class="flex items-center gap-1">
+                    {#if enableSorting}
+                        <button
+                            onclick={() => toggleSort(column.name)}
+                            class="flex items-center hover:text-blue-600 focus:outline-none"
+                        >
+                            {column.label}
+                            <span class="ml-1">
+                                {#if sortColumn === column.name}
+                                    {#if sortDirection === 'asc'}
+                                        <ArrowUp class="w-3 h-3" />
+                                    {:else}
+                                        <ArrowDown class="w-3 h-3" />
+                                    {/if}
+                                {:else}
+                                    <ChevronsUpDown class="w-3 h-3 text-gray-300" />
+                                {/if}
+                            </span>
+                        </button>
+                    {:else}
+                        {column.label}
+                    {/if}
+
+                    {#if column.required}
+                      <span class="text-destructive">*</span>
+                    {/if}
+                    {#if isColumnReadonly(column) && !readonly}
+                      <span class="text-muted-foreground text-xs ml-1">(read-only)</span>
+                    {/if}
+                </div>
               </Table.Head>
             {/each}
-            {#if !readonly}
+            {#if !readonly || enableRowActions}
               <Table.Head class="text-right">Actions</Table.Head>
             {/if}
           </Table.Row>
         </Table.Header>
         <Table.Body>
-          {#if rows.length === 0}
+          {#if paginatedRows.length === 0}
             <Table.Row>
               <Table.Cell
-                colspan={visibleColumns.length + (readonly ? 0 : 1)}
+                colspan={visibleColumns.length + (readonly && !enableRowActions ? 0 : 1) + (enableMultiSelect ? 1 : 0)}
                 class="text-center py-8 text-muted-foreground"
               >
-                No rows added yet. {#if !readonly}Click "Add Row" to get started.{/if}
+                {#if rows.length === 0}
+                    No rows added yet. {#if !readonly}Click "Add Row" to get started.{/if}
+                {:else}
+                    No matches found on this page.
+                {/if}
               </Table.Cell>
             </Table.Row>
           {/if}
 
-          {#each rows as row (row.id)}
+          {#each paginatedRows as row, i (row.id)}
+            {#if enableGrouping && groupByColumn && (i === 0 || processedRows[processedRows.indexOf(row) - 1]?.data[groupByColumn] !== row.data[groupByColumn])}
+                <!-- Group Header -->
+                <Table.Row class="bg-gray-100">
+                    <Table.Cell colspan={visibleColumns.length + (readonly && !enableRowActions ? 0 : 1) + (enableMultiSelect ? 1 : 0)} class="font-bold text-gray-700 py-1">
+                        {row.data[groupByColumn] || 'Uncategorized'}
+                    </Table.Cell>
+                </Table.Row>
+            {/if}
+
             <Table.Row class={selectedRowIds.has(row.id) ? 'bg-blue-50' : ''}>
               {#if enableMultiSelect}
                 <Table.Cell class="w-10">
@@ -605,7 +778,7 @@
                           </Select.Trigger>
                           <Select.Content>
                             {#each column.options || [] as option}
-                              <Select.Item value={option} label={option} />
+                              <Select.Item value={option.value} label={option.label} />
                             {/each}
                           </Select.Content>
                         </Select.Root>
@@ -663,7 +836,7 @@
                   {/if}
                 </Table.Cell>
               {/each}
-              {#if !readonly}
+              {#if !readonly || enableRowActions}
                 <Table.Cell class="text-right">
                   <div class="flex justify-end gap-2">
                     {#if row.isEditing}
@@ -679,17 +852,23 @@
                         Cancel
                       </Button>
                     {:else}
-                      <Button variant="ghost" size="sm" onclick={() => editRow(row.id)}>Edit</Button
-                      >
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onclick={() => deleteRow(row.id)}
-                        disabled={minRows > 0 && rows.length <= minRows}
-                        class="text-destructive hover:text-destructive hover:bg-destructive/10"
-                      >
-                        Delete
-                      </Button>
+                      {#if !readonly}
+                          <Button variant="ghost" size="sm" onclick={() => editRow(row.id)}>Edit</Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onclick={() => deleteRow(row.id)}
+                            disabled={minRows > 0 && rows.length <= minRows}
+                            class="text-destructive hover:text-destructive hover:bg-destructive/10"
+                          >
+                            Delete
+                          </Button>
+                      {/if}
+                      {#if enableRowActions}
+                          <Button variant="ghost" size="icon" title="More Actions">
+                              <MoreHorizontal class="h-4 w-4" />
+                          </Button>
+                      {/if}
                     {/if}
                   </div>
                 </Table.Cell>
@@ -701,15 +880,41 @@
     </div>
   </div>
 
-  {#if !readonly}
-    <div class="mt-4">
-      <Button variant="outline" onclick={addRow} disabled={maxRows > 0 && rows.length >= maxRows}>
-        <Plus class="h-4 w-4 mr-2" />
-        Add Row
-        {#if maxRows > 0}
-          <span class="ml-2 text-xs text-muted-foreground">({rows.length}/{maxRows})</span>
-        {/if}
-      </Button>
-    </div>
-  {/if}
+  <div class="mt-4 flex items-center justify-between">
+      <div>
+          {#if !readonly}
+            <Button variant="outline" onclick={addRow} disabled={maxRows > 0 && rows.length >= maxRows}>
+                <Plus class="h-4 w-4 mr-2" />
+                Add Row
+                {#if maxRows > 0}
+                <span class="ml-2 text-xs text-muted-foreground">({rows.length}/{maxRows})</span>
+                {/if}
+            </Button>
+          {/if}
+      </div>
+
+      {#if enablePagination && totalPages > 1}
+          <div class="flex items-center gap-2">
+              <span class="text-sm text-gray-600">Page {currentPage} of {totalPages}</span>
+              <div class="flex gap-1">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    disabled={currentPage === 1}
+                    onclick={() => currentPage--}
+                  >
+                      <ChevronLeft class="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    disabled={currentPage === totalPages}
+                    onclick={() => currentPage++}
+                  >
+                      <ChevronRight class="h-4 w-4" />
+                  </Button>
+              </div>
+          </div>
+      {/if}
+  </div>
 </div>
