@@ -4,6 +4,9 @@
 	import type { UserContext, EvaluationContext } from '$lib/utils/expression-evaluator';
 	import { ConditionStateComputer } from '$lib/utils/condition-state-computer';
 	import DynamicGrid from './DynamicGrid.svelte';
+    import { Editor } from '@tiptap/core';
+    import StarterKit from '@tiptap/starter-kit';
+    import SignaturePad from 'signature_pad';
 
 	interface Props {
 		fields: FormField[];
@@ -549,6 +552,80 @@
 		return isNaN(num) ? String(value) : num.toString();
 	}
 
+    // Tiptap setup
+    function setupTiptap(node: HTMLElement, { content, onUpdate, editable }: any) {
+        const editor = new Editor({
+            element: node,
+            extensions: [StarterKit],
+            content: content || '',
+            editable: editable,
+            onUpdate: ({ editor }) => {
+                onUpdate(editor.getHTML());
+            },
+            editorProps: {
+                attributes: {
+                    class: 'prose prose-sm focus:outline-none min-h-[100px] max-w-none'
+                }
+            }
+        });
+
+        return {
+            destroy() {
+                editor.destroy();
+            },
+            update(newParams: any) {
+                if (editor.isEditable !== newParams.editable) {
+                    editor.setEditable(newParams.editable);
+                }
+                // Only update content if it's different to prevent cursor jumps
+                if (newParams.content !== editor.getHTML()) {
+                    // editor.commands.setContent(newParams.content || '');
+                }
+            }
+        };
+    }
+
+    // Signature Pad setup
+    function setupSignaturePad(node: HTMLCanvasElement, { value, onUpdate, readonly }: any) {
+        const pad = new SignaturePad(node);
+
+        if (value) {
+            pad.fromDataURL(value);
+        }
+
+        if (readonly) {
+            pad.off();
+        }
+
+        // Handle resize properly
+        const resizeCanvas = () => {
+            const ratio = Math.max(window.devicePixelRatio || 1, 1);
+            node.width = node.offsetWidth * ratio;
+            node.height = node.offsetHeight * ratio;
+            node.getContext("2d")?.scale(ratio, ratio);
+            if (value) pad.fromDataURL(value); // Reload data after resize
+        };
+
+        // Initial resize
+        setTimeout(resizeCanvas, 0);
+        // window.addEventListener('resize', resizeCanvas); // Removed to avoid listener leak for now
+
+        pad.addEventListener('endStroke', () => {
+            if (!readonly) {
+                onUpdate(pad.toDataURL());
+            }
+        });
+
+        return {
+            destroy() {
+                pad.off();
+            },
+            update(newParams: any) {
+                if (newParams.readonly) pad.off(); else pad.on();
+            }
+        };
+    }
+
 	const sortedItems = $derived(getSortedItems());
 	const hasFields = $derived(fields.length > 0 || grids.length > 0);
 
@@ -608,17 +685,36 @@
 						</label>
 
 						{#if field.type === 'textarea'}
-							<textarea
-								id={`field-${field.name}`}
-								value={String(value ?? '')}
-								oninput={(e) => handleFieldChange(field.name, e.currentTarget.value)}
-								placeholder={field.placeholder}
-								readonly={isReadonly}
-								rows="3"
-								class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 text-sm
-									{error ? 'border-red-500' : 'border-gray-300'}
-									{isReadonly ? 'bg-gray-50' : ''}"
-							></textarea>
+                            {#if field.richText}
+                                <div class="border rounded-md {error ? 'border-red-500' : 'border-gray-300'} {isReadonly ? 'bg-gray-50' : 'bg-white'} overflow-hidden">
+                                    {#if !isReadonly}
+                                        <!-- Toolbar could go here -->
+                                        <div class="border-b border-gray-200 bg-gray-50 px-2 py-1 text-xs text-gray-500">
+                                            Rich Text Editor
+                                        </div>
+                                    {/if}
+                                    <div
+                                        class="p-3 min-h-[100px]"
+                                        use:setupTiptap={{
+                                            content: String(value ?? ''),
+                                            editable: !isReadonly,
+                                            onUpdate: (html: string) => handleFieldChange(field.name, html)
+                                        }}
+                                    ></div>
+                                </div>
+                            {:else}
+                                <textarea
+                                    id={`field-${field.name}`}
+                                    value={String(value ?? '')}
+                                    oninput={(e) => handleFieldChange(field.name, e.currentTarget.value)}
+                                    placeholder={field.placeholder}
+                                    readonly={isReadonly}
+                                    rows="3"
+                                    class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 text-sm
+                                        {error ? 'border-red-500' : 'border-gray-300'}
+                                        {isReadonly ? 'bg-gray-50' : ''}"
+                                ></textarea>
+                            {/if}
 						{:else if field.type === 'select'}
 							<select
 								id={`field-${field.name}`}
@@ -718,6 +814,43 @@
 									{error ? 'border-red-500' : 'border-gray-300'}
 									{isReadonly ? 'bg-gray-50' : ''}"
 							/>
+                        {:else if field.type === 'signature'}
+                            <div class="border rounded-md {error ? 'border-red-500' : 'border-gray-300'} bg-white">
+                                <canvas
+                                    class="w-full h-40 touch-none"
+                                    use:setupSignaturePad={{
+                                        value: value,
+                                        readonly: isReadonly,
+                                        onUpdate: (dataUrl: string) => handleFieldChange(field.name, dataUrl)
+                                    }}
+                                ></canvas>
+                                {#if !isReadonly}
+                                    <div class="border-t border-gray-200 p-2 text-right bg-gray-50">
+                                        <button
+                                            class="text-xs text-gray-500 hover:text-red-500"
+                                            onclick={() => handleFieldChange(field.name, null)}
+                                        >
+                                            Clear Signature
+                                        </button>
+                                    </div>
+                                {/if}
+                            </div>
+                        {:else if field.type === 'userPicker' || field.type === 'groupPicker'}
+                            <select
+								id={`field-${field.name}`}
+								value={value ?? ''}
+								onchange={(e) => handleFieldChange(field.name, e.currentTarget.value)}
+								disabled={isReadonly}
+								class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 text-sm
+									{error ? 'border-red-500' : 'border-gray-300'}
+									{isReadonly ? 'bg-gray-50' : ''}"
+							>
+								<option value="">Select {field.type === 'userPicker' ? 'User' : 'Group'}...</option>
+                                <option value="user1">User 1</option>
+                                <option value="user2">User 2</option>
+                                <option value="manager">Manager</option>
+                                <option value="admin">Admin</option>
+							</select>
 						{:else if field.type === 'expression'}
 							<div class="px-3 py-2 bg-gray-100 border border-gray-300 rounded-md text-sm text-gray-600">
 								{value ?? field.defaultExpression ?? '-'}
@@ -781,6 +914,13 @@
                         processVariables={processVariables}
                         userContext={userContext}
                         task={task}
+
+                        enablePagination={grid.enablePagination}
+                        pageSize={grid.pageSize}
+                        enableSorting={grid.enableSorting}
+                        enableGrouping={grid.enableGrouping}
+                        groupByColumn={grid.groupByColumn}
+                        enableRowActions={grid.enableRowActions}
 					/>
 				</div>
 			{/if}
@@ -802,4 +942,16 @@
 	.form-grid {
 		margin-bottom: 1.5rem;
 	}
+
+    :global(.ProseMirror) {
+        outline: none;
+    }
+
+    :global(.ProseMirror p.is-editor-empty:first-child::before) {
+      color: #adb5bd;
+      content: attr(data-placeholder);
+      float: left;
+      height: 0;
+      pointer-events: none;
+    }
 </style>

@@ -329,6 +329,17 @@
   let expressionTarget = $state('');
   let expressionValue = $state('');
 
+  // Sync state
+  let isDocTypeSynced = $state(true);
+  let syncCheckLoading = $state(false);
+
+  // Expression Tester State
+  let showExpressionTester = $state(false);
+  let testContextJson = $state('{\n  "initiator": "user1",\n  "amount": 1000\n}');
+  let testExpression = $state('');
+  let testResult = $state('');
+  let testError = $state('');
+
   // Validation state
   let validationErrors = $state<string[]>([]);
   let validationWarnings = $state<string[]>([]);
@@ -1083,35 +1094,82 @@
     }
   }
 
+  async function checkSyncStatus() {
+    if (!elementProperties.documentType) {
+        isDocTypeSynced = true;
+        return;
+    }
+
+    syncCheckLoading = true;
+    try {
+        const docType = await api.getDocumentType(elementProperties.documentType);
+        if (!docType || !docType.schemaJson) {
+            isDocTypeSynced = true;
+            return;
+        }
+
+        const schema = JSON.parse(docType.schemaJson);
+        const schemaFields = schema.fields || [];
+        const schemaGrids = schema.grids || [];
+
+        let synced = true;
+
+        for (const sf of schemaFields) {
+            const ff = formFields.find(f => f.name === sf.name);
+            if (!ff || ff.type !== sf.type || ff.required !== sf.required) {
+                synced = false;
+                break;
+            }
+        }
+
+        if (synced) {
+            for (const sg of schemaGrids) {
+                const fg = formGrids.find(g => g.name === sg.name);
+                if (!fg || fg.columns.length !== sg.columns.length) {
+                    synced = false;
+                    break;
+                }
+            }
+        }
+
+        isDocTypeSynced = synced;
+    } catch (e) {
+        console.error('Failed to check sync status', e);
+    } finally {
+        syncCheckLoading = false;
+    }
+  }
+
+  $effect(() => {
+      if (showPropertiesPanel && selectedElement && elementProperties.documentType) {
+          checkSyncStatus();
+      }
+  });
+
   async function handleSyncDocumentType() {
     if (!modeler || !selectedElement || !elementProperties.documentType) return;
 
     const docTypeKey = elementProperties.documentType;
     try {
-      // Re-fetch to get latest version
       const latestDocType = await api.getDocumentType(docTypeKey);
       if (!latestDocType || !latestDocType.schemaJson) return;
 
       const schema = JSON.parse(latestDocType.schemaJson);
 
-      // Sync Fields
       if (schema.fields && Array.isArray(schema.fields)) {
         const newFields = schema.fields.map((schemaField: any, index: number) => {
-          // Try to find existing field by name
           const existingField = formFields.find((f) => f.name === schemaField.name);
 
           if (existingField) {
-            // Merge: Update properties but preserve layout
             return {
               ...schemaField,
-              id: existingField.id, // Keep ID
+              id: existingField.id,
               gridColumn: existingField.gridColumn,
               gridRow: existingField.gridRow,
               gridWidth: existingField.gridWidth,
               cssClass: existingField.cssClass || schemaField.cssClass || ''
             };
           } else {
-            // Add new field
             return {
               id: schemaField.id || `field_${Date.now()}_${index}`,
               name: schemaField.name || '',
@@ -1140,23 +1198,11 @@
           }
         });
 
-        // Append fields that are not in schema but exist in formFields?
-        // Decision: "Sync" updates from schema. If we want to strictly follow schema,
-        // we should replace. But if we want to "Merge", we keep match.
-        // Let's go with: Result = Updated Matches + New Schema Fields.
-        // Fields in formFields but NOT in schema are preserved?
-        // If I deleted a field in DocType, and I sync, it should probably be deleted in Form.
-        // But what if it was a manual field?
-        // Let's preserve fields that don't match matching names from schema?
-        // Actually, if we want to support "Add extra fields manually", we must preserve them.
-
         const schemaFieldNames = schema.fields.map((f: any) => f.name);
         const preservedManualFields = formFields.filter((f) => !schemaFieldNames.includes(f.name));
 
-        // Final list: merged/new schema fields + preserved manual fields
         formFields = [...newFields, ...preservedManualFields];
 
-        // Save form fields to BPMN
         const fieldsToSave = formFields.map((field, index) => ({
           ...field,
           ...(index === 0 ? { _gridConfig: { columns: formGridColumns, gap: formGridGap } } : {})
@@ -1164,7 +1210,6 @@
 
         updateElementProperty('flowable:formFields', JSON.stringify(fieldsToSave));
 
-        // Update process variables
         formFields.forEach((field) => {
           if (field.name && !processVariables.includes(field.name)) {
             processVariables = [...processVariables, field.name];
@@ -1172,7 +1217,6 @@
         });
       }
 
-      // Sync Grids (similar logic)
       if (schema.grids && Array.isArray(schema.grids)) {
         const newGrids = schema.grids.map((schemaGrid: any, index: number) => {
           const existingGrid = formGrids.find((g) => g.name === schemaGrid.name);
@@ -1213,6 +1257,7 @@
       }
 
       success = 'Synchronized with Document Type definition';
+      isDocTypeSynced = true;
       setTimeout(() => (success = ''), 2000);
     } catch (err) {
       console.error('Error syncing document type:', err);
@@ -1988,6 +2033,43 @@
     showExpressionBuilder = false;
   }
 
+  function handleTestExpression() {
+      if (!testExpression) return;
+
+      try {
+          // Basic JS evaluation for testing
+          let context = {};
+          try {
+              context = JSON.parse(testContextJson);
+          } catch (e) {
+              testError = "Invalid JSON Context";
+              return;
+          }
+
+          let expr = testExpression.trim();
+          if (expr.startsWith('${') && expr.endsWith('}')) {
+              expr = expr.substring(2, expr.length - 1);
+          }
+
+          const varNames = Object.keys(context);
+          const varValues = Object.values(context);
+
+          const executionMock = {
+              getVariable: (name: string) => (context as any)[name],
+              getProcessInstanceId: () => 'mock-instance-id'
+          };
+
+          const func = new Function(...varNames, 'execution', `return ${expr};`);
+          const result = func(...varValues, executionMock);
+
+          testResult = String(result);
+          testError = '';
+      } catch (err: any) {
+          testResult = '';
+          testError = err.message;
+      }
+  }
+
   // BPMN Diagram Validation
   function validateBpmnDiagram(): { valid: boolean; errors: string[]; warnings: string[] } {
     if (!modeler) return { valid: false, errors: ['Modeler not initialized'], warnings: [] };
@@ -1995,6 +2077,9 @@
     const errors: string[] = [];
     const warnings: string[] = [];
     const elementRegistry = modeler.get('elementRegistry');
+
+    // Refresh variables list
+    extractProcessVariables();
 
     let hasStartEvent = false;
     let hasEndEvent = false;
@@ -2194,6 +2279,33 @@
             warnings.push(`Exclusive Gateway "${bo?.name || bo?.id}" has flows without conditions`);
           }
         }
+      }
+
+      // Check for undefined variables in expressions
+      if (bo) {
+          const propsToCheck = ['conditionExpression', 'flowable:assignee', 'flowable:skipExpression', 'flowable:collection', 'flowable:elementVariable'];
+          propsToCheck.forEach(prop => {
+              let val = '';
+              if (prop === 'conditionExpression') {
+                  val = bo.conditionExpression?.body || '';
+              } else {
+                  val = bo.get(prop) || '';
+              }
+
+              if (val) {
+                  // Extract variables pattern: ${varName}
+                  const matches = val.match(/\$\{([a-zA-Z0-9_]+)\}/g);
+                  if (matches) {
+                      matches.forEach((m: string) => {
+                          const varName = m.substring(2, m.length - 1);
+                          // Skip standard/implicit variables
+                          if (!processVariables.includes(varName) && !['initiator', 'execution', 'task', 'authenticatedUserId'].includes(varName)) {
+                              warnings.push(`Element "${bo?.name || bo?.id}": Variable '${varName}' used in ${prop} but not defined in process`);
+                          }
+                      });
+                  }
+              }
+          });
       }
 
       // Check inclusive gateways for conditions (warning, not error)
@@ -2923,22 +3035,28 @@
                         <button
                           onclick={handleSyncDocumentType}
                           disabled={!elementProperties.documentType}
-                          class="p-1 text-gray-500 hover:text-blue-600 disabled:opacity-30 disabled:hover:text-gray-500"
-                          title="Sync with latest definition"
+                          class="p-1 text-gray-500 hover:text-blue-600 disabled:opacity-30 disabled:hover:text-gray-500 {isDocTypeSynced ? '' : 'text-amber-500 hover:text-amber-600 animate-pulse'}"
+                          title={isDocTypeSynced ? "Synced with definition" : "Out of sync! Click to update."}
                         >
-                          <svg
-                            class="w-5 h-5"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path
-                              stroke-linecap="round"
-                              stroke-linejoin="round"
-                              stroke-width="2"
-                              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                            />
-                          </svg>
+                          {#if !isDocTypeSynced}
+                             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                             </svg>
+                          {:else}
+                             <svg
+                                class="w-5 h-5"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path
+                                  stroke-linecap="round"
+                                  stroke-linejoin="round"
+                                  stroke-width="2"
+                                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                                />
+                              </svg>
+                          {/if}
                         </button>
                       </div>
                       <p class="mt-1 text-[10px] text-gray-500">
@@ -2965,6 +3083,15 @@
                       >
                         Configure Form Fields ({formFields.length})
                       </button>
+            <button
+              onclick={() => (showExpressionTester = true)}
+              class="rounded-md bg-teal-100 px-3 py-2 text-sm font-medium text-teal-700 hover:bg-teal-200"
+              title="Test Expressions"
+            >
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+            </button>
 
                       <button
                         onclick={() => (showGridBuilder = true)}
@@ -4983,6 +5110,71 @@ execution.setVariable('total', total)`
             </button>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+{/if}
+
+<!-- Expression Tester Modal -->
+{#if showExpressionTester}
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+    <div class="w-full max-w-2xl rounded-lg bg-white shadow-xl">
+      <div class="border-b border-gray-200 p-4">
+        <div class="flex items-center justify-between">
+          <h3 class="text-lg font-semibold text-gray-900">Expression Tester</h3>
+          <button
+            onclick={() => (showExpressionTester = false)}
+            class="text-gray-400 hover:text-gray-600"
+          >
+            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="p-4 grid gap-4">
+          <div class="grid grid-cols-2 gap-4">
+              <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Test Context (JSON)</label>
+                  <textarea
+                    bind:value={testContextJson}
+                    rows="8"
+                    class="w-full rounded border border-gray-300 p-2 font-mono text-xs focus:border-blue-500 focus:outline-none"
+                  ></textarea>
+              </div>
+              <div class="flex flex-col">
+                  <div class="mb-4">
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Expression to Test</label>
+                      <textarea
+                        bind:value={testExpression}
+                        placeholder="${amount > 500}"
+                        rows="3"
+                        class="w-full rounded border border-gray-300 p-2 font-mono text-sm focus:border-blue-500 focus:outline-none"
+                      ></textarea>
+                  </div>
+
+                  <button
+                    onclick={handleTestExpression}
+                    class="mb-4 w-full rounded bg-teal-600 py-2 text-sm font-medium text-white hover:bg-teal-700"
+                  >
+                    Evaluate
+                  </button>
+
+                  <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Result</label>
+                      <div class="w-full h-24 rounded border border-gray-300 p-2 bg-gray-50 overflow-auto">
+                          {#if testError}
+                             <span class="text-red-600 font-mono text-sm">{testError}</span>
+                          {:else if testResult}
+                             <span class="text-green-700 font-mono text-sm font-bold">{testResult}</span>
+                          {:else}
+                             <span class="text-gray-400 text-xs italic">Result will appear here...</span>
+                          {/if}
+                      </div>
+                  </div>
+              </div>
+          </div>
       </div>
     </div>
   </div>

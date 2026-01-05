@@ -191,6 +191,9 @@ export interface FormFieldValidation {
   message?: string; // General validation message
   customExpression?: string;
   customMessage?: string;
+  // File constraints
+  allowedMimeTypes?: string[];
+  maxFileSize?: number; // in bytes
 }
 
 export interface FormElementLogic {
@@ -219,6 +222,15 @@ export interface FormField {
   tooltip?: string;
   readonly?: boolean;
   hidden?: boolean;
+
+  // Rich Text Editor options
+  richText?: boolean;
+
+  // Signature
+  signature?: boolean;
+
+  // Picker options
+  pickerType?: 'user' | 'group';
 
   // Advanced Logic
   visibilityExpression?: string; // JS expression returning boolean
@@ -274,6 +286,15 @@ export interface FormGrid {
   cssClass?: string;
 
   visibilityExpression?: string;
+
+  // Grid features
+  enablePagination?: boolean;
+  pageSize?: number;
+  enableSorting?: boolean;
+  enableRowActions?: boolean;
+  enableImportExport?: boolean;
+  enableGrouping?: boolean;
+  groupByColumn?: string;
 }
 
 export interface GridConfig {

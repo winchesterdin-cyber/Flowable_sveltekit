@@ -19,6 +19,7 @@
 	let showFieldEditor = $state(false);
 	let showGridEditor = $state(false);
 	let expandedGridIndex = $state<number | null>(null);
+    let selectedFields = $state<Set<string>>(new Set());
 
 	// Field editor state
 	let fieldForm = $state({
@@ -32,6 +33,9 @@
 		tooltip: '',
 		readonly: false,
 		hidden: false,
+        richText: false,
+        signature: false,
+        pickerType: 'user' as 'user' | 'group',
 		hiddenExpression: '',
 		readonlyExpression: '',
 		requiredExpression: '',
@@ -43,7 +47,9 @@
 			min: null as number | null,
 			max: null as number | null,
 			pattern: '',
-			patternMessage: ''
+			patternMessage: '',
+            allowedMimeTypes: [] as string[],
+            maxFileSize: null as number | null
 		},
 		logic: {
 			type: 'None' as 'None' | 'JS' | 'SQL',
@@ -61,7 +67,14 @@
 		description: '',
 		minRows: 0,
 		maxRows: 10,
-		visibilityExpression: ''
+		visibilityExpression: '',
+        enablePagination: false,
+        pageSize: 10,
+        enableSorting: false,
+        enableRowActions: false,
+        enableImportExport: false,
+        enableGrouping: false,
+        groupByColumn: ''
 	});
 
 	// Column editor state
@@ -109,9 +122,11 @@
 		{ value: 'radio', label: 'Radio Buttons' },
 		{ value: 'currency', label: 'Currency' },
 		{ value: 'percentage', label: 'Percentage' },
-		{ value: 'currency', label: 'Currency' },
-		{ value: 'percentage', label: 'Percentage' },
 		{ value: 'file', label: 'File Upload' },
+        { value: 'image', label: 'Image' },
+        { value: 'signature', label: 'Signature' },
+        { value: 'userPicker', label: 'User Picker' },
+        { value: 'groupPicker', label: 'Group Picker' },
 		{ value: 'header', label: 'Section Header' }
 	];
 
@@ -165,18 +180,13 @@
 		return suggestions;
 	}
 
-	function sortableList(node: HTMLElement) {
+	function sortableList(node: HTMLElement, options: { group?: string, onEnd: (evt: any) => void }) {
 		const s = new Sortable(node, {
 			animation: 150,
 			handle: '.drag-handle',
 			ghostClass: 'bg-blue-50',
-			onEnd: (evt) => {
-				if (evt.oldIndex === undefined || evt.newIndex === undefined) return;
-				const newFields = [...library.fields];
-				const [moved] = newFields.splice(evt.oldIndex, 1);
-				newFields.splice(evt.newIndex, 0, moved);
-				onChange({ ...library, fields: newFields });
-			}
+            group: options.group,
+			onEnd: options.onEnd
 		});
 		return {
 			destroy() {
@@ -205,6 +215,9 @@
 			tooltip: '',
 			readonly: false,
 			hidden: false,
+            richText: false,
+            signature: false,
+            pickerType: 'user',
 			hiddenExpression: '',
 			readonlyExpression: '',
 			requiredExpression: '',
@@ -216,7 +229,9 @@
 				min: null,
 				max: null,
 				pattern: '',
-				patternMessage: ''
+				patternMessage: '',
+                allowedMimeTypes: [],
+                maxFileSize: null
 			},
 			logic: {
 				type: 'None',
@@ -231,28 +246,42 @@
 	function _handleEditField(field: FormField) {
 		editingField = field;
 		fieldForm = {
-			id: field.id,
+			id: field.id || '',
 			name: field.name,
 			label: field.label,
 			type: field.type as typeof fieldForm.type,
-			required: field.required,
+			required: field.required || false,
 			placeholder: field.placeholder || '',
 			defaultValue: field.defaultValue || '',
 			tooltip: field.tooltip || '',
-			readonly: field.readonly,
-			hidden: field.hidden,
+			readonly: field.readonly || false,
+			hidden: field.hidden || false,
+            richText: field.richText || false,
+            signature: field.signature || false,
+            pickerType: field.pickerType || 'user',
 			hiddenExpression: field.hiddenExpression || '',
 			readonlyExpression: field.readonlyExpression || '',
 			requiredExpression: field.requiredExpression || '',
 			calculationExpression: field.calculationExpression || '',
 			options: field.options || [],
-			validation: field.validation ? { ...field.validation } : {
+			validation: field.validation ? {
+                minLength: field.validation.minLength || null,
+                maxLength: field.validation.maxLength || null,
+                min: field.validation.min || null,
+                max: field.validation.max || null,
+                pattern: field.validation.pattern || '',
+                patternMessage: field.validation.patternMessage || '',
+                allowedMimeTypes: field.validation.allowedMimeTypes || [],
+                maxFileSize: field.validation.maxFileSize || null
+            } : {
 				minLength: null,
 				maxLength: null,
 				min: null,
 				max: null,
 				pattern: '',
-				patternMessage: ''
+				patternMessage: '',
+                allowedMimeTypes: [],
+                maxFileSize: null
 			},
 			logic: field.logic ? {
 				type: field.logic.type || 'None',
@@ -282,7 +311,9 @@
 				min: fieldForm.validation.min || undefined,
 				max: fieldForm.validation.max || undefined,
 				pattern: fieldForm.validation.pattern || undefined,
-				patternMessage: fieldForm.validation.patternMessage || undefined
+				patternMessage: fieldForm.validation.patternMessage || undefined,
+                allowedMimeTypes: fieldForm.validation.allowedMimeTypes.length ? fieldForm.validation.allowedMimeTypes : undefined,
+                maxFileSize: fieldForm.validation.maxFileSize || undefined
 			},
 			logic: fieldForm.logic.type !== 'None' ? {
 				type: fieldForm.logic.type,
@@ -290,13 +321,16 @@
 				dependencies: fieldForm.logic.dependencies,
 				autoCalculate: fieldForm.logic.autoCalculate
 			} : undefined,
-			options: fieldForm.type === 'select' || fieldForm.type === 'multiselect' || fieldForm.type === 'radio' ? fieldForm.options : null,
+			options: ['select', 'multiselect', 'radio'].includes(fieldForm.type) ? fieldForm.options : null,
 			placeholder: fieldForm.placeholder,
 			defaultValue: fieldForm.defaultValue,
 			defaultExpression: '',
 			tooltip: fieldForm.tooltip,
 			readonly: fieldForm.readonly,
 			hidden: fieldForm.hidden,
+            richText: fieldForm.type === 'textarea' ? fieldForm.richText : undefined,
+            signature: fieldForm.type === 'signature' ? true : undefined,
+            pickerType: ['userPicker', 'groupPicker'].includes(fieldForm.type) ? (fieldForm.type === 'userPicker' ? 'user' : 'group') : undefined,
 			hiddenExpression: fieldForm.hiddenExpression,
 			readonlyExpression: fieldForm.readonlyExpression,
 			requiredExpression: fieldForm.requiredExpression,
@@ -355,7 +389,14 @@
 			description: '',
 			minRows: 0,
 			maxRows: 10,
-			visibilityExpression: ''
+			visibilityExpression: '',
+            enablePagination: false,
+            pageSize: 10,
+            enableSorting: false,
+            enableRowActions: false,
+            enableImportExport: false,
+            enableGrouping: false,
+            groupByColumn: ''
 		};
 		showGridEditor = true;
 	}
@@ -363,13 +404,20 @@
 	function handleEditGrid(grid: FormGrid) {
 		editingGrid = grid;
 		gridForm = {
-			id: grid.id,
+			id: grid.id || '',
 			name: grid.name,
 			label: grid.label,
 			description: grid.description || '',
-			minRows: grid.minRows,
-			maxRows: grid.maxRows,
-			visibilityExpression: grid.visibilityExpression || ''
+			minRows: grid.minRows || 0,
+			maxRows: grid.maxRows || 10,
+			visibilityExpression: grid.visibilityExpression || '',
+            enablePagination: grid.enablePagination || false,
+            pageSize: grid.pageSize || 10,
+            enableSorting: grid.enableSorting || false,
+            enableRowActions: grid.enableRowActions || false,
+            enableImportExport: grid.enableImportExport || false,
+            enableGrouping: grid.enableGrouping || false,
+            groupByColumn: grid.groupByColumn || ''
 		};
 		showGridEditor = true;
 	}
@@ -383,6 +431,13 @@
 			minRows: gridForm.minRows,
 			maxRows: gridForm.maxRows,
 			visibilityExpression: gridForm.visibilityExpression,
+            enablePagination: gridForm.enablePagination,
+            pageSize: gridForm.pageSize,
+            enableSorting: gridForm.enableSorting,
+            enableRowActions: gridForm.enableRowActions,
+            enableImportExport: gridForm.enableImportExport,
+            enableGrouping: gridForm.enableGrouping,
+            groupByColumn: gridForm.groupByColumn,
 			columns: editingGrid?.columns || [],
 			gridColumn: 1,
 			gridRow: library.fields.length + library.grids.length + 1,
@@ -450,13 +505,13 @@
 	function handleEditColumn(gridIndex: number, column: GridColumn) {
 		editingColumn = { gridIndex, column };
 		columnForm = {
-			id: column.id,
+			id: column.id || '',
 			name: column.name,
 			label: column.label,
 			type: column.type as typeof columnForm.type,
-			required: column.required,
+			required: column.required || false,
 			placeholder: column.placeholder || '',
-			options: column.options || [],
+			options: column.options ? column.options.map(o => o.value) : [], // Simplified for this demo
 			hiddenExpression: column.hiddenExpression || '',
 			readonlyExpression: column.readonlyExpression || '',
 			requiredExpression: column.requiredExpression || '',
@@ -494,7 +549,7 @@
 			type: columnForm.type,
 			required: columnForm.required,
 			placeholder: columnForm.placeholder,
-			options: columnForm.type === 'select' ? columnForm.options : null,
+			options: columnForm.type === 'select' ? columnForm.options.map(o => ({ value: o, label: o })) : null,
 			hiddenExpression: columnForm.hiddenExpression,
 			readonlyExpression: columnForm.readonlyExpression,
 			requiredExpression: columnForm.requiredExpression,
@@ -544,6 +599,18 @@
 		});
 	}
 
+    function handleColumnReorder(gridIndex: number, oldIndex: number, newIndex: number) {
+        const grid = library.grids[gridIndex];
+        const newColumns = [...grid.columns];
+        const [moved] = newColumns.splice(oldIndex, 1);
+        newColumns.splice(newIndex, 0, moved);
+
+        onChange({
+            ...library,
+            grids: library.grids.map((g, i) => i === gridIndex ? { ...g, columns: newColumns } : g)
+        });
+    }
+
 	function addFieldOption() {
 		fieldForm.options = [...fieldForm.options, { value: '', label: '' }];
 	}
@@ -559,6 +626,16 @@
 	function removeColumnOption(index: number) {
 		columnForm.options = columnForm.options.filter((_, i) => i !== index);
 	}
+
+    // Toggle field selection for bulk actions
+    function toggleFieldSelection(fieldId: string) {
+        if (selectedFields.has(fieldId)) {
+            selectedFields.delete(fieldId);
+        } else {
+            selectedFields.add(fieldId);
+        }
+        selectedFields = new Set(selectedFields); // Trigger reactivity
+    }
 </script>
 
 <div class="flex flex-col gap-6">
@@ -586,12 +663,19 @@
 
   {#if activeTab === 'fields'}
     <div class="flex justify-between items-center mb-4">
-      <button
-        onclick={loadDemoData}
-        class="text-sm text-gray-600 hover:text-blue-600 underline"
-      >
-        Load Demo Layout
-      </button>
+      <div class="flex gap-2">
+           <button
+            onclick={loadDemoData}
+            class="text-sm text-gray-600 hover:text-blue-600 underline"
+            >
+            Load Demo Layout
+            </button>
+            {#if selectedFields.size > 0}
+                 <span class="text-sm text-gray-600 border-l border-gray-300 pl-2 ml-2">
+                    {selectedFields.size} selected
+                 </span>
+            {/if}
+      </div>
       <button
         onclick={handleAddField}
         class="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
@@ -613,11 +697,22 @@
       </div>
     {:else}
       <div class="overflow-hidden rounded-md border border-gray-200 bg-white">
-        <ul class="divide-y divide-gray-200" use:sortableList>
+        <ul class="divide-y divide-gray-200" use:sortableList={{
+             onEnd: (evt) => {
+				if (evt.oldIndex === undefined || evt.newIndex === undefined) return;
+				const newFields = [...library.fields];
+				const [moved] = newFields.splice(evt.oldIndex, 1);
+				newFields.splice(evt.newIndex, 0, moved);
+				onChange({ ...library, fields: newFields });
+			}
+        }}>
           {#each library.fields as field (field.id)}
             <li class="flex items-center justify-between p-4 hover:bg-gray-50 group">
               <div class="drag-handle mr-3 cursor-move text-gray-400 hover:text-gray-600">
                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16"></path></svg>
+              </div>
+              <div class="mr-2">
+                 <input type="checkbox" checked={selectedFields.has(field.id || '')} onchange={() => toggleFieldSelection(field.id || '')} class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
               </div>
               <div class="min-w-0 flex-1">
                 <div class="flex items-center gap-2">
@@ -645,27 +740,7 @@
               </div>
               <div class="ml-4 flex gap-2">
                 <button
-                  onclick={() => {
-                    editingField = field;
-                    fieldForm = {
-                      ...field,
-                      validation: field.validation || {
-                        minLength: null,
-                        maxLength: null,
-                        min: null,
-                        max: null,
-                        pattern: '',
-                        patternMessage: ''
-                      },
-                      logic: field.logic || {
-                        type: 'None',
-                        content: '',
-                        dependencies: [],
-                        autoCalculate: false
-                      }
-                    };
-                    showFieldEditor = true;
-                  }}
+                  onclick={() => _handleEditField(field)}
                   class="text-gray-400 hover:text-blue-600"
                 >
                   Edit
@@ -680,7 +755,7 @@
                 <button
                   onclick={() => {
                     if (confirm('Delete this field?')) {
-                      handleDeleteField(field.id);
+                      handleDeleteField(field.id || '');
                     }
                   }}
                   class="text-gray-400 hover:text-red-600"
@@ -733,7 +808,7 @@
                 <button
                   onclick={() => {
                     if (confirm('Delete this grid?')) {
-                      handleDeleteGrid(grid.id);
+                      handleDeleteGrid(grid.id || '');
                     }
                   }}
                   class="text-sm text-red-600 hover:text-red-800"
@@ -764,36 +839,37 @@
                 {#if grid.columns.length === 0}
                   <p class="text-sm text-gray-500 italic">No columns defined.</p>
                 {:else}
-                  <table class="min-w-full divide-y divide-gray-200">
-                    <thead>
-                      <tr>
-                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase"
-                          >Label</th
-                        >
-                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase"
-                          >Type</th
-                        >
-                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase"
-                          >Logic</th
-                        >
-                        <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase"
-                          >Actions</th
-                        >
-                      </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-200">
-                      {#each grid.columns as col}
-                        <tr>
-                          <td class="px-3 py-2 text-sm text-gray-900">{col.label}</td>
-                          <td class="px-3 py-2 text-sm text-gray-500">{col.type}</td>
-                          <td class="px-3 py-2 text-sm text-gray-500">
+                  <div class="min-w-full divide-y divide-gray-200">
+                    <div class="flex bg-gray-50 font-medium text-xs text-gray-500 uppercase">
+                        <div class="px-3 py-2 w-8"></div>
+                        <div class="px-3 py-2 flex-1">Label</div>
+                        <div class="px-3 py-2 flex-1">Type</div>
+                        <div class="px-3 py-2 flex-1">Logic</div>
+                        <div class="px-3 py-2 w-32 text-right">Actions</div>
+                    </div>
+                    <div use:sortableList={{
+                        group: `grid-${index}-cols`,
+                        onEnd: (evt) => {
+                            if (evt.oldIndex !== undefined && evt.newIndex !== undefined) {
+                                handleColumnReorder(index, evt.oldIndex, evt.newIndex);
+                            }
+                        }
+                    }}>
+                      {#each grid.columns as col (col.id)}
+                        <div class="flex items-center hover:bg-gray-50 border-b border-gray-100 last:border-0">
+                          <div class="drag-handle px-3 py-2 cursor-move text-gray-400 hover:text-gray-600">
+                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16"></path></svg>
+                          </div>
+                          <div class="px-3 py-2 flex-1 text-sm text-gray-900">{col.label}</div>
+                          <div class="px-3 py-2 flex-1 text-sm text-gray-500">{col.type}</div>
+                          <div class="px-3 py-2 flex-1 text-sm text-gray-500">
                             {#if col.logic && col.logic.type !== 'None'}
                               <span class="rounded bg-indigo-50 px-1.5 py-0.5 text-xs text-indigo-700"
                                 >{col.logic.type}</span
                               >
                             {/if}
-                          </td>
-                          <td class="px-3 py-2 text-right text-sm">
+                          </div>
+                          <div class="px-3 py-2 w-32 text-right text-sm">
                             <button
                               onclick={() => handleEditColumn(index, col)}
                               class="text-blue-600 hover:text-blue-800 mr-2"
@@ -803,18 +879,18 @@
                             <button
                               onclick={() => {
                                 if (confirm('Delete this column?')) {
-                                  handleDeleteColumn(index, col.id);
+                                  handleDeleteColumn(index, col.id || '');
                                 }
                               }}
                               class="text-red-600 hover:text-red-800"
                             >
                               Delete
                             </button>
-                          </td>
-                        </tr>
+                          </div>
+                        </div>
                       {/each}
-                    </tbody>
-                  </table>
+                    </div>
+                  </div>
                 {/if}
               </div>
             {/if}
@@ -873,6 +949,23 @@
         />
       </div>
     </div>
+
+    {#if fieldForm.type === 'textarea'}
+         <div class="flex items-center mt-2">
+            <input
+              id="f_richtext"
+              type="checkbox"
+              bind:checked={fieldForm.richText}
+              class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            <label for="f_richtext" class="ml-2 block text-sm text-gray-900">Enable Rich Text Editor</label>
+          </div>
+    {/if}
+
+    {#if fieldForm.type === 'userPicker' || fieldForm.type === 'groupPicker'}
+         <!-- Currently type is set by field type, but we could expose more options here -->
+         <p class="text-xs text-gray-500">Selects {fieldForm.type === 'userPicker' ? 'a user' : 'a group'} from the system.</p>
+    {/if}
 
     <!-- Advanced Behavior (Expressions) -->
     <div class="border rounded-md p-4 bg-purple-50 border-purple-100 mb-4">
@@ -1093,6 +1186,18 @@
             />
           </div>
         {/if}
+
+        {#if fieldForm.type === 'file' || fieldForm.type === 'image'}
+            <div>
+                 <label for="f_max_size" class="block text-xs font-medium text-gray-500">Max File Size (Bytes)</label>
+                 <input
+                  id="f_max_size"
+                  type="number"
+                  bind:value={fieldForm.validation.maxFileSize}
+                  class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                 />
+            </div>
+        {/if}
       </div>
     </div>
 
@@ -1228,9 +1333,9 @@
 	open={showGridEditor}
 	title={editingGrid ? 'Edit Grid' : 'Add Grid'}
 	onClose={() => (showGridEditor = false)}
-	maxWidth="md"
+	maxWidth="lg"
 >
-	<div class="space-y-4">
+	<div class="space-y-4 max-h-[70vh] overflow-y-auto px-1">
 		<div class="grid grid-cols-2 gap-4">
 			<div>
 				<label for="gridLabel" class="block text-sm font-medium text-gray-700 mb-1">Label</label>
@@ -1289,6 +1394,86 @@
 				/>
 			</div>
 		</div>
+
+        <!-- Grid Features -->
+        <div class="border rounded-md p-4 bg-gray-50 border-gray-200">
+             <h4 class="text-sm font-medium text-gray-900 mb-3">Features</h4>
+             <div class="grid grid-cols-2 gap-4">
+                 <div class="flex items-center">
+                    <input
+                      id="g_pagination"
+                      type="checkbox"
+                      bind:checked={gridForm.enablePagination}
+                      class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <label for="g_pagination" class="ml-2 block text-sm text-gray-900">Pagination</label>
+                 </div>
+                 {#if gridForm.enablePagination}
+                    <div>
+                        <label for="g_pageSize" class="block text-xs font-medium text-gray-500">Page Size</label>
+                        <input
+                            id="g_pageSize"
+                            type="number"
+                            bind:value={gridForm.pageSize}
+                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                        />
+                    </div>
+                 {/if}
+                 <div class="flex items-center">
+                    <input
+                      id="g_sorting"
+                      type="checkbox"
+                      bind:checked={gridForm.enableSorting}
+                      class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <label for="g_sorting" class="ml-2 block text-sm text-gray-900">Sorting</label>
+                 </div>
+                 <div class="flex items-center">
+                    <input
+                      id="g_actions"
+                      type="checkbox"
+                      bind:checked={gridForm.enableRowActions}
+                      class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <label for="g_actions" class="ml-2 block text-sm text-gray-900">Row Actions</label>
+                 </div>
+                 <div class="flex items-center">
+                    <input
+                      id="g_import"
+                      type="checkbox"
+                      bind:checked={gridForm.enableImportExport}
+                      class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <label for="g_import" class="ml-2 block text-sm text-gray-900">Import/Export</label>
+                 </div>
+                 <div class="flex items-center">
+                    <input
+                      id="g_grouping"
+                      type="checkbox"
+                      bind:checked={gridForm.enableGrouping}
+                      class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <label for="g_grouping" class="ml-2 block text-sm text-gray-900">Grouping</label>
+                 </div>
+                 {#if gridForm.enableGrouping}
+                    <div>
+                        <label for="g_groupBy" class="block text-xs font-medium text-gray-500">Group By Column (Name)</label>
+                         <select
+                            id="g_groupBy"
+                            bind:value={gridForm.groupByColumn}
+                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                        >
+                            <option value="">-- Select Column --</option>
+                            {#if editingGrid}
+                                {#each editingGrid.columns as col}
+                                    <option value={col.name}>{col.label}</option>
+                                {/each}
+                            {/if}
+                        </select>
+                    </div>
+                 {/if}
+             </div>
+        </div>
 
 		<!-- Advanced Behavior -->
 		<div class="border rounded-md p-4 bg-purple-50 border-purple-100 mt-4">
