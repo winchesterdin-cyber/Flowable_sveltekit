@@ -165,6 +165,22 @@
         return result === true;
     }
 
+    // Evaluate Grid Visibility
+    function evaluateGridVisibility(grid: FormGrid): boolean {
+        if (!grid.visibilityExpression) return true;
+
+        const result = safeEvaluate(grid.visibilityExpression, {
+            value: null,
+            form: formValues,
+            grids: gridsContext,
+            process: processVariables,
+            task: task,
+            user: userContext
+        });
+
+        return result === true;
+    }
+
 	// Create evaluation context that updates when form values change
 	function createEvaluationContext(): EvaluationContext {
 		return {
@@ -264,17 +280,23 @@
 
 	// Helper to get computed grid state (with fallback to static properties)
 	function getGridState(grid: FormGrid): ComputedGridState {
-		const computed = computedGridStates[grid.name];
-		if (computed) {
-			return computed;
-		}
-		// Fallback: grid is visible and inherits form readonly
-		return {
-			isHidden: false, // TODO: Grid visibility expression
+		let state = computedGridStates[grid.name] || {
+			isHidden: false,
 			isReadonly: readonly,
 			columnStates: {},
 			appliedRules: []
 		};
+
+        // Apply visibility expression
+        if (grid.visibilityExpression) {
+            const isVisible = evaluateGridVisibility(grid);
+            // If rule didn't hide it, expression can hide it
+            if (!state.appliedRules.some(r => r.includes('hide'))) {
+                state.isHidden = !isVisible;
+            }
+        }
+
+        return state;
 	}
 
 	// Initialize form values from props and defaults - only once

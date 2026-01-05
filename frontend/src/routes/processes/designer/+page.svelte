@@ -151,11 +151,16 @@
           pattern?: string;
           patternMessage?: string;
         };
+        hiddenExpression?: string;
+        readonlyExpression?: string;
+        requiredExpression?: string;
+        calculationExpression?: string;
       }>;
       gridColumn: number;
       gridRow: number;
       gridWidth: number;
       cssClass: string;
+      visibilityExpression?: string;
     }>
   >([]);
 
@@ -204,6 +209,7 @@
       hiddenExpression: string;
       readonlyExpression: string;
       requiredExpression: string;
+      calculationExpression: string;
       gridColumn: number;
       gridRow: number;
       gridWidth: number;
@@ -851,6 +857,7 @@
           hiddenExpression: field.hiddenExpression || '',
           readonlyExpression: field.readonlyExpression || '',
           requiredExpression: field.requiredExpression || '',
+          calculationExpression: field.calculationExpression || '',
           gridColumn: field.gridColumn || 1,
           gridRow: field.gridRow || index + 1,
           gridWidth: field.gridWidth || 1,
@@ -896,13 +903,18 @@
                 min: col.min,
                 max: col.max,
                 step: col.step,
-                validation: col.validation || {}
+                validation: col.validation || {},
+                hiddenExpression: col.hiddenExpression || '',
+                readonlyExpression: col.readonlyExpression || '',
+                requiredExpression: col.requiredExpression || '',
+                calculationExpression: col.calculationExpression || ''
               }))
             : [],
           gridColumn: grid.gridColumn || 1,
           gridRow: grid.gridRow || index + 1,
           gridWidth: grid.gridWidth || formGridColumns,
-          cssClass: grid.cssClass || ''
+          cssClass: grid.cssClass || '',
+          visibilityExpression: grid.visibilityExpression || ''
         }));
       } else {
         formGrids = [];
@@ -990,6 +1002,7 @@
           hiddenExpression: field.hiddenExpression || '',
           readonlyExpression: field.readonlyExpression || '',
           requiredExpression: field.requiredExpression || '',
+          calculationExpression: field.calculationExpression || '',
           gridColumn: field.gridColumn || 1,
           gridRow: field.gridRow || index + 1,
           gridWidth: field.gridWidth || 1,
@@ -1035,13 +1048,18 @@
                 min: col.min,
                 max: col.max,
                 step: col.step,
-                validation: col.validation || {}
+                validation: col.validation || {},
+                hiddenExpression: col.hiddenExpression || '',
+                readonlyExpression: col.readonlyExpression || '',
+                requiredExpression: col.requiredExpression || '',
+                calculationExpression: col.calculationExpression || ''
               }))
             : [],
           gridColumn: grid.gridColumn || 1,
           gridRow: grid.gridRow || index + 1,
           gridWidth: grid.gridWidth || formGridColumns,
-          cssClass: grid.cssClass || ''
+          cssClass: grid.cssClass || '',
+          visibilityExpression: grid.visibilityExpression || ''
         }));
 
         // Save form grids to BPMN
@@ -1111,6 +1129,7 @@
               hiddenExpression: schemaField.hiddenExpression || '',
               readonlyExpression: schemaField.readonlyExpression || '',
               requiredExpression: schemaField.requiredExpression || '',
+              calculationExpression: schemaField.calculationExpression || '',
               gridColumn: schemaField.gridColumn || 1,
               gridRow: schemaField.gridRow || index + 1,
               gridWidth: schemaField.gridWidth || 1,
@@ -1179,7 +1198,8 @@
               gridColumn: schemaGrid.gridColumn || 1,
               gridRow: schemaGrid.gridRow || index + 1,
               gridWidth: schemaGrid.gridWidth || formGridColumns,
-              cssClass: schemaGrid.cssClass || ''
+              cssClass: schemaGrid.cssClass || '',
+              visibilityExpression: schemaGrid.visibilityExpression || ''
             };
           }
         });
@@ -1495,6 +1515,7 @@
       hiddenExpression: '',
       readonlyExpression: '',
       requiredExpression: '',
+      calculationExpression: '',
       gridColumn: 1,
       gridRow: formFields.length + 1,
       gridWidth: 1,
@@ -1558,7 +1579,8 @@
       gridColumn: 1,
       gridRow: formGrids.length + formFields.length + 1,
       gridWidth: formGridColumns,
-      cssClass: ''
+      cssClass: '',
+      visibilityExpression: ''
     };
     formGrids = [...formGrids, newGrid];
     expandedGridIndex = formGrids.length - 1;
@@ -1604,7 +1626,11 @@
       required: false,
       placeholder: '',
       options: [],
-      validation: {}
+      validation: {},
+      hiddenExpression: '',
+      readonlyExpression: '',
+      requiredExpression: '',
+      calculationExpression: ''
     };
     grid.columns = [...grid.columns, newColumn];
     formGrids = [...formGrids];
@@ -3756,6 +3782,16 @@
                       </div>
                     </div>
 
+                    <div class="mt-3">
+                      <label class="mb-1 block text-xs font-medium text-gray-700">Visibility Expression</label>
+                      <input
+                        type="text"
+                        bind:value={grid.visibilityExpression}
+                        placeholder={'${showGrid == true}'}
+                        class="w-full rounded border border-gray-300 px-2 py-1.5 text-sm font-mono focus:border-emerald-500 focus:outline-none"
+                      />
+                    </div>
+
                     <!-- Grid Layout -->
                     <div class="mt-4">
                       <label class="mb-2 block text-xs font-medium text-gray-700">Grid Layout</label
@@ -3931,6 +3967,26 @@
                             type="text"
                             bind:value={field.readonlyExpression}
                             placeholder={"${status == 'approved'}"}
+                            class="w-full rounded border border-gray-300 px-2 py-1 text-sm font-mono"
+                          />
+                        </div>
+                      </div>
+                      <div class="mt-2 grid gap-4 md:grid-cols-2">
+                        <div>
+                          <label class="mb-1 block text-xs text-gray-600">Required Expression</label>
+                          <input
+                            type="text"
+                            bind:value={field.requiredExpression}
+                            placeholder={'${amount > 1000}'}
+                            class="w-full rounded border border-gray-300 px-2 py-1 text-sm font-mono"
+                          />
+                        </div>
+                        <div>
+                          <label class="mb-1 block text-xs text-gray-600">Calculation Expression</label>
+                          <input
+                            type="text"
+                            bind:value={field.calculationExpression}
+                            placeholder={'${price * quantity}'}
                             class="w-full rounded border border-gray-300 px-2 py-1 text-sm font-mono"
                           />
                         </div>
@@ -4655,6 +4711,48 @@
                                       placeholder="^[A-Za-z]+$"
                                       class="w-full rounded border border-gray-300 px-2 py-1 text-xs"
                                     />
+                                  </div>
+
+                                  <div class="md:col-span-4 mt-2 pt-2 border-t border-gray-100">
+                                    <h6 class="text-xs font-medium text-gray-700 mb-2">Dynamic Behavior</h6>
+                                    <div class="grid gap-3 md:grid-cols-2">
+                                      <div>
+                                        <label class="mb-1 block text-xs text-gray-600">Hidden Expr.</label>
+                                        <input
+                                          type="text"
+                                          bind:value={column.hiddenExpression}
+                                          placeholder={'${hideCol}'}
+                                          class="w-full rounded border border-gray-300 px-2 py-1 text-xs font-mono"
+                                        />
+                                      </div>
+                                      <div>
+                                        <label class="mb-1 block text-xs text-gray-600">Readonly Expr.</label>
+                                        <input
+                                          type="text"
+                                          bind:value={column.readonlyExpression}
+                                          placeholder={'${readonly}'}
+                                          class="w-full rounded border border-gray-300 px-2 py-1 text-xs font-mono"
+                                        />
+                                      </div>
+                                      <div>
+                                        <label class="mb-1 block text-xs text-gray-600">Required Expr.</label>
+                                        <input
+                                          type="text"
+                                          bind:value={column.requiredExpression}
+                                          placeholder={'${required}'}
+                                          class="w-full rounded border border-gray-300 px-2 py-1 text-xs font-mono"
+                                        />
+                                      </div>
+                                      <div>
+                                        <label class="mb-1 block text-xs text-gray-600">Calculation Expr.</label>
+                                        <input
+                                          type="text"
+                                          bind:value={column.calculationExpression}
+                                          placeholder={'${row.price * row.qty}'}
+                                          class="w-full rounded border border-gray-300 px-2 py-1 text-xs font-mono"
+                                        />
+                                      </div>
+                                    </div>
                                   </div>
                                 </div>
                               {/if}

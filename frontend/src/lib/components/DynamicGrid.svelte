@@ -92,6 +92,39 @@
         }
     }
 
+    if (column.hiddenExpression) {
+        const isHidden = safeEvaluate(column.hiddenExpression, {
+            value: null,
+            row: {},
+            form: formValues,
+            grids: gridsContext,
+            process: processVariables,
+            task: task,
+            user: userContext
+        });
+
+        if (isHidden === true) {
+            state = { ...state, isHidden: true };
+        }
+    }
+
+    if (column.readonlyExpression) {
+        // Evaluate readonly expression
+        const isReadonly = safeEvaluate(column.readonlyExpression, {
+            value: rowData ? rowData[column.name] : null,
+            row: rowData || {},
+            form: formValues,
+            grids: gridsContext,
+            process: processVariables,
+            task: task,
+            user: userContext
+        });
+
+        if (isReadonly === true) {
+            state = { ...state, isReadonly: true };
+        }
+    }
+
     return state;
   }
 
@@ -295,8 +328,25 @@
   }
 
   function validateColumn(column: GridColumn, value: unknown, row: GridRow): string | null {
-    // Check required
-    if (column.required && (value === undefined || value === null || value === '')) {
+    // Check required (static or dynamic)
+    let isRequired = column.required;
+
+    if (column.requiredExpression) {
+        const requiredResult = safeEvaluate(column.requiredExpression, {
+            value: value,
+            row: row.data,
+            form: formValues,
+            grids: gridsContext,
+            process: processVariables,
+            task: task,
+            user: userContext
+        });
+        if (requiredResult === true) {
+            isRequired = true;
+        }
+    }
+
+    if (isRequired && (value === undefined || value === null || value === '')) {
       return `${column.label} is required`;
     }
 
