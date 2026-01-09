@@ -22,25 +22,16 @@ export const navigationSchema: NavigationItem[] = [
 	{
 		title: 'Processes',
 		href: '/processes',
-		icon: Play,
-		children: [
-			{
-				title: 'Start Process',
-				href: '/processes',
-				icon: Play
-			}
-		]
+		icon: Play
+	},
+	{
+		title: 'Document Types',
+		href: '/document-types',
+		icon: FileText
 	},
 	{
 		title: 'Database',
 		href: '/database',
-		icon: Database,
-		children: [
-			{
-				title: 'Seed',
-				href: '/database/seed',
-				icon: Database
-			}
-		]
+		icon: Database
 	}
 ];

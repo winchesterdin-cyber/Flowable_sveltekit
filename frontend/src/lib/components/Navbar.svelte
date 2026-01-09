@@ -89,34 +89,14 @@
 								<div class="mt-4">
 									<div class="flex flex-col space-y-2">
 										{#each navigationSchema as item}
-											{#if item.children}
-												<div class="px-3">
-													<h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wider">
-														{item.title}
-													</h3>
-													<div class="mt-2 flex flex-col space-y-1">
-														{#each item.children as child}
-															<a
-																href={child.href}
-																class="flex items-center px-3 py-2 text-base font-medium text-gray-700 hover:bg-gray-100 rounded-md"
-																onclick={() => (open = false)}
-															>
-																<svelte:component this={child.icon} class="h-5 w-5 mr-3" />
-																{child.title}
-															</a>
-														{/each}
-													</div>
-												</div>
-											{:else}
-												<a
-													href={item.href}
-													class="flex items-center px-3 py-2 text-base font-medium text-gray-700 hover:bg-gray-100 rounded-md"
-													onclick={() => (open = false)}
-												>
-													<svelte:component this={item.icon} class="h-5 w-5 mr-3" />
-													{item.title}
-												</a>
-											{/if}
+											<a
+												href={item.href}
+												class="flex items-center px-3 py-2 text-base font-medium text-gray-700 hover:bg-gray-100 rounded-md"
+												onclick={() => (open = false)}
+											>
+												<svelte:component this={item.icon} class="h-5 w-5 mr-3" />
+												{item.title}
+											</a>
 										{/each}
 									</div>
 									<div class="mt-6 border-t pt-4">
