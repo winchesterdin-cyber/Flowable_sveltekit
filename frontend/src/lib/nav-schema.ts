@@ -26,7 +26,7 @@ export const navigationSchema: NavigationItem[] = [
 	},
 	{
 		title: 'Document Types',
-		href: '/document-types',
+		href: '/document-definitions',
 		icon: FileText
 	},
 	{
