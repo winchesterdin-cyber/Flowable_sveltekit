@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:flowable="http://flowable.org/bpmn"
+             targetNamespace="http://www.flowable.org/processdef">
+
+  <process id="purchase-request" name="Purchase Request" isExecutable="true">
+    <startEvent id="startEvent" />
+    <sequenceFlow sourceRef="startEvent" targetRef="checkAmount" />
+
+    <exclusiveGateway id="checkAmount" />
+
+    <!-- <= 1000: Auto Approved -->
+    <sequenceFlow sourceRef="checkAmount" targetRef="endEvent">
+      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${amount <= 1000}]]></conditionExpression>
+    </sequenceFlow>
+
+    <!-- > 1000: Supervisor -->
+    <sequenceFlow sourceRef="checkAmount" targetRef="supervisorApproval">
+      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${amount > 1000}]]></conditionExpression>
+    </sequenceFlow>
+
+    <userTask id="supervisorApproval" name="Supervisor Approval" flowable:candidateGroups="SUPERVISOR" />
+    <sequenceFlow sourceRef="supervisorApproval" targetRef="checkAmountSupervisor" />
+
+    <exclusiveGateway id="checkAmountSupervisor" />
+    <sequenceFlow sourceRef="checkAmountSupervisor" targetRef="endEvent">
+         <conditionExpression xsi:type="tFormalExpression"><![CDATA[${amount <= 5000}]]></conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow sourceRef="checkAmountSupervisor" targetRef="managerApproval">
+         <conditionExpression xsi:type="tFormalExpression"><![CDATA[${amount > 5000}]]></conditionExpression>
+    </sequenceFlow>
+
+    <userTask id="managerApproval" name="Manager Approval" flowable:candidateGroups="MANAGER" />
+    <sequenceFlow sourceRef="managerApproval" targetRef="checkAmountManager" />
+
+    <exclusiveGateway id="checkAmountManager" />
+    <sequenceFlow sourceRef="checkAmountManager" targetRef="endEvent">
+         <conditionExpression xsi:type="tFormalExpression"><![CDATA[${amount <= 20000}]]></conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow sourceRef="checkAmountManager" targetRef="directorApproval">
+         <conditionExpression xsi:type="tFormalExpression"><![CDATA[${amount > 20000}]]></conditionExpression>
+    </sequenceFlow>
+
+    <userTask id="directorApproval" name="Director Approval" flowable:candidateGroups="DIRECTOR" />
+    <sequenceFlow sourceRef="directorApproval" targetRef="checkAmountDirector" />
+
+    <exclusiveGateway id="checkAmountDirector" />
+    <sequenceFlow sourceRef="checkAmountDirector" targetRef="endEvent">
+         <conditionExpression xsi:type="tFormalExpression"><![CDATA[${amount <= 50000}]]></conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow sourceRef="checkAmountDirector" targetRef="executiveApproval">
+         <conditionExpression xsi:type="tFormalExpression"><![CDATA[${amount > 50000}]]></conditionExpression>
+    </sequenceFlow>
+
+    <userTask id="executiveApproval" name="Executive Approval" flowable:candidateGroups="EXECUTIVE" />
+    <sequenceFlow sourceRef="executiveApproval" targetRef="endEvent" />
+
+    <endEvent id="endEvent" />
+  </process>
+</definitions>

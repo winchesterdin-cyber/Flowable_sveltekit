@@ -12,11 +12,8 @@ import org.flowable.idm.api.User;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.crypto.password.PasswordEncoder;
 
-import java.util.Arrays;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 @Configuration
@@ -67,6 +64,18 @@ public class RoleSeeder {
         createRole("MANAGER", "Department Manager", 
             "PROCESS_DEF_VIEW", "ANALYTICS_VIEW");
 
+        // SUPERVISOR Role
+        createRole("SUPERVISOR", "Supervisor",
+            "PROCESS_DEF_VIEW");
+
+        // DIRECTOR Role
+        createRole("DIRECTOR", "Director",
+            "PROCESS_DEF_VIEW", "ANALYTICS_VIEW");
+
+        // EXECUTIVE Role
+        createRole("EXECUTIVE", "Executive",
+            "PROCESS_DEF_VIEW", "ANALYTICS_VIEW");
+
         // USER Role
         createRole("USER", "Standard User", 
             "PROCESS_DEF_VIEW");
@@ -99,18 +108,21 @@ public class RoleSeeder {
     }
 
     private void seedUsers() {
-        if (identityService.createUserQuery().count() == 0) {
-            log.info("Seeding Initial Users...");
+        log.info("Seeding Initial Users...");
 
-            // Admin User
-            createUser("admin", "Admin", "User", "admin", "ADMIN", "USER", "MANAGER");
-            
-            // Manager
-            createUser("manager", "Manager", "One", "manager", "MANAGER", "USER");
-            
-            // Standard User
-            createUser("user", "Standard", "User", "user", "USER");
-        }
+        // Admin User
+        createUser("admin", "Admin", "User", "admin", "ADMIN", "USER", "MANAGER", "SUPERVISOR", "DIRECTOR", "EXECUTIVE");
+
+        // Existing Users
+        createUser("manager", "Manager", "One", "manager", "MANAGER", "USER");
+        createUser("user", "Standard", "User", "user", "USER");
+
+        // New Users from README/Requirements
+        createUser("user1", "User", "One", "password", "USER");
+        createUser("supervisor1", "Supervisor", "One", "password", "SUPERVISOR", "USER");
+        createUser("manager1", "Manager", "One", "password", "MANAGER", "USER");
+        createUser("director1", "Director", "One", "password", "DIRECTOR", "USER");
+        createUser("executive1", "Executive", "One", "password", "EXECUTIVE", "USER");
     }
 
     private void createUser(String username, String firstName, String lastName, String password, String... groups) {
