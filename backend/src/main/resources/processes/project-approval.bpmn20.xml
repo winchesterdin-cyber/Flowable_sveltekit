@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:flowable="http://flowable.org/bpmn"
+             targetNamespace="http://www.flowable.org/processdef">
+
+  <process id="project-approval" name="Project Approval" isExecutable="true">
+    <startEvent id="startEvent" />
+    <sequenceFlow sourceRef="startEvent" targetRef="splitGateway" />
+
+    <inclusiveGateway id="splitGateway" />
+
+    <!-- Tech Review: Always -->
+    <sequenceFlow sourceRef="splitGateway" targetRef="techReview">
+       <conditionExpression xsi:type="tFormalExpression"><![CDATA[${true}]]></conditionExpression>
+    </sequenceFlow>
+    <userTask id="techReview" name="Technical Review" flowable:candidateGroups="MANAGER" />
+    <sequenceFlow sourceRef="techReview" targetRef="joinGateway" />
+
+    <!-- Finance Review: Always -->
+    <sequenceFlow sourceRef="splitGateway" targetRef="financeReview">
+       <conditionExpression xsi:type="tFormalExpression"><![CDATA[${true}]]></conditionExpression>
+    </sequenceFlow>
+    <userTask id="financeReview" name="Financial Review" flowable:candidateGroups="MANAGER" />
+    <sequenceFlow sourceRef="financeReview" targetRef="joinGateway" />
+
+    <!-- Legal Review: Conditional -->
+    <sequenceFlow sourceRef="splitGateway" targetRef="legalReview">
+       <conditionExpression xsi:type="tFormalExpression"><![CDATA[${budget > 25000 || projectType == 'legal' || projectType == 'compliance'}]]></conditionExpression>
+    </sequenceFlow>
+    <userTask id="legalReview" name="Legal Review" flowable:candidateGroups="MANAGER" />
+    <sequenceFlow sourceRef="legalReview" targetRef="joinGateway" />
+
+    <inclusiveGateway id="joinGateway" />
+    <sequenceFlow sourceRef="joinGateway" targetRef="checkBudget" />
+
+    <exclusiveGateway id="checkBudget" />
+    <sequenceFlow sourceRef="checkBudget" targetRef="executiveApproval">
+        <conditionExpression xsi:type="tFormalExpression"><![CDATA[${budget > 100000}]]></conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow sourceRef="checkBudget" targetRef="endEvent">
+        <conditionExpression xsi:type="tFormalExpression"><![CDATA[${budget <= 100000}]]></conditionExpression>
+    </sequenceFlow>
+
+    <userTask id="executiveApproval" name="Executive Approval" flowable:candidateGroups="EXECUTIVE" />
+    <sequenceFlow sourceRef="executiveApproval" targetRef="endEvent" />
+
+    <endEvent id="endEvent" />
+
+  </process>
+</definitions>
