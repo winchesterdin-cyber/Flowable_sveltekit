@@ -19,6 +19,12 @@ A production-ready Business Process Management (BPM) demo application featuring:
 3. **Task Assignment** (Simple)
    - Create → Assign/Claim → Complete
 
+### Key Implementation Details
+- **Workflow Service**: Centralized logic for task completion, escalation, and history tracking.
+- **Workflow Constants**: Standardized variable names (e.g., `currentLevel`, `escalationHistory`) are maintained in `WorkflowConstants.java`.
+- **Error Handling**: Custom exceptions (`InvalidOperationException`) map to HTTP 400 Bad Request for better frontend error reporting.
+- **Logging**: Enhanced SLF4J logging includes `ProcessInstanceId` context for easier troubleshooting.
+
 ### 3 User Roles
 | Username | Password | Role | Capabilities |
 |----------|----------|------|--------------|

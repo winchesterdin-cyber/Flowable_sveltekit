@@ -1,8 +1,10 @@
 package com.demo.bpm.service;
 
 import com.demo.bpm.dto.*;
+import com.demo.bpm.exception.InvalidOperationException;
 import com.demo.bpm.exception.ResourceNotFoundException;
 import com.demo.bpm.util.EscalationUtils;
+import com.demo.bpm.util.WorkflowConstants;
 import com.demo.bpm.util.WorkflowVariableUtils;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -27,117 +29,85 @@ public class WorkflowService {
 
     @Transactional
     public EscalationDTO escalateTask(String taskId, EscalationRequest request, String userId) {
-        Task task = getTaskOrThrow(taskId);
-
-        Map<String, Object> variables = runtimeService.getVariables(task.getProcessInstanceId());
-        String currentLevel = WorkflowVariableUtils.getStringVariable(variables, "currentLevel", "SUPERVISOR");
-
-        String targetLevel = request.getTargetLevel();
-        if (targetLevel == null) {
-            targetLevel = EscalationUtils.getDefaultNextLevel(currentLevel);
-        }
-
-        if (!EscalationUtils.canEscalate(currentLevel, targetLevel)) {
-             throw new RuntimeException("Invalid escalation from " + currentLevel + " to " + targetLevel);
-        }
-
-        // Record escalation in history
-        int escalationCount = WorkflowVariableUtils.getIntVariable(variables, "escalationCount", 0) + 1;
-        List<Map<String, Object>> escalationHistory = WorkflowVariableUtils.getListVariable(variables, "escalationHistory", objectMapper);
-
-        Map<String, Object> escalationRecord = new HashMap<>();
-        escalationRecord.put("id", UUID.randomUUID().toString());
-        escalationRecord.put("taskId", taskId);
-        escalationRecord.put("fromLevel", currentLevel);
-        escalationRecord.put("toLevel", targetLevel);
-        escalationRecord.put("fromUserId", userId);
-        escalationRecord.put("reason", request.getReason());
-        escalationRecord.put("type", "ESCALATE");
-        escalationRecord.put("timestamp", LocalDateTime.now().toString());
-        escalationHistory.add(escalationRecord);
-
-        // Update process variables
-        Map<String, Object> updateVars = new HashMap<>();
-        updateVars.put("currentLevel", targetLevel);
-        updateVars.put("escalationCount", escalationCount);
-        updateVars.put("escalationHistory", WorkflowVariableUtils.serializeList(escalationHistory, objectMapper));
-        updateVars.put("decision", "escalate");
-        updateVars.put("escalationReason", request.getReason());
-        updateVars.put("escalatedBy", userId);
-        updateVars.put("escalatedAt", LocalDateTime.now().toString());
-
-        // Complete current task with escalation decision
-        taskService.complete(taskId, updateVars);
-
-        log.info("Task {} escalated from {} to {} by {}", taskId, currentLevel, targetLevel, userId);
-
-        return EscalationDTO.builder()
-                .id((String) escalationRecord.get("id"))
-                .taskId(taskId)
-                .processInstanceId(task.getProcessInstanceId())
-                .fromUserId(userId)
-                .fromLevel(currentLevel)
-                .toLevel(targetLevel)
-                .reason(request.getReason())
-                .type("ESCALATE")
-                .timestamp(LocalDateTime.now())
-                .build();
+        return processEscalation(taskId, request, userId, true);
     }
 
     @Transactional
     public EscalationDTO deEscalateTask(String taskId, EscalationRequest request, String userId) {
-        Task task = getTaskOrThrow(taskId);
+        return processEscalation(taskId, request, userId, false);
+    }
 
+    private EscalationDTO processEscalation(String taskId, EscalationRequest request, String userId, boolean isEscalation) {
+        Task task = getTaskOrThrow(taskId);
         Map<String, Object> variables = runtimeService.getVariables(task.getProcessInstanceId());
-        String currentLevel = WorkflowVariableUtils.getStringVariable(variables, "currentLevel", "SUPERVISOR");
+        String currentLevel = WorkflowVariableUtils.getStringVariable(variables, WorkflowConstants.VAR_CURRENT_LEVEL, WorkflowConstants.LEVEL_SUPERVISOR);
 
         String targetLevel = request.getTargetLevel();
         if (targetLevel == null) {
-            targetLevel = EscalationUtils.getDefaultPreviousLevel(currentLevel);
+            targetLevel = isEscalation
+                ? EscalationUtils.getDefaultNextLevel(currentLevel)
+                : EscalationUtils.getDefaultPreviousLevel(currentLevel);
         }
 
-        if (!EscalationUtils.canDeEscalate(currentLevel, targetLevel)) {
-            throw new RuntimeException("Invalid de-escalation from " + currentLevel + " to " + targetLevel);
+        boolean valid = isEscalation
+            ? EscalationUtils.canEscalate(currentLevel, targetLevel)
+            : EscalationUtils.canDeEscalate(currentLevel, targetLevel);
+
+        if (!valid) {
+             throw new InvalidOperationException("Invalid " + (isEscalation ? "escalation" : "de-escalation") + " from " + currentLevel + " to " + targetLevel);
         }
 
-        // Record de-escalation in history
-        List<Map<String, Object>> escalationHistory = WorkflowVariableUtils.getListVariable(variables, "escalationHistory", objectMapper);
+        // Record history
+        List<Map<String, Object>> history = WorkflowVariableUtils.getListVariable(variables, WorkflowConstants.VAR_ESCALATION_HISTORY, objectMapper);
 
-        Map<String, Object> deEscalationRecord = new HashMap<>();
-        deEscalationRecord.put("id", UUID.randomUUID().toString());
-        deEscalationRecord.put("taskId", taskId);
-        deEscalationRecord.put("fromLevel", currentLevel);
-        deEscalationRecord.put("toLevel", targetLevel);
-        deEscalationRecord.put("fromUserId", userId);
-        deEscalationRecord.put("reason", request.getReason());
-        deEscalationRecord.put("type", "DE_ESCALATE");
-        deEscalationRecord.put("timestamp", LocalDateTime.now().toString());
-        escalationHistory.add(deEscalationRecord);
+        String type = isEscalation ? WorkflowConstants.TYPE_ESCALATE : WorkflowConstants.TYPE_DE_ESCALATE;
+        String now = LocalDateTime.now().toString();
+        String id = UUID.randomUUID().toString();
+
+        Map<String, Object> record = new HashMap<>();
+        record.put("id", id);
+        record.put("taskId", taskId);
+        record.put("fromLevel", currentLevel);
+        record.put("toLevel", targetLevel);
+        record.put("fromUserId", userId);
+        record.put("reason", request.getReason());
+        record.put("type", type);
+        record.put("timestamp", now);
+        history.add(record);
 
         // Update process variables
         Map<String, Object> updateVars = new HashMap<>();
-        updateVars.put("currentLevel", targetLevel);
-        updateVars.put("escalationHistory", WorkflowVariableUtils.serializeList(escalationHistory, objectMapper));
-        updateVars.put("decision", "de_escalate");
-        updateVars.put("deEscalationReason", request.getReason());
-        updateVars.put("deEscalatedBy", userId);
-        updateVars.put("deEscalatedAt", LocalDateTime.now().toString());
+        updateVars.put(WorkflowConstants.VAR_CURRENT_LEVEL, targetLevel);
+        updateVars.put(WorkflowConstants.VAR_ESCALATION_HISTORY, WorkflowVariableUtils.serializeList(history, objectMapper));
 
-        // Complete current task with de-escalation decision
+        if (isEscalation) {
+            int count = WorkflowVariableUtils.getIntVariable(variables, WorkflowConstants.VAR_ESCALATION_COUNT, 0) + 1;
+            updateVars.put(WorkflowConstants.VAR_ESCALATION_COUNT, count);
+            updateVars.put(WorkflowConstants.VAR_DECISION, "escalate");
+            updateVars.put(WorkflowConstants.VAR_ESCALATION_REASON, request.getReason());
+            updateVars.put(WorkflowConstants.VAR_ESCALATED_BY, userId);
+            updateVars.put(WorkflowConstants.VAR_ESCALATED_AT, now);
+        } else {
+            updateVars.put(WorkflowConstants.VAR_DECISION, "de_escalate");
+            updateVars.put(WorkflowConstants.VAR_DE_ESCALATION_REASON, request.getReason());
+            updateVars.put(WorkflowConstants.VAR_DE_ESCALATED_BY, userId);
+            updateVars.put(WorkflowConstants.VAR_DE_ESCALATED_AT, now);
+        }
+
         taskService.complete(taskId, updateVars);
 
-        log.info("Task {} de-escalated from {} to {} by {}", taskId, currentLevel, targetLevel, userId);
+        log.info("Task {} (ProcessInstance: {}) {} from {} to {} by {}", taskId, task.getProcessInstanceId(), isEscalation ? "escalated" : "de-escalated", currentLevel, targetLevel, userId);
 
         return EscalationDTO.builder()
-                .id((String) deEscalationRecord.get("id"))
+                .id(id)
                 .taskId(taskId)
                 .processInstanceId(task.getProcessInstanceId())
                 .fromUserId(userId)
                 .fromLevel(currentLevel)
                 .toLevel(targetLevel)
                 .reason(request.getReason())
-                .type("DE_ESCALATE")
-                .timestamp(LocalDateTime.now())
+                .type(type)
+                .timestamp(LocalDateTime.parse(now))
                 .build();
     }
 
@@ -145,7 +115,7 @@ public class WorkflowService {
         Task task = getTaskOrThrow(taskId);
 
         Map<String, Object> variables = runtimeService.getVariables(task.getProcessInstanceId());
-        String currentLevel = WorkflowVariableUtils.getStringVariable(variables, "currentLevel", "SUPERVISOR");
+        String currentLevel = WorkflowVariableUtils.getStringVariable(variables, WorkflowConstants.VAR_CURRENT_LEVEL, WorkflowConstants.LEVEL_SUPERVISOR);
 
         return EscalationUtils.getNextLevels(currentLevel);
     }
@@ -154,7 +124,7 @@ public class WorkflowService {
         Task task = getTaskOrThrow(taskId);
 
         Map<String, Object> variables = runtimeService.getVariables(task.getProcessInstanceId());
-        String currentLevel = WorkflowVariableUtils.getStringVariable(variables, "currentLevel", "SUPERVISOR");
+        String currentLevel = WorkflowVariableUtils.getStringVariable(variables, WorkflowConstants.VAR_CURRENT_LEVEL, WorkflowConstants.LEVEL_SUPERVISOR);
 
         return EscalationUtils.getPreviousLevels(currentLevel);
     }
@@ -200,7 +170,7 @@ public class WorkflowService {
         }
         taskService.claim(taskId, toUserId);
 
-        log.info("Task {} handed off from {} to {} - Reason: {}", taskId, fromUserId, toUserId, reason);
+        log.info("Task {} (ProcessInstance: {}) handed off from {} to {} - Reason: {}", taskId, task.getProcessInstanceId(), fromUserId, toUserId, reason);
     }
 
     @Transactional
@@ -239,7 +209,7 @@ public class WorkflowService {
 
         taskService.complete(taskId, updateVars);
 
-        log.info("Approval recorded for task {} by {} - Decision: {}", taskId, userId, decision);
+        log.info("Approval recorded for task {} (ProcessInstance: {}) by {} - Decision: {}", taskId, task.getProcessInstanceId(), userId, decision);
 
         return ApprovalDTO.builder()
                 .id((String) approvalRecord.get("id"))

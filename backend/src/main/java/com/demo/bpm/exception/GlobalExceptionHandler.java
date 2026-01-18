@@ -48,6 +48,13 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.NOT_FOUND, "Not Found", ex.getMessage(), null, request, null);
     }
 
+    @ExceptionHandler(InvalidOperationException.class)
+    public ResponseEntity<ErrorResponseDTO> handleInvalidOperationException(InvalidOperationException ex, WebRequest request) {
+        String traceId = UUID.randomUUID().toString();
+        log.warn("Invalid operation [TraceID: {}]: {}", traceId, ex.getMessage());
+        return buildResponse(HttpStatus.BAD_REQUEST, "Bad Request", ex.getMessage(), null, request, traceId);
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ErrorResponseDTO> handleIllegalArgumentException(IllegalArgumentException ex, WebRequest request) {
         String traceId = UUID.randomUUID().toString();
