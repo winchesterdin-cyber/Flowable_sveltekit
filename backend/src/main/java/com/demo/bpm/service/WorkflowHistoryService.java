@@ -2,6 +2,7 @@ package com.demo.bpm.service;
 
 import com.demo.bpm.dto.*;
 import com.demo.bpm.exception.ResourceNotFoundException;
+import com.demo.bpm.util.WorkflowConstants;
 import com.demo.bpm.util.WorkflowVariableUtils;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -63,7 +64,7 @@ public class WorkflowHistoryService {
                     .processDefinitionId(activeInstance.getProcessDefinitionId())
                     .singleResult();
             processDefName = definition != null ? definition.getName() : null;
-            startUserId = (String) variables.get("startedBy");
+            startUserId = (String) variables.get(WorkflowConstants.VAR_STARTED_BY);
         } else {
             // Check history
             HistoricProcessInstance historicInstance = historyService.createHistoricProcessInstanceQuery()
@@ -129,15 +130,15 @@ public class WorkflowHistoryService {
                 .businessKey(businessKey)
                 .status(status)
                 .initiatorId(startUserId)
-                .initiatorName((String) variables.get("employeeName"))
+                .initiatorName((String) variables.get(WorkflowConstants.VAR_EMPLOYEE_NAME))
                 .startTime(startTime)
                 .endTime(endTime)
                 .durationInMillis(durationInMillis)
                 .currentTaskId(currentTaskId)
                 .currentTaskName(currentTaskName)
                 .currentAssignee(currentAssignee)
-                .currentLevel(WorkflowVariableUtils.getStringVariable(variables, "currentLevel", "SUPERVISOR"))
-                .escalationCount(WorkflowVariableUtils.getIntVariable(variables, "escalationCount", 0))
+                .currentLevel(WorkflowVariableUtils.getStringVariable(variables, WorkflowConstants.VAR_CURRENT_LEVEL, WorkflowConstants.LEVEL_SUPERVISOR))
+                .escalationCount(WorkflowVariableUtils.getIntVariable(variables, WorkflowConstants.VAR_ESCALATION_COUNT, 0))
                 .variables(variables)
                 .taskHistory(taskHistory)
                 .escalationHistory(escalationHistory)
@@ -228,7 +229,7 @@ public class WorkflowHistoryService {
     }
 
     private List<EscalationDTO> getEscalationHistory(Map<String, Object> variables) {
-        return WorkflowVariableUtils.getListVariable(variables, "escalationHistory", objectMapper).stream()
+        return WorkflowVariableUtils.getListVariable(variables, WorkflowConstants.VAR_ESCALATION_HISTORY, objectMapper).stream()
                 .map(map -> EscalationDTO.builder()
                         .id((String) map.get("id"))
                         .taskId((String) map.get("taskId"))
@@ -243,7 +244,7 @@ public class WorkflowHistoryService {
     }
 
     private List<ApprovalDTO> getApprovalHistory(String processInstanceId, Map<String, Object> variables) {
-        return WorkflowVariableUtils.getListVariable(variables, "approvalHistory", objectMapper).stream()
+        return WorkflowVariableUtils.getListVariable(variables, WorkflowConstants.VAR_APPROVAL_HISTORY, objectMapper).stream()
                 .map(map -> ApprovalDTO.builder()
                         .id((String) map.get("id"))
                         .processInstanceId(processInstanceId)
