@@ -3649,8 +3649,9 @@
         {#if showGridConfig}
           <div class="mt-3 flex items-center gap-4 rounded bg-gray-50 p-3">
             <div>
-              <label class="block text-xs font-medium text-gray-700">Grid Columns</label>
+              <label for="form-grid-columns" class="block text-xs font-medium text-gray-700">Grid Columns</label>
               <select
+                id="form-grid-columns"
                 bind:value={formGridColumns}
                 class="mt-1 rounded border border-gray-300 px-2 py-1 text-sm"
               >
@@ -3661,8 +3662,9 @@
               </select>
             </div>
             <div>
-              <label class="block text-xs font-medium text-gray-700">Gap (px)</label>
+              <label for="form-grid-gap" class="block text-xs font-medium text-gray-700">Gap (px)</label>
               <input
+                id="form-grid-gap"
                 type="number"
                 bind:value={formGridGap}
                 min="0"
@@ -3704,8 +3706,17 @@
               <div class="rounded-lg border border-gray-200 bg-white shadow-sm">
                 <!-- Field Header -->
                 <div
-                  class="flex cursor-pointer items-center justify-between rounded-t-lg bg-gray-50 p-3"
+                  role="button"
+                  tabindex="0"
+                  class="flex w-full cursor-pointer items-center justify-between rounded-t-lg bg-gray-50 p-3 text-left"
                   onclick={() => (expandedFieldIndex = expandedFieldIndex === index ? null : index)}
+                  onkeydown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      expandedFieldIndex = expandedFieldIndex === index ? null : index;
+                    }
+                  }}
+                  aria-expanded={expandedFieldIndex === index}
                 >
                   <div class="flex items-center gap-3">
                     <span
