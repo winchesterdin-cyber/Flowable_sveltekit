@@ -13,7 +13,7 @@ The backend provides a RESTful API. All endpoints are prefixed with `/api`.
 ## Users
 
 | Method | Endpoint | Description |
-| hum | hum | hum |
+| :--- | :--- | :--- |
 | GET | `/api/users/{id}` | Get user details by ID. |
 | PUT | `/api/users/profile` | Update current user profile. Body: `UpdateProfileRequest`. |
 
