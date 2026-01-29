@@ -45,6 +45,13 @@
 	const isValid = $derived(!error && touched && showSuccess);
 
 	const fieldId = $derived(`field-${name}`);
+	const errorId = $derived(`${fieldId}-error`);
+	const helpId = $derived(`${fieldId}-help`);
+	
+	// Compute aria-describedby value based on what's visible
+	const ariaDescribedBy = $derived(
+		hasError ? errorId : helpText ? helpId : undefined
+	);
 
 	// Determine border color based on state
 	const borderClass = $derived(
@@ -54,6 +61,9 @@
 				? 'border-green-500 focus-within:ring-green-500'
 				: 'border-gray-300 focus-within:ring-blue-500'
 	);
+
+	// Tooltip visibility state for keyboard users
+	let tooltipVisible = $state(false);
 </script>
 
 <div class="form-field-wrapper {className}" class:opacity-50={disabled}>
@@ -71,14 +81,31 @@
 		</label>
 
 		{#if tooltip}
-			<button
-				type="button"
-				class="text-gray-400 hover:text-gray-600 focus:outline-none"
-				title={tooltip}
-				aria-label="Help for {label}"
-			>
-				<HelpCircle class="w-4 h-4" />
-			</button>
+			<div class="relative">
+				<button
+					type="button"
+					class="text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded-full"
+					aria-label="Help for {label}"
+					aria-expanded={tooltipVisible}
+					aria-describedby="{fieldId}-tooltip"
+					onfocus={() => tooltipVisible = true}
+					onblur={() => tooltipVisible = false}
+					onmouseenter={() => tooltipVisible = true}
+					onmouseleave={() => tooltipVisible = false}
+				>
+					<HelpCircle class="w-4 h-4" />
+				</button>
+				{#if tooltipVisible}
+					<div
+						id="{fieldId}-tooltip"
+						role="tooltip"
+						class="absolute right-0 top-full mt-1 z-10 px-3 py-2 text-sm text-white bg-gray-900 rounded-md shadow-lg max-w-xs whitespace-normal"
+					>
+						{tooltip}
+						<div class="absolute -top-1 right-2 w-2 h-2 bg-gray-900 transform rotate-45"></div>
+					</div>
+				{/if}
+			</div>
 		{/if}
 	</div>
 
@@ -108,17 +135,27 @@
 		{#if hasError}
 			<p
 				class="text-sm text-red-600 flex items-center gap-1"
-				id="{fieldId}-error"
+				id={errorId}
 				role="alert"
+				aria-live="assertive"
 			>
 				{error}
 			</p>
 		{:else if helpText}
-			<p class="text-sm text-gray-500" id="{fieldId}-help">
+			<p class="text-sm text-gray-500" id={helpId}>
 				{helpText}
 			</p>
 		{/if}
 	</div>
+
+	<!-- Expose ARIA attributes for parent components via data attributes -->
+	<div
+		class="hidden"
+		data-field-id={fieldId}
+		data-aria-describedby={ariaDescribedBy}
+		data-aria-invalid={hasError}
+		data-aria-required={required}
+	></div>
 </div>
 
 <style>
