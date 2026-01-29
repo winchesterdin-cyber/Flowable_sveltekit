@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { GridColumn, ComputedFieldState } from '$lib/types';
+  import { createEvaluator } from '$lib/utils/expression-evaluator';
   import * as Table from '$lib/components/ui/table';
   import { Button } from '$lib/components/ui/button';
   import { Input } from '$lib/components/ui/input';
@@ -77,21 +78,86 @@
     enableRowActions = false
   }: Props = $props();
 
-  // Helper to safely evaluate expressions
+  /**
+   * Safe expression evaluation for grid expressions.
+   * Replaces the insecure new Function() approach with sandboxed evaluator.
+   *
+   * @param expression - The expression to evaluate
+   * @param context - Evaluation context with value, row, form, grids, process, task, user
+   * @returns The evaluation result or undefined on error
+   */
   function safeEvaluate(expression: string, context: any): any {
      try {
-         const func = new Function('value', 'row', 'form', 'grids', 'process', 'task', 'user', expression);
-         return func(
-             context.value,
-             context.row,
-             context.form,
-             context.grids,
-             context.process,
-             context.task,
-             context.user
-         );
+         // Remove 'return' statement if present (for backward compatibility)
+         let cleanExpression = expression.trim();
+         if (cleanExpression.startsWith('return ')) {
+             cleanExpression = cleanExpression.substring(7).trim();
+         }
+         // Remove trailing semicolon
+         if (cleanExpression.endsWith(';')) {
+             cleanExpression = cleanExpression.slice(0, -1).trim();
+         }
+
+         // Create evaluator with enhanced context
+         const evaluator = createEvaluator({
+             form: context.form || {},
+             process: {
+                 ...(context.process || {}),
+                 task: context.task
+             },
+             user: context.user || { id: '', username: '', roles: [], groups: [] }
+         });
+
+         // Extend the evaluation context with row, grids, and value
+         const originalResolveVariable = (evaluator as any).resolveVariable;
+         (evaluator as any).resolveVariable = function(path: string) {
+             const parts = path.split('.');
+             
+             // Handle grids context
+             if (parts[0] === 'grids' && context.grids) {
+                 if (parts.length >= 2) {
+                     const gridName = parts[1];
+                     const grid = context.grids[gridName];
+                     if (grid && parts.length === 2) {
+                         return grid;
+                     }
+                     if (grid && parts.length > 2) {
+                         let current: any = grid;
+                         for (let i = 2; i < parts.length; i++) {
+                             if (current === null || current === undefined) return undefined;
+                             current = current[parts[i]];
+                         }
+                         return current;
+                     }
+                 }
+             }
+             
+             // Handle row context
+             if (parts[0] === 'row' && context.row) {
+                 if (parts.length === 1) {
+                     return context.row;
+                 }
+                 // Handle row.fieldName access
+                 let current: any = context.row;
+                 for (let i = 1; i < parts.length; i++) {
+                     if (current === null || current === undefined) return undefined;
+                     current = current[parts[i]];
+                 }
+                 return current;
+             }
+             
+             // Handle 'value' variable (current cell value)
+             if (path === 'value') {
+                 return context.value;
+             }
+             
+             return originalResolveVariable.call(this, path);
+         };
+
+         // Evaluate the expression
+         return evaluator.evaluate(cleanExpression);
      } catch (e) {
-         console.warn('Grid expression evaluation failed:', expression, e);
+         console.warn('[Security] Grid expression evaluation failed (using safe evaluator):', expression, e);
          return undefined;
      }
   }
@@ -402,34 +468,12 @@
             handleCellChange(row, column.name, result, true);
         }
     }
-    // Legacy Logic
+    // Legacy Logic - NOTE: Legacy JS logic with 'db' and 'lib' is deprecated and not supported by safe evaluator
+    // If you need complex logic, use calculationExpression with safe operations instead
     else if (column.logic && column.logic.type !== 'None' && column.logic.content) {
-      try {
-        if (column.logic.type === 'JS') {
-          const func = new Function('value', 'row', 'form', 'grids', 'db', 'lib', column.logic.content);
-
-          const rowData = { ...row.data };
-          const result = await func(
-            row.data[column.name],
-            rowData,
-            formValues,
-            gridsContext,
-            {
-              query: async (sql: string, params: any[]) => {
-                return [];
-              }
-            },
-            {}
-          );
-
-          if (result !== undefined && row.data[column.name] !== result) {
-            handleCellChange(row, column.name, result, true);
-          }
-        }
-      } catch (e) {
-        console.error(`Error executing logic for column ${column.name}:`, e);
-        row.errors[column.name] = `Logic Error: ${e.message}`;
-      }
+      console.warn(`[Deprecated] Legacy JS logic for column ${column.name} is deprecated. Use calculationExpression instead.`);
+      console.warn('[Security] Legacy JS logic cannot be executed safely and has been disabled for security reasons.');
+      row.errors[column.name] = 'Legacy JS logic is deprecated - use calculationExpression instead';
     }
   }
 

@@ -2,6 +2,7 @@
 	import { untrack } from 'svelte';
 	import type { FormField, FormGrid, GridConfig, FieldConditionRule, ComputedFieldState, ComputedGridState } from '$lib/types';
 	import type { UserContext, EvaluationContext } from '$lib/utils/expression-evaluator';
+	import { createEvaluator } from '$lib/utils/expression-evaluator';
 	import { ConditionStateComputer } from '$lib/utils/condition-state-computer';
 	import DynamicGrid from './DynamicGrid.svelte';
     import { Editor } from '@tiptap/core';
@@ -120,20 +121,70 @@
 		dependencyMap = map;
 	});
 
+    /**
+     * Safe expression evaluation using the sandboxed ExpressionEvaluator.
+     * Replaces the insecure new Function() approach.
+     *
+     * @param expression - The expression to evaluate (supports both simple conditions and return statements)
+     * @param context - Evaluation context with value, form, grids, process, task, user
+     * @returns The evaluation result or undefined on error
+     */
     function safeEvaluate(expression: string, context: any): any {
         try {
-            // Function signature: (value, form, grids, process, task, user) => result
-            const func = new Function('value', 'form', 'grids', 'process', 'task', 'user', expression);
-            return func(
-                context.value,
-                context.form,
-                context.grids,
-                context.process,
-                context.task,
-                context.user
-            );
+            // Remove 'return' statement if present (for backward compatibility with old expressions)
+            let cleanExpression = expression.trim();
+            if (cleanExpression.startsWith('return ')) {
+                cleanExpression = cleanExpression.substring(7).trim();
+            }
+            // Remove trailing semicolon
+            if (cleanExpression.endsWith(';')) {
+                cleanExpression = cleanExpression.slice(0, -1).trim();
+            }
+
+            // Create evaluator with enhanced context including grids and task
+            const evaluator = createEvaluator({
+                form: context.form || {},
+                process: {
+                    ...(context.process || {}),
+                    task: context.task
+                },
+                user: context.user || { id: '', username: '', roles: [], groups: [] }
+            });
+
+            // Extend the evaluation context with grids (temporary workaround)
+            // The evaluator doesn't natively support grids context, but we can add it
+            const originalResolveVariable = (evaluator as any).resolveVariable;
+            (evaluator as any).resolveVariable = function(path: string) {
+                const parts = path.split('.');
+                if (parts[0] === 'grids' && context.grids) {
+                    // Handle grids.gridName.property access
+                    if (parts.length >= 2) {
+                        const gridName = parts[1];
+                        const grid = context.grids[gridName];
+                        if (grid && parts.length === 2) {
+                            return grid;
+                        }
+                        if (grid && parts.length > 2) {
+                            let current: any = grid;
+                            for (let i = 2; i < parts.length; i++) {
+                                if (current === null || current === undefined) return undefined;
+                                current = current[parts[i]];
+                            }
+                            return current;
+                        }
+                    }
+                }
+                // Handle 'value' variable (current field value)
+                if (path === 'value') {
+                    return context.value;
+                }
+                return originalResolveVariable.call(this, path);
+            };
+
+            // Evaluate the expression
+            return evaluator.evaluate(cleanExpression);
         } catch (e) {
-            console.warn('Expression evaluation failed:', expression, e);
+            console.warn('[Security] Expression evaluation failed (using safe evaluator):', expression, e);
             return undefined;
         }
     }

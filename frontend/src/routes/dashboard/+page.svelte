@@ -10,7 +10,7 @@
 	import DurationHistogram from '$lib/components/DurationHistogram.svelte';
 	import UserPerformanceWidget from '$lib/components/UserPerformanceWidget.svelte';
 	import BottleneckWidget from '$lib/components/BottleneckWidget.svelte';
-	import Loading from '$lib/components/Loading.svelte';
+	import DashboardSkeleton from '$lib/components/DashboardSkeleton.svelte';
 	import ErrorDisplay from '$lib/components/ErrorDisplay.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import ProcessDetailsModal from '$lib/components/ProcessDetailsModal.svelte';
@@ -158,7 +158,7 @@
 	</div>
 
 	{#if loading}
-		<Loading text="Loading dashboard..." />
+		<DashboardSkeleton />
 	{:else if error}
 		<ErrorDisplay {error} onRetry={() => loadDashboard()} title="Error Loading Dashboard" />
 	{:else if dashboard}
