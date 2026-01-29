@@ -125,8 +125,17 @@ Modal dialog for confirming destructive or important actions.
 | `cancelText` | `string` | `'Cancel'` | Cancel button text |
 | `variant` | `'danger' \| 'warning' \| 'info'` | `'danger'` | Visual style |
 | `loading` | `boolean` | `false` | Shows loading state |
+| `focusConfirm` | `boolean` | `false` | Focus confirm button instead of cancel |
 | `onConfirm` | `() => void \| Promise<void>` | required | Confirm callback |
 | `onCancel` | `() => void` | required | Cancel callback |
+
+**Accessibility:**
+- Focus is automatically moved to the cancel button when opened (safer default)
+- Use `focusConfirm={true}` to focus the confirm button instead
+- Tab key cycles through buttons (tab trapping)
+- Escape key closes the dialog
+- Focus is restored to the previously focused element on close
+- Uses `role="alertdialog"` and `aria-modal="true"`
 
 ---
 
@@ -175,6 +184,12 @@ Wrapper component for form inputs with consistent styling and validation feedbac
 | `class` | `string` | `''` | Additional CSS classes |
 | `children` | `Snippet` | required | Input element(s) |
 
+**Accessibility:**
+- Tooltip is keyboard-accessible (focus/blur on help icon)
+- Error messages use `aria-live="assertive"` for immediate announcement
+- Required fields have screen reader text "(required)"
+- Validation icons have `aria-hidden="true"`
+
 ---
 
 ### FormErrorSummary
@@ -206,6 +221,14 @@ Displays a summary of all form validation errors with links to fields.
 | `dismissable` | `boolean` | `false` | Can be dismissed |
 | `onDismiss` | `() => void` | `undefined` | Dismiss callback |
 | `fieldLabels` | `Record<string, string>` | `{}` | Field name to label map |
+| `autoFocus` | `boolean` | `false` | Auto-focus first error link |
+
+**Accessibility:**
+- Arrow keys (up/down/left/right) navigate between error links
+- Home/End keys jump to first/last error
+- Enter key on an error link scrolls to and focuses the field
+- Uses `role="alert"` and `aria-live="polite"` for screen reader announcements
+- Error count is announced to screen readers
 
 ---
 
