@@ -188,12 +188,12 @@
 {#if showSkeleton}
 	<DashboardSkeleton />
 {:else}
-	<div class="max-w-7xl mx-auto px-4 py-8">
+	<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
 		<!-- Header with refresh indicator -->
-		<div class="mb-8 flex items-center justify-between">
+		<div class="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
 			<div>
-				<h1 class="text-2xl font-bold text-gray-900">Workflow Dashboard</h1>
-				<p class="text-gray-600 mt-1">Centralized view of all past, ongoing, and planned processes</p>
+				<h1 class="text-xl sm:text-2xl font-bold text-gray-900">Workflow Dashboard</h1>
+				<p class="text-sm sm:text-base text-gray-600 mt-1">Centralized view of all past, ongoing, and planned processes</p>
 			</div>
 			{#if isRefreshing}
 				<div class="flex items-center gap-2 text-sm text-gray-500">
@@ -328,22 +328,25 @@
 			</div>
 		</div>
 
-		<!-- Tab Navigation -->
-		<div class="border-b border-gray-200 mb-6">
-			<nav class="flex space-x-8">
-				{#each [{ id: 'all', label: 'All Processes', count: dashboard.activeProcesses.totalElements + dashboard.recentCompleted.totalElements }, { id: 'active', label: 'Active', count: dashboard.activeProcesses.totalElements }, { id: 'completed', label: 'Completed', count: dashboard.recentCompleted.totalElements }, { id: 'my-approvals', label: 'My Pending Approvals', count: dashboard.myPendingApprovals.totalElements }] as tab}
+		<!-- Tab Navigation - Scrollable on mobile -->
+		<div class="border-b border-gray-200 mb-4 sm:mb-6 -mx-4 sm:mx-0 px-4 sm:px-0">
+			<nav class="flex space-x-4 sm:space-x-8 overflow-x-auto pb-px scrollbar-hide" role="tablist" aria-label="Process filters">
+				{#each [{ id: 'all', label: 'All Processes', shortLabel: 'All', count: dashboard.activeProcesses.totalElements + dashboard.recentCompleted.totalElements }, { id: 'active', label: 'Active', shortLabel: 'Active', count: dashboard.activeProcesses.totalElements }, { id: 'completed', label: 'Completed', shortLabel: 'Done', count: dashboard.recentCompleted.totalElements }, { id: 'my-approvals', label: 'My Pending Approvals', shortLabel: 'My Approvals', count: dashboard.myPendingApprovals.totalElements }] as tab}
 					<button
+						role="tab"
+						aria-selected={activeTab === tab.id}
 						onclick={() => {
 							activeTab = tab.id as typeof activeTab;
 						}}
-						class="py-4 px-1 border-b-2 font-medium text-sm transition-colors
+						class="py-3 sm:py-4 px-1 border-b-2 font-medium text-xs sm:text-sm transition-colors whitespace-nowrap flex-shrink-0
 							{activeTab === tab.id
 							? 'border-blue-500 text-blue-600'
 							: 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}"
 					>
-						{tab.label}
+						<span class="hidden sm:inline">{tab.label}</span>
+						<span class="sm:hidden">{tab.shortLabel}</span>
 						<span
-							class="ml-2 py-0.5 px-2 rounded-full text-xs
+							class="ml-1 sm:ml-2 py-0.5 px-1.5 sm:px-2 rounded-full text-xs
 							{activeTab === tab.id
 								? 'bg-blue-100 text-blue-600'
 								: 'bg-gray-100 text-gray-600'}"
@@ -355,31 +358,34 @@
 			</nav>
 		</div>
 
-		<!-- Filter Bar -->
-		<div class="flex gap-4 mb-4">
-			<select
-				bind:value={statusFilter}
-				class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
-			>
-				<option value="">All Statuses</option>
-				<option value="ACTIVE">Active</option>
-				<option value="COMPLETED">Completed</option>
-				<option value="SUSPENDED">Suspended</option>
-			</select>
-			{#if typeFilter}
-				<button
-					onclick={() => {
-						typeFilter = '';
-					}}
-					class="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm flex items-center gap-2"
+		<!-- Filter Bar - Stack on mobile -->
+		<div class="flex flex-col sm:flex-row gap-2 sm:gap-4 mb-4">
+			<div class="flex gap-2 flex-1 min-w-0">
+				<select
+					bind:value={statusFilter}
+					aria-label="Filter by status"
+					class="flex-1 sm:flex-none px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 min-w-0"
 				>
-					Clear Type Filter: {typeFilter}
-					<span class="text-gray-500">×</span>
-				</button>
-			{/if}
+					<option value="">All Statuses</option>
+					<option value="ACTIVE">Active</option>
+					<option value="COMPLETED">Completed</option>
+					<option value="SUSPENDED">Suspended</option>
+				</select>
+				{#if typeFilter}
+					<button
+						onclick={() => {
+							typeFilter = '';
+						}}
+						class="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm flex items-center gap-2 truncate max-w-[150px] sm:max-w-none"
+					>
+						<span class="truncate">Clear: {typeFilter}</span>
+						<span class="text-gray-500 flex-shrink-0">×</span>
+					</button>
+				{/if}
+			</div>
 			<button
 				onclick={() => loadDashboard()}
-				class="ml-auto px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+				class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm w-full sm:w-auto"
 			>
 				Refresh
 			</button>
@@ -511,3 +517,14 @@
 {/if}
 
 <ProcessDetailsModal process={selectedProcess} onClose={closeProcessDetails} />
+
+<style>
+	/* Hide scrollbar for tab navigation on mobile while keeping functionality */
+	.scrollbar-hide {
+		-ms-overflow-style: none;
+		scrollbar-width: none;
+	}
+	.scrollbar-hide::-webkit-scrollbar {
+		display: none;
+	}
+</style>
