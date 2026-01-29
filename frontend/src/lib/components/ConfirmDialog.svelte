@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { AlertTriangle, Trash2, Info, AlertCircle } from '@lucide/svelte';
+	import { AlertTriangle, Trash2, Info } from '@lucide/svelte';
+	import { tick } from 'svelte';
 
 	type DialogVariant = 'danger' | 'warning' | 'info';
 
@@ -11,6 +12,8 @@
 		cancelText?: string;
 		variant?: DialogVariant;
 		loading?: boolean;
+		/** Focus confirm button instead of cancel on open (use carefully) */
+		focusConfirm?: boolean;
 		onConfirm: () => void | Promise<void>;
 		onCancel: () => void;
 	}
@@ -23,9 +26,15 @@
 		cancelText = 'Cancel',
 		variant = 'danger',
 		loading = false,
+		focusConfirm = false,
 		onConfirm,
 		onCancel
 	}: Props = $props();
+
+	let cancelButtonRef: HTMLButtonElement | undefined = $state();
+	let confirmButtonRef: HTMLButtonElement | undefined = $state();
+	let dialogRef: HTMLDivElement | undefined = $state();
+	let previousActiveElement: Element | null = null;
 
 	const variantConfig = {
 		danger: {
@@ -54,6 +63,20 @@
 	const config = $derived(variantConfig[variant]);
 	const IconComponent = $derived(config.icon);
 
+	// Focus management: save previous focus and restore on close
+	$effect(() => {
+		if (open) {
+			previousActiveElement = document.activeElement;
+			tick().then(() => {
+				// Focus cancel button by default (safer option), or confirm if specified
+				const targetButton = focusConfirm ? confirmButtonRef : cancelButtonRef;
+				targetButton?.focus();
+			});
+		} else if (previousActiveElement && previousActiveElement instanceof HTMLElement) {
+			previousActiveElement.focus();
+		}
+	});
+
 	function handleBackdropClick(e: MouseEvent) {
 		if (e.target === e.currentTarget && !loading) {
 			onCancel();
@@ -62,7 +85,26 @@
 
 	function handleKeydown(e: KeyboardEvent) {
 		if (e.key === 'Escape' && !loading) {
+			e.preventDefault();
 			onCancel();
+			return;
+		}
+
+		// Tab trapping within dialog
+		if (e.key === 'Tab' && dialogRef) {
+			const focusableElements = dialogRef.querySelectorAll<HTMLElement>(
+				'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+			);
+			const firstElement = focusableElements[0];
+			const lastElement = focusableElements[focusableElements.length - 1];
+
+			if (e.shiftKey && document.activeElement === firstElement) {
+				e.preventDefault();
+				lastElement?.focus();
+			} else if (!e.shiftKey && document.activeElement === lastElement) {
+				e.preventDefault();
+				firstElement?.focus();
+			}
 		}
 	}
 
@@ -84,6 +126,7 @@
 		tabindex="-1"
 	>
 		<div
+			bind:this={dialogRef}
 			class="bg-white rounded-lg shadow-xl w-full max-w-md transform transition-all animate-slideIn"
 			role="document"
 		>
@@ -117,6 +160,7 @@
 			<!-- Actions -->
 			<div class="bg-gray-50 px-6 py-4 flex justify-end gap-3 rounded-b-lg">
 				<button
+					bind:this={cancelButtonRef}
 					type="button"
 					onclick={onCancel}
 					disabled={loading}
@@ -125,6 +169,7 @@
 					{cancelText}
 				</button>
 				<button
+					bind:this={confirmButtonRef}
 					type="button"
 					onclick={handleConfirm}
 					disabled={loading}
