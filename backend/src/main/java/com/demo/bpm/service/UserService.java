@@ -1,5 +1,6 @@
 package com.demo.bpm.service;
 
+import com.demo.bpm.dto.RegisterRequest;
 import com.demo.bpm.dto.UpdateProfileRequest;
 import com.demo.bpm.dto.UserDTO;
 import com.demo.bpm.exception.ResourceNotFoundException;
@@ -96,5 +97,20 @@ public class UserService {
                 .email(user.getEmail())
                 .roles(roles)
                 .build();
+    }
+
+    public UserDTO registerUser(RegisterRequest request) {
+        if (identityService.createUserQuery().userId(request.getUsername()).count() > 0) {
+            throw new IllegalArgumentException("Username already exists");
+        }
+
+        User user = identityService.newUser(request.getUsername());
+        user.setPassword(request.getPassword());
+        user.setEmail(request.getEmail());
+        user.setFirstName(request.getFirstName());
+        user.setLastName(request.getLastName());
+        identityService.saveUser(user);
+
+        return getUserById(request.getUsername());
     }
 }

@@ -45,7 +45,7 @@ class AuthStore {
   async login(username, password) {
       this.setLoading(true);
       try {
-          const user = await api.login(username, password);
+          const user = await api.login({ username, password });
           this.setUser(user);
           return user;
       } finally {
