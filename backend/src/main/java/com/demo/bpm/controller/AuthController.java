@@ -1,6 +1,7 @@
 package com.demo.bpm.controller;
 
 import com.demo.bpm.dto.LoginRequest;
+import com.demo.bpm.dto.RegisterRequest;
 import com.demo.bpm.dto.UserDTO;
 import com.demo.bpm.service.UserService;
 import jakarta.servlet.http.Cookie;
@@ -24,6 +25,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.*;
 
+import java.net.URI;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -36,6 +38,35 @@ public class AuthController {
 
     private final AuthenticationManager authenticationManager;
     private final UserService userService;
+
+    @PostMapping("/register")
+    public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request, HttpServletRequest httpRequest) {
+        String clientIp = getClientIpAddress(httpRequest);
+        log.info("Registration attempt for user '{}' from IP: {}", request.getUsername(), clientIp);
+
+        try {
+            UserDTO registeredUser = userService.registerUser(request);
+            log.info("User '{}' registered successfully from IP: {}", request.getUsername(), clientIp);
+
+            return ResponseEntity.created(URI.create("/api/users/" + registeredUser.getUsername()))
+                    .body(Map.of(
+                            "message", "User registered successfully",
+                            "user", registeredUser
+                    ));
+        } catch (IllegalArgumentException e) {
+            log.warn("Registration failed for user '{}' from IP {}: {}", request.getUsername(), clientIp, e.getMessage());
+            return ResponseEntity.badRequest().body(buildErrorResponse(
+                    "Registration failed",
+                    e.getMessage()
+            ));
+        } catch (Exception e) {
+            log.error("Unexpected error during registration for user '{}' from IP {}: {}", request.getUsername(), clientIp, e.getMessage(), e);
+            return ResponseEntity.internalServerError().body(buildErrorResponse(
+                    "Registration failed",
+                    "An unexpected error occurred. Please try again later."
+            ));
+        }
+    }
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request, HttpServletRequest httpRequest) {

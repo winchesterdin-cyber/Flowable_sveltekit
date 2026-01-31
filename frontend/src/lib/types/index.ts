@@ -760,6 +760,17 @@ export interface LoginRequest {
 }
 
 /**
+ * Registration request data
+ */
+export interface RegisterRequest {
+    username: string;
+    password: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+}
+
+/**
  * Handoff request to transfer task
  */
 export interface HandoffRequest {

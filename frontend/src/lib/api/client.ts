@@ -5,6 +5,7 @@ import type {
   ProcessDefinition,
   ProcessInstance,
   LoginRequest,
+  RegisterRequest,
   Dashboard,
   WorkflowHistory,
   EscalationRequest,
@@ -408,6 +409,13 @@ export const api = {
     return fetchApi('/api/auth/login', {
       method: 'POST',
       body: JSON.stringify(credentials)
+    });
+  },
+
+  async register(request: RegisterRequest): Promise<{ message: string; user: User }> {
+    return fetchApi('/api/auth/register', {
+      method: 'POST',
+      body: JSON.stringify(request)
     });
   },
 
