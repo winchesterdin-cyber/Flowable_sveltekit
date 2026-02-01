@@ -8,6 +8,7 @@
 	import DynamicForm from '$lib/components/DynamicForm.svelte';
 	import DelegateTaskModal from '$lib/components/DelegateTaskModal.svelte';
     import Comments from '$lib/components/Comments.svelte';
+    import TaskDocuments from '$lib/components/TaskDocuments.svelte';
 	import type { TaskDetails, FormDefinition, TaskFormWithConfig, FormField, FormGrid, GridConfig } from '$lib/types';
 
 	let taskDetails = $state<TaskDetails | null>(null);
@@ -447,8 +448,13 @@
 		{/if}
 
         <!-- Comments Section -->
-        <div class="mb-6">
-            <Comments taskId={task.id} />
+        <div class="mb-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+                <Comments taskId={task.id} />
+            </div>
+            <div>
+                <TaskDocuments taskId={task.id} />
+            </div>
         </div>
 
 		<!-- Action Form -->

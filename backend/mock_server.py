@@ -33,6 +33,18 @@ class BPMBackendHandler(http.server.SimpleHTTPRequestHandler):
                 {"id": "c1", "message": "Can you please clarify the budget?", "authorId": "user2", "timestamp": "2024-02-01T10:00:00Z"},
                 {"id": "c2", "message": "Budget is attached in the documents.", "authorId": "admin", "timestamp": "2024-02-01T10:30:00Z"}
             ]
+        elif parsed_path.path.endswith('/documents'):
+            # Task documents
+            taskId = parsed_path.path.split('/')[-2]
+            if self.command == 'GET':
+                response = [
+                    {"id": "d1", "name": "invoice_feb.pdf", "type": "application/pdf", "size": 102400, "createdBy": "user1", "createdAt": "2024-02-01T09:00:00Z"},
+                    {"id": "d2", "name": "specs_v2.docx", "type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "size": 2048000, "createdBy": "admin", "createdAt": "2024-02-01T11:00:00Z"}
+                ]
+            elif self.command == 'POST':
+                response = {"id": "d_new_" + str(parsed_path.path), "name": "uploaded_file.png", "type": "image/png", "size": 5000, "createdBy": "me", "createdAt": "2024-02-01T12:00:00Z"}
+            elif self.command == 'DELETE':
+                 response = {"message": "Document deleted"}
         elif parsed_path.path.startswith('/api/tasks'):
             response = {
                 "total": 5,

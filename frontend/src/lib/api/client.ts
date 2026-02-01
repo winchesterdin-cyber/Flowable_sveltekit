@@ -528,11 +528,65 @@ export const api = {
   async addTaskComment(taskId: string, message: string): Promise<Comment> {
     return fetchApi(`/api/tasks/${taskId}/comments`, {
       method: 'POST',
+
       body: JSON.stringify({ message })
     });
   },
 
+  /**
+
+     * Fetch documents associated with a task.
+
+     */
+
+  async getTaskDocuments(taskId: string): Promise<DocumentDTO[]> {
+    return fetchApi(`/api/tasks/${taskId}/documents`);
+  },
+
+  /**
+
+     * Upload a document to a task (Mock implementation).
+
+     */
+
+  async uploadTaskDocument(taskId: string, file: File): Promise<DocumentDTO> {
+    // In a real app, this would use FormData
+
+    // const formData = new FormData();
+
+    // formData.append('file', file);
+
+    // return fetchApi(`/api/tasks/${taskId}/documents`, { method: 'POST', body: formData });
+
+    // Mock payload for the mock server
+
+    return fetchApi(`/api/tasks/${taskId}/documents`, {
+      method: 'POST',
+
+      body: JSON.stringify({ name: file.name, type: file.type, size: file.size })
+    });
+  },
+
+  /**
+
+  
+
+       * Delete a document from a task.
+
+  
+
+       */
+
+  async deleteTaskDocument(taskId: string, documentId: string): Promise<void> {
+    // Note: The mock server DELETE route is generic on /documents, but real API would be /documents/{id}
+
+    await fetchApi(`/api/tasks/${taskId}/documents/${documentId}`, {
+      method: 'DELETE'
+    });
+  },
+
   // Processes
+
   async getProcesses(): Promise<ProcessDefinition[]> {
     return fetchApi('/api/processes');
   },

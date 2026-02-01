@@ -355,3 +355,31 @@ A component to display and add comments for a task or process.
 ## Props
 
 - `taskId` (string, required): The ID of the task to associate comments with.
+
+# TaskDocuments Component
+
+A component to manage documents associated with a task.
+
+## Features
+
+- List documents with metadata (name, size, author, date)
+- Upload new documents
+- Delete documents
+- File type icons
+
+## Usage
+
+```svelte
+<script>
+  import TaskDocuments from '$lib/components/TaskDocuments.svelte';
+  
+  let taskId = 'task-123';
+</script>
+
+<TaskDocuments taskId={taskId} />
+```
+
+## Props
+
+- `taskId` (string, required): The ID of the task.
+- `readonly` (boolean, default: false): If true, hides upload/delete actions.
