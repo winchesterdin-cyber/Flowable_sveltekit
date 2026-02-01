@@ -409,3 +409,34 @@ A component to visualize the audit trail/history of a task.
 ## Props
 
 - `taskId` (string, required): The ID of the task.
+
+# TaskProperties Component
+
+A component to view and edit task metadata (Priority, Due Date).
+
+## Features
+
+- View assignee, priority, and due date
+- Edit priority (dropdown) and due date (date picker)
+- Optimistic UI updates
+
+## Usage
+
+```svelte
+<script>
+  import TaskProperties from '$lib/components/TaskProperties.svelte';
+  
+  let task = { ... };
+  
+  function handleUpdate(updatedTask) {
+    task = updatedTask;
+  }
+</script>
+
+<TaskProperties {task} onUpdate={handleUpdate} />
+```
+
+## Props
+
+- `task` (Task, required): The task object.
+- `onUpdate` ((task: Task) => void, required): Callback when task is updated.

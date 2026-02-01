@@ -10,6 +10,7 @@
     import Comments from '$lib/components/Comments.svelte';
     import TaskDocuments from '$lib/components/TaskDocuments.svelte';
     import TaskTimeline from '$lib/components/TaskTimeline.svelte';
+    import TaskProperties from '$lib/components/TaskProperties.svelte';
 	import type { TaskDetails, FormDefinition, TaskFormWithConfig, FormField, FormGrid, GridConfig } from '$lib/types';
 
 	let taskDetails = $state<TaskDetails | null>(null);
@@ -457,8 +458,14 @@
                 <TaskDocuments taskId={task.id} />
             </div>
             
-            <!-- Sidebar: Timeline -->
+            <!-- Sidebar: Timeline & Properties -->
             <div>
+                <TaskProperties 
+                    task={taskDetails.task} 
+                    onUpdate={(updated) => {
+                        if (taskDetails) taskDetails.task = updated;
+                    }}
+                />
                 <TaskTimeline taskId={task.id} />
             </div>
         </div>

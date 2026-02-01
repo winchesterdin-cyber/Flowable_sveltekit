@@ -522,6 +522,13 @@ export const api = {
     });
   },
 
+  async updateTask(taskId: string, data: Partial<Task>): Promise<Task> {
+    return fetchApi(`/api/tasks/${taskId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+  },
+
   async getTaskComments(taskId: string): Promise<Comment[]> {
     return fetchApi(`/api/tasks/${taskId}/comments`);
   },
