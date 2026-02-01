@@ -13,9 +13,9 @@
  */
 
 export interface EvaluationContext {
-  form: Record<string, unknown>;           // Form field values
-  process: Record<string, unknown>;        // Process variables
-  user: UserContext;                       // Current user context
+  form: Record<string, unknown>; // Form field values
+  process: Record<string, unknown>; // Process variables
+  user: UserContext; // Current user context
 }
 
 export interface UserContext {
@@ -87,13 +87,13 @@ export class ExpressionEvaluator {
     // Handle logical OR (lowest precedence)
     const orParts = this.splitByOperator(expr, '||');
     if (orParts.length > 1) {
-      return orParts.some(part => this.toBoolean(this.evaluateExpression(part.trim())));
+      return orParts.some((part) => this.toBoolean(this.evaluateExpression(part.trim())));
     }
 
     // Handle logical AND
     const andParts = this.splitByOperator(expr, '&&');
     if (andParts.length > 1) {
-      return andParts.every(part => this.toBoolean(this.evaluateExpression(part.trim())));
+      return andParts.every((part) => this.toBoolean(this.evaluateExpression(part.trim())));
     }
 
     // Handle NOT operator
@@ -123,7 +123,7 @@ export class ExpressionEvaluator {
       const value = this.evaluateExpression(inMatch[1].trim());
       const arrayStr = inMatch[2];
       const arrayValues = this.parseArrayValues(arrayStr);
-      return arrayValues.some(v => this.looseEquals(value, v));
+      return arrayValues.some((v) => this.looseEquals(value, v));
     }
 
     // Handle contains for checking if array contains value
@@ -132,7 +132,7 @@ export class ExpressionEvaluator {
       const arrayValue = this.resolveValue(containsMatch[1].trim());
       const searchValue = this.evaluateExpression(containsMatch[2].trim());
       if (Array.isArray(arrayValue)) {
-        return arrayValue.some(v => this.looseEquals(v, searchValue));
+        return arrayValue.some((v) => this.looseEquals(v, searchValue));
       }
       return false;
     }
@@ -157,7 +157,7 @@ export class ExpressionEvaluator {
         args = args.slice(1, -1);
       }
       const roles = this.parseArrayValues(args);
-      return roles.some(role => this.context.user.roles.includes(String(role)));
+      return roles.some((role) => this.context.user.roles.includes(String(role)));
     }
 
     const hasAnyGroupMatch = expr.match(/^hasAnyGroup\((.+)\)$/);
@@ -167,7 +167,7 @@ export class ExpressionEvaluator {
         args = args.slice(1, -1);
       }
       const groups = this.parseArrayValues(args);
-      return groups.some(group => this.context.user.groups.includes(String(group)));
+      return groups.some((group) => this.context.user.groups.includes(String(group)));
     }
 
     // Handle isEmpty/isNotEmpty
@@ -184,7 +184,7 @@ export class ExpressionEvaluator {
     }
 
     // Resolve as a value (variable reference or literal)
-    return this.resolveValue(expr);
+    return this.resolveValue(expr) as ExpressionResult;
   }
 
   private evaluateComparison(expr: string): boolean | undefined {
@@ -265,8 +265,10 @@ export class ExpressionEvaluator {
     expr = expr.trim();
 
     // Handle string literals
-    if ((expr.startsWith('"') && expr.endsWith('"')) ||
-        (expr.startsWith("'") && expr.endsWith("'"))) {
+    if (
+      (expr.startsWith('"') && expr.endsWith('"')) ||
+      (expr.startsWith("'") && expr.endsWith("'"))
+    ) {
       return expr.slice(1, -1);
     }
 
@@ -296,7 +298,10 @@ export class ExpressionEvaluator {
       return this.getNestedValue(this.context.process, parts.slice(1));
     }
     if (parts[0] === 'user') {
-      return this.getNestedValue(this.context.user as Record<string, unknown>, parts.slice(1));
+      return this.getNestedValue(
+        this.context.user as unknown as Record<string, unknown>,
+        parts.slice(1)
+      );
     }
 
     // Default: try form first, then process variables
@@ -398,8 +403,7 @@ export class ExpressionEvaluator {
 
   private parseStringLiteral(str: string): string {
     str = str.trim();
-    if ((str.startsWith('"') && str.endsWith('"')) ||
-        (str.startsWith("'") && str.endsWith("'"))) {
+    if ((str.startsWith('"') && str.endsWith('"')) || (str.startsWith("'") && str.endsWith("'"))) {
       return str.slice(1, -1);
     }
     return str;
@@ -440,7 +444,7 @@ export class ExpressionEvaluator {
 
   private parseArithmeticExpression(expr: string): number {
     expr = expr.trim();
-    
+
     // Handle addition/subtraction (lowest precedence)
     let depth = 0;
     for (let i = expr.length - 1; i >= 0; i--) {
@@ -489,7 +493,9 @@ export class ExpressionEvaluator {
    */
   evaluateGridFunction(expr: string, grids: Record<string, GridContext>): unknown {
     // Match: grids.gridName.sum('columnName') or grids.gridName.rows.length
-    const sumMatch = expr.match(/^grids\.([a-zA-Z_][a-zA-Z0-9_]*)\.sum\(['"]([a-zA-Z_][a-zA-Z0-9_]*)['"]\)$/);
+    const sumMatch = expr.match(
+      /^grids\.([a-zA-Z_][a-zA-Z0-9_]*)\.sum\(['"]([a-zA-Z_][a-zA-Z0-9_]*)['"]\)$/
+    );
     if (sumMatch) {
       const gridName = sumMatch[1];
       const columnName = sumMatch[2];
@@ -631,12 +637,12 @@ export class SafeExpressionEvaluator extends ExpressionEvaluator {
       }
 
       const result = this.evaluate(expr);
-      
+
       // If result is a string, it's an error message
       if (typeof result === 'string' && result !== '') {
         return result;
       }
-      
+
       return this.toBool(result);
     } catch (error) {
       console.warn(`SafeExpressionEvaluator: Failed to evaluate validation: ${expression}`, error);
@@ -655,9 +661,9 @@ export class SafeExpressionEvaluator extends ExpressionEvaluator {
   private isArithmeticExpression(expr: string): boolean {
     // Check if expression contains arithmetic operators
     // but is not a comparison or logical expression
-    return /^[0-9a-zA-Z_.\s+\-*/%()]+$/.test(expr) &&
-           !/[=!<>&|]/.test(expr) &&
-           /[+\-*/%]/.test(expr);
+    return (
+      /^[0-9a-zA-Z_.\s+\-*/%()]+$/.test(expr) && !/[=!<>&|]/.test(expr) && /[+\-*/%]/.test(expr)
+    );
   }
 
   /**
@@ -672,7 +678,9 @@ export class SafeExpressionEvaluator extends ExpressionEvaluator {
 /**
  * Create a safe expression evaluator for DynamicForm
  */
-export function createSafeEvaluator(context: Partial<ExtendedEvaluationContext> = {}): SafeExpressionEvaluator {
+export function createSafeEvaluator(
+  context: Partial<ExtendedEvaluationContext> = {}
+): SafeExpressionEvaluator {
   return new SafeExpressionEvaluator({
     form: context.form || {},
     process: context.process || {},

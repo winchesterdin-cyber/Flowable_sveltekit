@@ -7,7 +7,8 @@
 	import Toast from '$lib/components/Toast.svelte';
 	import DynamicForm from '$lib/components/DynamicForm.svelte';
 	import DelegateTaskModal from '$lib/components/DelegateTaskModal.svelte';
-	import type { TaskDetails, FormDefinition, TaskFormWithConfig, FormField, FormGrid, FieldConditionRule, GridConfig } from '$lib/types';
+    import Comments from '$lib/components/Comments.svelte';
+	import type { TaskDetails, FormDefinition, TaskFormWithConfig, FormField, FormGrid, GridConfig } from '$lib/types';
 
 	let taskDetails = $state<TaskDetails | null>(null);
 	let showDelegateModal = $state(false);
@@ -444,6 +445,11 @@
 				</div>
 			</div>
 		{/if}
+
+        <!-- Comments Section -->
+        <div class="mb-6">
+            <Comments taskId={task.id} />
+        </div>
 
 		<!-- Action Form -->
 		<div class="card dark:bg-gray-800 dark:border-gray-700">

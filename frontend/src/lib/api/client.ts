@@ -521,6 +521,17 @@ export const api = {
     });
   },
 
+  async getTaskComments(taskId: string): Promise<Comment[]> {
+    return fetchApi(`/api/tasks/${taskId}/comments`);
+  },
+
+  async addTaskComment(taskId: string, message: string): Promise<Comment> {
+    return fetchApi(`/api/tasks/${taskId}/comments`, {
+      method: 'POST',
+      body: JSON.stringify({ message })
+    });
+  },
+
   // Processes
   async getProcesses(): Promise<ProcessDefinition[]> {
     return fetchApi('/api/processes');
@@ -794,7 +805,9 @@ export const api = {
     const params = new URLSearchParams();
     params.append('page', page.toString());
     params.append('size', size.toString());
-    return fetchApi(`/api/business/processes/${processInstanceId}/document-types?${params.toString()}`);
+    return fetchApi(
+      `/api/business/processes/${processInstanceId}/document-types?${params.toString()}`
+    );
   },
 
   /**

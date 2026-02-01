@@ -13,7 +13,7 @@
 </script>
 
 <!-- @ts-expect-error - HTMLTableCaptionElement props spreading type issue -->
-<caption class={cn('text-muted-foreground mt-4 text-sm', className)} {...restProps}>
+<caption class={cn('text-muted-foreground mt-4 text-sm', className)} {...restProps as any}>
   {#if children}
     {@render children()}
   {/if}

@@ -62,7 +62,7 @@ export class ConditionStateComputer {
   ): ComputedFormState {
     // Combine and sort rules by priority (higher first)
     const allRules = [...globalRules, ...taskRules]
-      .filter(rule => rule.enabled)
+      .filter((rule) => rule.enabled)
       .sort((a, b) => b.priority - a.priority);
 
     const fieldStates: Record<string, ComputedFieldState> = {};
@@ -86,7 +86,7 @@ export class ConditionStateComputer {
    */
   computeFieldState(field: FormField, rules: FieldConditionRule[]): ComputedFieldState {
     // Start with field's static properties
-    let isHidden = field.hidden;
+    let isHidden = !!field.hidden;
     let isReadonly = field.readonly || this.options.formReadonly || false;
     const appliedRules: string[] = [];
 
@@ -117,26 +117,24 @@ export class ConditionStateComputer {
 
       switch (rule.effect) {
         case 'hidden':
-          isHidden = true;  // Once hidden, stays hidden
+          isHidden = true; // Once hidden, stays hidden
           break;
         case 'readonly':
-          isReadonly = true;  // Once readonly, stays readonly
+          isReadonly = true; // Once readonly, stays readonly
           break;
         case 'visible':
           // Only makes visible if not already hidden by another rule
           // This effect is useful for overriding static hidden=true
-          if (!appliedRules.some(id =>
-            rules.find(r => r.id === id && r.effect === 'hidden')
-          )) {
+          if (!appliedRules.some((id) => rules.find((r) => r.id === id && r.effect === 'hidden'))) {
             isHidden = false;
           }
           break;
         case 'editable':
           // Only makes editable if not already readonly by another rule
           // This allows overriding static readonly=true
-          if (!appliedRules.some(id =>
-            rules.find(r => r.id === id && r.effect === 'readonly')
-          )) {
+          if (
+            !appliedRules.some((id) => rules.find((r) => r.id === id && r.effect === 'readonly'))
+          ) {
             isReadonly = !!this.options.formReadonly;
           }
           break;
@@ -173,16 +171,14 @@ export class ConditionStateComputer {
           isReadonly = true;
           break;
         case 'visible':
-          if (!appliedRules.some(id =>
-            rules.find(r => r.id === id && r.effect === 'hidden')
-          )) {
+          if (!appliedRules.some((id) => rules.find((r) => r.id === id && r.effect === 'hidden'))) {
             isHidden = false;
           }
           break;
         case 'editable':
-          if (!appliedRules.some(id =>
-            rules.find(r => r.id === id && r.effect === 'readonly')
-          )) {
+          if (
+            !appliedRules.some((id) => rules.find((r) => r.id === id && r.effect === 'readonly'))
+          ) {
             isReadonly = this.options.formReadonly || false;
           }
           break;
@@ -227,16 +223,14 @@ export class ConditionStateComputer {
           isReadonly = true;
           break;
         case 'visible':
-          if (!appliedRules.some(id =>
-            rules.find(r => r.id === id && r.effect === 'hidden')
-          )) {
+          if (!appliedRules.some((id) => rules.find((r) => r.id === id && r.effect === 'hidden'))) {
             isHidden = false;
           }
           break;
         case 'editable':
-          if (!appliedRules.some(id =>
-            rules.find(r => r.id === id && r.effect === 'readonly')
-          )) {
+          if (
+            !appliedRules.some((id) => rules.find((r) => r.id === id && r.effect === 'readonly'))
+          ) {
             isReadonly = gridReadonly;
           }
           break;
@@ -285,7 +279,7 @@ export class ConditionStateComputer {
     if (target.type === 'all') return true;
     if (target.type === 'grid' && target.gridNames?.includes(gridName)) return true;
     if (target.type === 'column' && target.columnTargets) {
-      const gridTarget = target.columnTargets.find(ct => ct.gridName === gridName);
+      const gridTarget = target.columnTargets.find((ct) => ct.gridName === gridName);
       if (gridTarget && gridTarget.columnNames.includes(columnName)) {
         return true;
       }

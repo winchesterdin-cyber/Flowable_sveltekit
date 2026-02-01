@@ -896,7 +896,7 @@
                 </Table.Row>
             {:else}
                 {@const row = item.row!}
-                <Table.Row class="{selectedRowIds.has(row.id) ? 'bg-blue-50' : ''}">
+                <Table.Row class={selectedRowIds.has(row.id) ? 'bg-blue-50' : ''}>
                 {#if enableMultiSelect}
                     <Table.Cell class="w-10">
                     <input
@@ -911,7 +911,7 @@
                 {#each visibleColumns as column, colIndex}
                     {@const colReadonly = isColumnReadonly(column)}
                     <!-- Add left padding to first column if grouped to simulate indentation -->
-                    <Table.Cell class="{enableGrouping && groupByColumn && colIndex === 0 ? 'pl-8' : ''}">
+                    <Table.Cell class={enableGrouping && groupByColumn && colIndex === 0 ? 'pl-8' : ''}>
                     {#if row.isEditing && !readonly && !colReadonly}
                         <div class="space-y-1">
                         {#if column.type === 'select'}
@@ -929,7 +929,11 @@
                             </Select.Trigger>
                             <Select.Content>
                                 {#each column.options || [] as option}
-                                <Select.Item value={option.value} label={option.label} />
+                                    {#if typeof option === 'string'}
+                                        <Select.Item value={option} label={option} />
+                                    {:else}
+                                        <Select.Item value={option.value} label={option.label} />
+                                    {/if}
                                 {/each}
                             </Select.Content>
                             </Select.Root>

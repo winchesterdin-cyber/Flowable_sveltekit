@@ -328,3 +328,30 @@ A reusable component for visualizing BPMN 2.0 process diagrams using `bpmn-js`.
 - `bpmnXml` (string, required): The BPMN 2.0 XML content.
 - `activeActivityIds` (string[]): List of activity IDs to highlight (e.g., current task).
 - `height` (string, default: '500px'): Height of the diagram container.
+
+# Comments Component
+
+A component to display and add comments for a task or process.
+
+## Features
+
+- Display list of comments with author and timestamp
+- Add new comments
+- Optimistic updates
+- Loading states
+
+## Usage
+
+```svelte
+<script>
+  import Comments from '$lib/components/Comments.svelte';
+  
+  let taskId = 'task-123';
+</script>
+
+<Comments taskId={taskId} />
+```
+
+## Props
+
+- `taskId` (string, required): The ID of the task to associate comments with.

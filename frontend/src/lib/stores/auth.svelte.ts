@@ -24,7 +24,7 @@ class AuthStore {
 
   // Expose the username directly for easier access or map it from user object
   get username() {
-      return this.user?.username || '';
+    return this.user?.username || '';
   }
 
   setUser(user: User | null) {
@@ -42,25 +42,25 @@ class AuthStore {
   }
 
   // Add login method here to fix types
-  async login(username, password) {
-      this.setLoading(true);
-      try {
-          const user = await api.login({ username, password });
-          this.setUser(user);
-          return user;
-      } finally {
-          this.setLoading(false);
-      }
+  async login(username: string, password: string) {
+    this.setLoading(true);
+    try {
+      const response = await api.login({ username, password });
+      this.setUser(response.user);
+      return response.user;
+    } finally {
+      this.setLoading(false);
+    }
   }
 
   // Add logout method here to fix types
   async logout() {
-      this.setLoading(true);
-      try {
-          await api.logout();
-      } finally {
-          this.clear();
-      }
+    this.setLoading(true);
+    try {
+      await api.logout();
+    } finally {
+      this.clear();
+    }
   }
 }
 

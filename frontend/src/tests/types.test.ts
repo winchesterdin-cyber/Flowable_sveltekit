@@ -12,6 +12,7 @@ describe('Type definitions', () => {
   describe('User', () => {
     it('should accept valid user data', () => {
       const user: User = {
+        id: 'user-123',
         username: 'testuser',
         displayName: 'Test User',
         email: 'test@example.com',
@@ -22,15 +23,15 @@ describe('Type definitions', () => {
       expect(user.roles).toContain('ROLE_USER');
     });
 
-    it('should accept null email', () => {
+    it('should accept missing email', () => {
       const user: User = {
+        id: 'user-123',
         username: 'testuser',
         displayName: 'Test User',
-        email: null,
         roles: []
       };
 
-      expect(user.email).toBeNull();
+      expect(user.email).toBeUndefined();
     });
   });
 
@@ -41,6 +42,8 @@ describe('Type definitions', () => {
         name: 'Approve Request',
         description: 'Approve the expense request',
         processInstanceId: 'proc-456',
+        processDefinitionId: 'proc-def-789',
+        taskDefinitionKey: 'approveRequest',
         processDefinitionKey: 'expense-approval',
         processName: 'Expense Approval',
         assignee: 'supervisor1',
@@ -55,29 +58,25 @@ describe('Type definitions', () => {
 
       expect(task.id).toBe('task-123');
       expect(task.priority).toBe(50);
-      expect(task.variables.amount).toBe(500);
+      expect(task.variables?.amount).toBe(500);
     });
 
-    it('should accept null optional fields', () => {
+    it('should accept missing optional fields', () => {
       const task: Task = {
         id: 'task-123',
         name: 'Simple Task',
-        description: null,
         processInstanceId: 'proc-456',
+        processDefinitionId: 'proc-def-789',
+        taskDefinitionKey: 'simpleTask',
         processDefinitionKey: 'simple-process',
         processName: 'Simple Process',
-        assignee: null,
-        owner: null,
         createTime: '2024-01-01T10:00:00Z',
-        dueDate: null,
         priority: 0,
-        formKey: null,
-        variables: {},
-        businessKey: null
+        variables: {}
       };
 
-      expect(task.assignee).toBeNull();
-      expect(task.dueDate).toBeNull();
+      expect(task.assignee).toBeUndefined();
+      expect(task.dueDate).toBeUndefined();
     });
   });
 
@@ -87,18 +86,14 @@ describe('Type definitions', () => {
         task: {
           id: 'task-123',
           name: 'Test Task',
-          description: null,
           processInstanceId: 'proc-456',
+          processDefinitionId: 'proc-def-789',
+          taskDefinitionKey: 'testTask',
           processDefinitionKey: 'test',
           processName: 'Test Process',
-          assignee: null,
-          owner: null,
           createTime: '2024-01-01T10:00:00Z',
-          dueDate: null,
           priority: 50,
-          formKey: null,
-          variables: {},
-          businessKey: null
+          variables: {}
         },
         variables: {
           customVar: 'value'
@@ -106,17 +101,19 @@ describe('Type definitions', () => {
       };
 
       expect(taskDetails.task.id).toBe('task-123');
-      expect(taskDetails.variables.customVar).toBe('value');
+      expect(taskDetails.variables?.customVar).toBe('value');
     });
   });
 
   describe('ProcessDefinition', () => {
     it('should accept valid process definition', () => {
       const processDef: ProcessDefinition = {
+        id: 'proc-def-123',
         key: 'expense-approval',
         name: 'Expense Approval Process',
         description: 'Handles expense approvals',
-        version: 1
+        version: 1,
+        suspended: false
       };
 
       expect(processDef.key).toBe('expense-approval');
@@ -128,6 +125,7 @@ describe('Type definitions', () => {
     it('should accept valid process instance', () => {
       const processInstance: ProcessInstance = {
         id: 'proc-123',
+        processDefinitionId: 'proc-def-123',
         processDefinitionKey: 'expense-approval',
         processDefinitionName: 'Expense Approval',
         businessKey: 'EXP-2024-001',

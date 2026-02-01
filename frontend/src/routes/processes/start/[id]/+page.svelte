@@ -162,9 +162,10 @@
 						<DynamicForm
 							bind:this={dynamicFormRef}
 							fields={formDefinition.fields}
-							grids={formDefinition.grids || []}
-							gridConfig={formDefinition.gridConfig || {}}
-							onValuesChange={handleFormChange}
+							                                                        grids={formDefinition.grids || []}
+							                                                        gridConfig={formDefinition.gridConfig || { columns: 1, gap: 4 }}
+							                                                        onValuesChange={handleFormChange}
+							
 						/>
 					</div>
 				{:else}

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
 	import type { FormField, FormGrid, GridConfig, FieldConditionRule, ComputedFieldState, ComputedGridState } from '$lib/types';
-	import type { UserContext, EvaluationContext, ExtendedEvaluationContext, GridContext } from '$lib/utils/expression-evaluator';
+	import type { UserContext, EvaluationContext, GridContext } from '$lib/utils/expression-evaluator';
 	import { ConditionStateComputer } from '$lib/utils/condition-state-computer';
 	import { createSafeEvaluator, SafeExpressionEvaluator } from '$lib/utils/expression-evaluator';
 	import DynamicGrid from './DynamicGrid.svelte';
@@ -135,21 +135,6 @@
         });
     }
 
-    /**
-     * Safely evaluate an expression without using new Function()
-     * Falls back to the safe expression evaluator
-     */
-    function safeEvaluate(expression: string, context: { value?: unknown }): unknown {
-        const evaluator = createContextEvaluator();
-        
-        // Update with current field value if provided
-        if (context.value !== undefined) {
-            evaluator.updateExtendedContext({ value: context.value });
-        }
-        
-        return evaluator.evaluateCalculation(expression);
-    }
-
  async function executeFieldLogic(field: FormField) {
         // New calculation expression
         if (field.calculationExpression) {
@@ -197,34 +182,9 @@
         // We use it to re-evaluate visibility and calculation for ALL fields that might have expressions.
 
         // 1. Re-evaluate visibility expressions
-        const newComputedStates = { ...computedFieldStates };
-        let stateChanged = false;
-
-        for (const field of fields) {
-            // Priority: 1. Condition Rules (from ConditionStateComputer), 2. visibilityExpression, 3. Static hidden
-            // Currently ConditionStateComputer runs in its own effect and updates `computedFieldStates`.
-            // We need to merge that logic.
-            // Since ConditionStateComputer is derived from rules, let's let it run first (it's in another effect).
-            // But wait, the other effect depends on `formValues` too.
-            // Let's combine them or apply visibilityExpression on top.
-
-            // Actually, `computedFieldStates` is overwritten by the other effect.
-            // So we should probably integrate visibilityExpression logic inside `getFieldState` or update `computedFieldStates` here carefully.
-            // The cleanest way is to respect the ConditionRules as overrides, but use visibilityExpression as base visibility.
-
-            // However, the other effect is:
-            // $effect(() => { ... result = stateComputer.computeFormState(...) ... })
-            // If we write to computedFieldStates here, we might conflict.
-
-            // Let's create a derived state for "expression-based visibility" and merge it.
-        }
+        // (Placeholder for future logic merging)
 
         // 2. Run calculations
-        // We iterate all fields to see if they have calculation expressions that depend on changed values.
-        // Since we don't have a dependency graph for expressions, we should probably run all calculation expressions
-        // whenever formValues change. This is expensive but correct.
-        // To avoid infinite loops, we only update if value is different.
-
         // We put this in a timeout to avoid synchronous loop with `handleFieldChange`
 	});
 
@@ -272,7 +232,7 @@
 
 	// Helper to get computed grid state (with fallback to static properties)
 	function getGridState(grid: FormGrid): ComputedGridState {
-		let state = computedGridStates[grid.name] || {
+		const state = computedGridStates[grid.name] || {
 			isHidden: false,
 			isReadonly: readonly,
 			columnStates: {},
@@ -713,7 +673,11 @@
 							>
 								<option value="">{field.placeholder || 'Select...'}</option>
 								{#each field.options || [] as option}
-									<option value={option.value}>{option.label}</option>
+                                    {#if typeof option === 'string'}
+                                        <option value={option}>{option}</option>
+                                    {:else}
+                                        <option value={option.value}>{option.label}</option>
+                                    {/if}
 								{/each}
 							</select>
 						{:else if field.type === 'multiselect'}
@@ -732,23 +696,29 @@
 								size="4"
 							>
 								{#each field.options || [] as option}
-									<option value={option.value}>{option.label}</option>
+                                    {#if typeof option === 'string'}
+                                        <option value={option}>{option}</option>
+                                    {:else}
+                                        <option value={option.value}>{option.label}</option>
+                                    {/if}
 								{/each}
 							</select>
 						{:else if field.type === 'radio'}
 							<div class="space-y-2">
 								{#each field.options || [] as option}
+                                    {@const optValue = typeof option === 'string' ? option : option.value}
+                                    {@const optLabel = typeof option === 'string' ? option : option.label}
 									<label class="flex items-center space-x-2 cursor-pointer">
 										<input
 											type="radio"
 											name={field.name}
-											value={option.value}
-											checked={value === option.value}
-											onchange={() => handleFieldChange(field.name, option.value)}
+											value={optValue}
+											checked={value === optValue}
+											onchange={() => handleFieldChange(field.name, optValue)}
 											disabled={isReadonly}
 											class="h-4 w-4 border-gray-300 text-blue-600 focus:ring-blue-500"
 										/>
-										<span class="text-sm text-gray-700">{option.label}</span>
+										<span class="text-sm text-gray-700">{optLabel}</span>
 									</label>
 								{/each}
 							</div>

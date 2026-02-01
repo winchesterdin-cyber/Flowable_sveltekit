@@ -1,4 +1,4 @@
-import type { ProcessFieldLibrary, FormField, FormGrid } from '$lib/types';
+import type { ProcessFieldLibrary } from '$lib/types';
 
 /**
  * Generates a complex demo configuration for testing advanced form capabilities
@@ -9,9 +9,11 @@ export const complexDemoLibrary: ProcessFieldLibrary = {
       id: 'requestor_info_header',
       name: 'requestor_info_header',
       label: 'Requestor Information',
-      type: 'header',  // Assuming we implement a header/section type
+      type: 'header', // Assuming we implement a header/section type
+      gridRow: 1,
       gridColumn: 1,
       gridWidth: 2,
+      required: false,
       cssClass: 'text-lg font-bold mt-4 mb-2'
     },
     {
@@ -25,6 +27,7 @@ export const complexDemoLibrary: ProcessFieldLibrary = {
         minLength: 2,
         maxLength: 100
       },
+      gridRow: 2,
       gridColumn: 1,
       gridWidth: 1
     },
@@ -37,8 +40,9 @@ export const complexDemoLibrary: ProcessFieldLibrary = {
       placeholder: 'john@example.com',
       validation: {
         pattern: '^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$',
-        message: 'Invalid email format'
+        patternMessage: 'Invalid email format'
       },
+      gridRow: 2,
       gridColumn: 2,
       gridWidth: 1
     },
@@ -54,6 +58,7 @@ export const complexDemoLibrary: ProcessFieldLibrary = {
         { label: 'Marketing', value: 'mkt' },
         { label: 'HR', value: 'hr' }
       ],
+      gridRow: 3,
       gridColumn: 1,
       gridWidth: 1
     },
@@ -68,6 +73,7 @@ export const complexDemoLibrary: ProcessFieldLibrary = {
         dependencies: ['department'],
         content: "department == 'eng' ? 'Engineering Director' : 'Department Head'"
       },
+      gridRow: 3,
       gridColumn: 2,
       gridWidth: 1
     },
@@ -76,8 +82,10 @@ export const complexDemoLibrary: ProcessFieldLibrary = {
       name: 'project_details_header',
       label: 'Project Details',
       type: 'header',
+      gridRow: 4,
       gridColumn: 1,
       gridWidth: 2,
+      required: false,
       cssClass: 'text-lg font-bold mt-6 mb-2 border-t pt-4'
     },
     {
@@ -90,8 +98,10 @@ export const complexDemoLibrary: ProcessFieldLibrary = {
         { label: 'Client', value: 'client' }
       ],
       defaultValue: 'internal',
+      gridRow: 5,
       gridColumn: 1,
-      gridWidth: 2
+      gridWidth: 2,
+      required: true
     },
     {
       id: 'clientName',
@@ -104,6 +114,7 @@ export const complexDemoLibrary: ProcessFieldLibrary = {
         dependencies: ['projectType'],
         content: "projectType === 'client'"
       },
+      gridRow: 6,
       gridColumn: 1,
       gridWidth: 1
     },
@@ -121,6 +132,7 @@ export const complexDemoLibrary: ProcessFieldLibrary = {
       validation: {
         min: 1000
       },
+      gridRow: 6,
       gridColumn: 2,
       gridWidth: 1
     },
@@ -130,6 +142,7 @@ export const complexDemoLibrary: ProcessFieldLibrary = {
       label: 'Project Description',
       type: 'textarea',
       required: true,
+      gridRow: 7,
       gridColumn: 1,
       gridWidth: 2,
       validation: {
@@ -145,6 +158,9 @@ export const complexDemoLibrary: ProcessFieldLibrary = {
       description: 'Key deliverables and dates',
       minRows: 1,
       maxRows: 10,
+      gridRow: 8,
+      gridColumn: 1,
+      gridWidth: 2,
       columns: [
         {
           id: 'm_name',
@@ -165,6 +181,7 @@ export const complexDemoLibrary: ProcessFieldLibrary = {
           name: 'status',
           label: 'Status',
           type: 'select',
+          required: true,
           options: [
             { label: 'Pending', value: 'pending' },
             { label: 'In Progress', value: 'in_progress' },
