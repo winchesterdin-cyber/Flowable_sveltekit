@@ -440,3 +440,33 @@ A component to view and edit task metadata (Priority, Due Date).
 
 - `task` (Task, required): The task object.
 - `onUpdate` ((task: Task) => void, required): Callback when task is updated.
+
+# TaskFilters Component
+
+A reusable component for filtering and searching tasks.
+
+## Features
+
+- Text search (debounced)
+- Assignee filter
+- Priority filter
+- Clear filters button
+
+## Usage
+
+```svelte
+<script>
+  import TaskFilters from '$lib/components/TaskFilters.svelte';
+  
+  function handleFilterChange(event) {
+    const filters = event.detail;
+    // Load tasks with filters
+  }
+</script>
+
+<TaskFilters on:change={handleFilterChange} />
+```
+
+## Events
+
+- `change`: Dispatched when any filter changes. Payload: `{ text: string, assignee: string, priority: string }`.

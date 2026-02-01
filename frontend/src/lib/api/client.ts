@@ -484,8 +484,40 @@ export const api = {
   },
 
   // Tasks
-  async getTasks(): Promise<Task[]> {
-    return fetchApi('/api/tasks');
+  async getTasks(filters?: {
+    text?: string;
+    assignee?: string;
+    priority?: number;
+  }): Promise<Task[]> {
+    const params = new URLSearchParams();
+    if (filters?.text) params.append('text', filters.text);
+    if (filters?.assignee) params.append('assignee', filters.assignee);
+    if (filters?.priority) params.append('priority', filters.priority.toString());
+
+    // In mock server, it returns { total: 5, content: [...] } but client types says Promise<Task[]>
+    // The previous implementation was: return fetchApi('/api/tasks');
+    // I need to check if the response structure matches Task[] or Page<Task>.
+    // Looking at mock_server.py: response = { "total": 5, "content": [...] }
+    // Looking at client.ts: async getTasks(): Promise<Task[]>
+    // This implies the current client implementation might be broken if it expects array directly but gets object.
+    // Or fetchApi handles it? fetchApi returns `data`.
+    // Let's assume the mock was updated to match Page structure, but `getTasks` signature is `Task[]`.
+    // I should probably fix the return type to Page<Task> or map it.
+    // However, to be safe and consistent with existing code pattern (if it worked before),
+    // I'll check how `getTasks` is consumed.
+    // If I change return type, I might break things.
+    // Let's assume for now I wrap it to return just content if it's a page, or I'll change the return type to Page<Task> and fix consumers.
+    // Actually, `getTasks` consumes `/api/tasks`. The mock returns an object with `content`.
+    // I will return `fetchApi<{ content: Task[] }>('/api/tasks...').then(res => res.content)` to be safe,
+    // OR change the return type.
+    // Given "Do not drop current features", I should fix the potential bug if it exists.
+
+    // Let's try to match existing behavior but with params.
+    const queryString = params.toString() ? `?${params.toString()}` : '';
+    const result = await fetchApi<{ content: Task[] } | Task[]>(`/api/tasks${queryString}`);
+    // Handle both array and page response
+    if (Array.isArray(result)) return result;
+    return (result as any).content || [];
   },
 
   async getAssignedTasks(): Promise<Task[]> {

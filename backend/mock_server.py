@@ -92,16 +92,43 @@ class BPMBackendHandler(http.server.SimpleHTTPRequestHandler):
             # /api/tasks/123 (len 4)
             
             if len(parts) == 3:
-                # List tasks
+                # List tasks with filtering
+                query = parse_qs(parsed_path.query)
+                text = query.get('text', [''])[0].lower()
+                assignee = query.get('assignee', [''])[0]
+                priority = query.get('priority', [''])[0]
+                
+                all_tasks = [
+                    {"id": "1", "name": "Review Purchase Request", "description": "Review and approve purchase request", "assignee": "admin", "status": "completed", "priority": 50, "dueDate": "2024-02-15T00:00:00Z"},
+                    {"id": "2", "name": "Approve Leave Request", "description": "Review leave application", "assignee": None, "status": "pending", "priority": 50},
+                    {"id": "3", "name": "Project Planning", "description": "Create project plan", "assignee": "admin", "status": "in-progress", "priority": 75},
+                    {"id": "4", "name": "Budget Review", "description": "Review department budget", "assignee": None, "status": "pending", "priority": 100},
+                    {"id": "5", "name": "Document Review", "description": "Review submitted documents", "assignee": "admin", "status": "completed", "priority": 25}
+                ]
+                
+                filtered = []
+                for task in all_tasks:
+                    # Text filter (name or description)
+                    if text and text not in task['name'].lower() and text not in (task['description'] or '').lower():
+                        continue
+                        
+                    # Assignee filter
+                    if assignee:
+                        if assignee == 'unassigned':
+                            if task['assignee'] is not None: continue
+                        elif task['assignee'] != assignee:
+                            continue
+                            
+                    # Priority filter (exact or min? Let's do exact for simple mock, or range)
+                    # Simple mock: if priority param is provided, filter by it (exact)
+                    if priority and str(task['priority']) != priority:
+                        continue
+                        
+                    filtered.append(task)
+                
                 response = {
-                    "total": 5,
-                    "content": [
-                        {"id": "1", "name": "Review Purchase Request", "description": "Review and approve purchase request", "assignee": "admin", "status": "completed", "priority": 50, "dueDate": "2024-02-15T00:00:00Z"},
-                        {"id": "2", "name": "Approve Leave Request", "description": "Review leave application", "assignee": None, "status": "pending", "priority": 50},
-                        {"id": "3", "name": "Project Planning", "description": "Create project plan", "assignee": "admin", "status": "in-progress", "priority": 75},
-                        {"id": "4", "name": "Budget Review", "description": "Review department budget", "assignee": None, "status": "pending", "priority": 100},
-                        {"id": "5", "name": "Document Review", "description": "Review submitted documents", "assignee": "admin", "status": "completed", "priority": 25}
-                    ]
+                    "total": len(filtered),
+                    "content": filtered
                 }
             elif len(parts) == 4:
                 taskId = parts[3]
