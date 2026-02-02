@@ -4,7 +4,7 @@
 
     interface Props {
         field: FormField;
-        value: unknown;
+        value: string | null;
         isReadonly: boolean;
         error?: string;
         onchange: (value: string | null) => void;
