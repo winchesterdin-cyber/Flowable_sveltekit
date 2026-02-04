@@ -181,3 +181,18 @@ Users can cancel their own active process instances if they are no longer needed
 3. Click the **Cancel** button in the **Actions** column.
 4. Confirm the cancellation in the popup dialog.
 5. The process instance will be deleted and removed from the list of active processes.
+
+## Feature: Process Suspension and Activation
+
+Users can suspend an active process instance to temporarily pause its execution. Suspended instances can be reactivated later to resume normal operations. This is useful when a process needs to be put on hold pending external information or investigation.
+
+### Usage
+1. Navigate to the **Process Instances** page (My Processes) or open the **Process Details** modal.
+2. **Suspend**:
+   - Locate the active process instance.
+   - Click the **Suspend** button.
+   - The status will change to `SUSPENDED`, and no tasks can be completed for this process.
+3. **Activate**:
+   - Locate the suspended process instance.
+   - Click the **Activate** button.
+   - The status will return to `ACTIVE`, and tasks can be worked on again.

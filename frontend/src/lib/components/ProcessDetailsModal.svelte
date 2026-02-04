@@ -105,6 +105,28 @@
 		window.print();
 	}
 
+	async function handleSuspend() {
+		if (!process) return;
+		try {
+			await api.suspendProcessInstance(process.processInstanceId);
+			toast.success('Process instance suspended');
+			onClose();
+		} catch (e: any) {
+			toast.error('Failed to suspend process: ' + e.message);
+		}
+	}
+
+	async function handleActivate() {
+		if (!process) return;
+		try {
+			await api.activateProcessInstance(process.processInstanceId);
+			toast.success('Process instance activated');
+			onClose();
+		} catch (e: any) {
+			toast.error('Failed to activate process: ' + e.message);
+		}
+	}
+
 	function getStatusClass(status: string | undefined): string {
 		if (!status) return 'bg-gray-100 text-gray-800 hover:bg-gray-200';
 		switch (status) {
@@ -157,6 +179,22 @@
 					>
 						<Printer class="w-4 h-4" /> Print
 					</button>
+
+					{#if process.status === 'ACTIVE'}
+						<button
+							class="text-sm text-yellow-600 hover:text-yellow-800 font-medium flex items-center gap-1"
+							onclick={handleSuspend}
+						>
+							⏸️ Suspend
+						</button>
+					{:else if process.status === 'SUSPENDED'}
+						<button
+							class="text-sm text-green-600 hover:text-green-800 font-medium flex items-center gap-1"
+							onclick={handleActivate}
+						>
+							▶️ Activate
+						</button>
+					{/if}
 				</div>
 
 				<div class="bg-gray-100 p-1 rounded-lg inline-flex">

@@ -33,6 +33,28 @@
 			console.error(error);
 		}
 	}
+
+	async function handleSuspend(id: string) {
+		try {
+			await api.suspendProcessInstance(id);
+			toast.success('Process instance suspended.');
+			await loadProcesses();
+		} catch (error: any) {
+			toast.error('Failed to suspend process instance: ' + (error?.message || 'Unknown error'));
+			console.error(error);
+		}
+	}
+
+	async function handleActivate(id: string) {
+		try {
+			await api.activateProcessInstance(id);
+			toast.success('Process instance activated.');
+			await loadProcesses();
+		} catch (error: any) {
+			toast.error('Failed to activate process instance: ' + (error?.message || 'Unknown error'));
+			console.error(error);
+		}
+	}
 </script>
 
 <svelte:head>
@@ -61,9 +83,26 @@
 							<TableCell>{instance.id}</TableCell>
 							<TableCell>{instance.processDefinitionId}</TableCell>
 							<TableCell>{new Date(instance.startTime).toLocaleString()}</TableCell>
-							<TableCell>{instance.ended ? 'Ended' : 'Active'}</TableCell>
+							<TableCell>
+								{#if instance.ended}
+									Ended
+								{:else if instance.suspended}
+									Suspended
+								{:else}
+									Active
+								{/if}
+							</TableCell>
 							<TableCell>
 								{#if !instance.ended}
+									{#if instance.suspended}
+										<Button variant="outline" size="sm" onclick={() => handleActivate(instance.id)} class="mr-2">
+											Activate
+										</Button>
+									{:else}
+										<Button variant="outline" size="sm" onclick={() => handleSuspend(instance.id)} class="mr-2">
+											Suspend
+										</Button>
+									{/if}
 									<Button variant="destructive" size="sm" onclick={() => handleCancel(instance.id)}>
 										Cancel
 									</Button>

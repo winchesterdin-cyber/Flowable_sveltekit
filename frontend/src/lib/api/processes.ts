@@ -106,6 +106,26 @@ export const processesApi = {
   },
 
   /**
+   * Suspend a process instance.
+   * @param processInstanceId - The ID of the process instance.
+   * @returns A promise that resolves to a success message.
+   */
+  async suspendProcessInstance(processInstanceId: string): Promise<{ message: string }> {
+    console.log('[processesApi] suspendProcessInstance called with id:', processInstanceId);
+    return fetchApi(`/api/processes/instance/${processInstanceId}/suspend`, { method: 'PUT' });
+  },
+
+  /**
+   * Activate a process instance.
+   * @param processInstanceId - The ID of the process instance.
+   * @returns A promise that resolves to a success message.
+   */
+  async activateProcessInstance(processInstanceId: string): Promise<{ message: string }> {
+    console.log('[processesApi] activateProcessInstance called with id:', processInstanceId);
+    return fetchApi(`/api/processes/instance/${processInstanceId}/activate`, { method: 'PUT' });
+  },
+
+  /**
    * Fetch processes initiated by the current user.
    * @param page - Page number (default 0).
    * @param size - Page size (default 10).

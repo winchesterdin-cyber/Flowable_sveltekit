@@ -54,7 +54,7 @@ public class WorkflowHistoryService {
 
         if (activeInstance != null) {
             variables = runtimeService.getVariables(processInstanceId);
-            status = "ACTIVE";
+            status = activeInstance.isSuspended() ? "SUSPENDED" : "ACTIVE";
             startTime = activeInstance.getStartTime().toInstant()
                     .atZone(ZoneId.systemDefault())
                     .toLocalDateTime();

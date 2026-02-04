@@ -136,7 +136,8 @@ public class ProcessService {
                     instance.getStartTime(),
                     (String) variables.get("_startedBy"),
                     variables,
-                    false
+                    false,
+                    instance.isSuspended()
             );
         }
 
@@ -157,13 +158,14 @@ public class ProcessService {
                 historicInstance.getStartTime(),
                 historicInstance.getStartUserId(),
                 null, // Variables usually not needed or expensive to fetch for history here, unless specifically requested
-                historicInstance.getEndTime() != null
+                historicInstance.getEndTime() != null,
+                false
         );
     }
 
     private ProcessInstanceDTO buildProcessInstanceDTO(String id, String definitionId, String definitionKey,
                                                        String definitionName, String businessKey, java.util.Date startTime,
-                                                       String startUserId, Map<String, Object> variables, boolean ended) {
+                                                       String startUserId, Map<String, Object> variables, boolean ended, boolean suspended) {
         return ProcessInstanceDTO.builder()
                 .id(id)
                 .processDefinitionId(definitionId)
@@ -174,6 +176,7 @@ public class ProcessService {
                 .startUserId(startUserId)
                 .variables(variables)
                 .ended(ended)
+                .suspended(suspended)
                 .build();
     }
 
@@ -343,5 +346,61 @@ public class ProcessService {
 
         runtimeService.deleteProcessInstance(processInstanceId, reason != null ? reason : "Cancelled by user");
         log.info("Process instance {} cancelled by user {} (Admin: {}). Reason: {}", processInstanceId, userId, isAdmin, reason);
+    }
+
+    /**
+     * Suspend a process instance.
+     * @param processInstanceId The ID of the process instance to suspend.
+     * @param userId The ID of the user requesting the suspension.
+     * @param isAdmin Whether the user is an admin.
+     * @throws ResourceNotFoundException If the process instance is not found.
+     * @throws InvalidOperationException If the user is not authorized.
+     */
+    @Transactional
+    public void suspendProcessInstance(String processInstanceId, String userId, boolean isAdmin) {
+        ProcessInstance instance = runtimeService.createProcessInstanceQuery()
+                .processInstanceId(processInstanceId)
+                .singleResult();
+
+        if (instance == null) {
+            throw new ResourceNotFoundException("Active process instance not found: " + processInstanceId);
+        }
+
+        String startedBy = (String) runtimeService.getVariable(processInstanceId, "_startedBy");
+
+        if (!isAdmin && (startedBy == null || !startedBy.equals(userId))) {
+            throw new InvalidOperationException("You are not authorized to suspend this process instance.");
+        }
+
+        runtimeService.suspendProcessInstanceById(processInstanceId);
+        log.info("Process instance {} suspended by user {} (Admin: {})", processInstanceId, userId, isAdmin);
+    }
+
+    /**
+     * Activate a suspended process instance.
+     * @param processInstanceId The ID of the process instance to activate.
+     * @param userId The ID of the user requesting the activation.
+     * @param isAdmin Whether the user is an admin.
+     * @throws ResourceNotFoundException If the process instance is not found.
+     * @throws InvalidOperationException If the user is not authorized.
+     */
+    @Transactional
+    public void activateProcessInstance(String processInstanceId, String userId, boolean isAdmin) {
+        ProcessInstance instance = runtimeService.createProcessInstanceQuery()
+                .processInstanceId(processInstanceId)
+                .singleResult();
+
+        if (instance == null) {
+            throw new ResourceNotFoundException("Active process instance not found: " + processInstanceId);
+        }
+
+        String startedBy = (String) runtimeService.getVariable(processInstanceId, "_startedBy");
+
+        if (!isAdmin && (startedBy == null || !startedBy.equals(userId))) {
+            throw new InvalidOperationException("You are not authorized to activate this process instance.");
+        }
+
+        runtimeService.activateProcessInstanceById(processInstanceId);
+        log.info("Process instance {} activated by user {} (Admin: {})", processInstanceId, userId, isAdmin);
     }
 }

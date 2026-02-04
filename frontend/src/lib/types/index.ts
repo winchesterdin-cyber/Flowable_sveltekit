@@ -81,6 +81,7 @@ export interface ProcessInstance {
   endTime?: string;
   startUserId?: string;
   ended: boolean;
+  suspended: boolean;
   variables?: ProcessVariables;
 }
 

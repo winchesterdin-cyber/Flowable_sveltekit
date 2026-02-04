@@ -132,7 +132,8 @@ describe('Type definitions', () => {
         startTime: '2024-01-01T10:00:00Z',
         startUserId: 'user1',
         variables: { amount: 1000 },
-        ended: false
+        ended: false,
+        suspended: false
       };
 
       expect(processInstance.id).toBe('proc-123');
