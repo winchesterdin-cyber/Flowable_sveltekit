@@ -127,4 +127,48 @@ class ProcessServiceTest {
         );
         verify(runtimeService, never()).deleteProcessInstance(anyString(), anyString());
     }
+
+    @Test
+    void suspendProcessInstance_Success() {
+        // Setup
+        String processInstanceId = "proc1";
+        String userId = "user1";
+
+        ProcessInstance processInstance = mock(ProcessInstance.class);
+        when(processInstance.getId()).thenReturn(processInstanceId);
+
+        when(runtimeService.createProcessInstanceQuery()).thenReturn(processInstanceQuery);
+        when(processInstanceQuery.processInstanceId(processInstanceId)).thenReturn(processInstanceQuery);
+        when(processInstanceQuery.singleResult()).thenReturn(processInstance);
+
+        when(runtimeService.getVariable(processInstanceId, "_startedBy")).thenReturn(userId);
+
+        // Execute
+        processService.suspendProcessInstance(processInstanceId, userId, false);
+
+        // Verify
+        verify(runtimeService).suspendProcessInstanceById(processInstanceId);
+    }
+
+    @Test
+    void activateProcessInstance_Success() {
+        // Setup
+        String processInstanceId = "proc1";
+        String userId = "user1";
+
+        ProcessInstance processInstance = mock(ProcessInstance.class);
+        when(processInstance.getId()).thenReturn(processInstanceId);
+
+        when(runtimeService.createProcessInstanceQuery()).thenReturn(processInstanceQuery);
+        when(processInstanceQuery.processInstanceId(processInstanceId)).thenReturn(processInstanceQuery);
+        when(processInstanceQuery.singleResult()).thenReturn(processInstance);
+
+        when(runtimeService.getVariable(processInstanceId, "_startedBy")).thenReturn(userId);
+
+        // Execute
+        processService.activateProcessInstance(processInstanceId, userId, false);
+
+        // Verify
+        verify(runtimeService).activateProcessInstanceById(processInstanceId);
+    }
 }

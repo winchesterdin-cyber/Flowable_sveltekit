@@ -18,4 +18,5 @@ public class ProcessInstanceDTO {
     private String startUserId;
     private Map<String, Object> variables;
     private boolean ended;
+    private boolean suspended;
 }

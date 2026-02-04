@@ -401,4 +401,60 @@ public class ProcessController {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
+
+    @Operation(summary = "Suspend a process instance")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Process instance suspended",
+                    content = { @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = Map.class)) }),
+            @ApiResponse(responseCode = "400", description = "Invalid request or unauthorized",
+                    content = @Content),
+            @ApiResponse(responseCode = "404", description = "Process instance not found",
+                    content = @Content) })
+    @PutMapping("/instance/{processInstanceId}/suspend")
+    public ResponseEntity<?> suspendProcessInstance(
+            @Parameter(description = "ID of the process instance") @PathVariable String processInstanceId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        try {
+            boolean isAdmin = userDetails.getAuthorities().stream()
+                    .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+
+            processService.suspendProcessInstance(processInstanceId, userDetails.getUsername(), isAdmin);
+
+            return ResponseEntity.ok(Map.of("message", "Process instance suspended successfully"));
+        } catch (ResourceNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            log.error("Error suspending process instance: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @Operation(summary = "Activate a process instance")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Process instance activated",
+                    content = { @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = Map.class)) }),
+            @ApiResponse(responseCode = "400", description = "Invalid request or unauthorized",
+                    content = @Content),
+            @ApiResponse(responseCode = "404", description = "Process instance not found",
+                    content = @Content) })
+    @PutMapping("/instance/{processInstanceId}/activate")
+    public ResponseEntity<?> activateProcessInstance(
+            @Parameter(description = "ID of the process instance") @PathVariable String processInstanceId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        try {
+            boolean isAdmin = userDetails.getAuthorities().stream()
+                    .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+
+            processService.activateProcessInstance(processInstanceId, userDetails.getUsername(), isAdmin);
+
+            return ResponseEntity.ok(Map.of("message", "Process instance activated successfully"));
+        } catch (ResourceNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            log.error("Error activating process instance: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
 }
