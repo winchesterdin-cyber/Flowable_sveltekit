@@ -15,6 +15,16 @@ import type {
   ConditionTarget
 } from '$lib/types';
 import { ExpressionEvaluator, type EvaluationContext } from './expression-evaluator';
+import { createLogger } from './logger';
+
+const log = createLogger('ConditionStateComputer');
+
+interface AccessState {
+  isHidden: boolean;
+  isReadonly: boolean;
+  hiddenLocked: boolean;
+  readonlyLocked: boolean;
+}
 
 /**
  * Result of computing all field and grid states
@@ -55,15 +65,19 @@ export class ConditionStateComputer {
    * Compute the state of all fields and grids based on condition rules
    */
   computeFormState(
-    fields: FormField[],
-    grids: FormGrid[],
-    globalRules: FieldConditionRule[],
+    fields: FormField[] = [],
+    grids: FormGrid[] = [],
+    globalRules: FieldConditionRule[] = [],
     taskRules: FieldConditionRule[] = []
   ): ComputedFormState {
     // Combine and sort rules by priority (higher first)
     const allRules = [...globalRules, ...taskRules]
       .filter((rule) => rule.enabled)
-      .sort((a, b) => b.priority - a.priority);
+      .sort((a, b) => {
+        const priorityDiff = b.priority - a.priority;
+        if (priorityDiff !== 0) return priorityDiff;
+        return a.id.localeCompare(b.id);
+      });
 
     const fieldStates: Record<string, ComputedFieldState> = {};
     const gridStates: Record<string, ComputedGridState> = {};
@@ -86,22 +100,28 @@ export class ConditionStateComputer {
    */
   computeFieldState(field: FormField, rules: FieldConditionRule[]): ComputedFieldState {
     // Start with field's static properties
-    let isHidden = !!field.hidden;
-    let isReadonly = field.readonly || this.options.formReadonly || false;
+    const state: AccessState = {
+      isHidden: !!field.hidden,
+      isReadonly: field.readonly || this.options.formReadonly || false,
+      hiddenLocked: false,
+      readonlyLocked: false
+    };
     const appliedRules: string[] = [];
 
     // Evaluate field-level expressions first (backward compatibility)
     if (field.hiddenExpression) {
       const result = this.evaluator.evaluateBoolean(field.hiddenExpression);
       if (result) {
-        isHidden = true;
+        state.isHidden = true;
+        state.hiddenLocked = true;
         appliedRules.push('field:hiddenExpression');
       }
     }
     if (field.readonlyExpression) {
       const result = this.evaluator.evaluateBoolean(field.readonlyExpression);
       if (result) {
-        isReadonly = true;
+        state.isReadonly = true;
+        state.readonlyLocked = true;
         appliedRules.push('field:readonlyExpression');
       }
     }
@@ -115,33 +135,10 @@ export class ConditionStateComputer {
 
       appliedRules.push(rule.id);
 
-      switch (rule.effect) {
-        case 'hidden':
-          isHidden = true; // Once hidden, stays hidden
-          break;
-        case 'readonly':
-          isReadonly = true; // Once readonly, stays readonly
-          break;
-        case 'visible':
-          // Only makes visible if not already hidden by another rule
-          // This effect is useful for overriding static hidden=true
-          if (!appliedRules.some((id) => rules.find((r) => r.id === id && r.effect === 'hidden'))) {
-            isHidden = false;
-          }
-          break;
-        case 'editable':
-          // Only makes editable if not already readonly by another rule
-          // This allows overriding static readonly=true
-          if (
-            !appliedRules.some((id) => rules.find((r) => r.id === id && r.effect === 'readonly'))
-          ) {
-            isReadonly = !!this.options.formReadonly;
-          }
-          break;
-      }
+      this.applyRuleEffect(state, rule.effect, !!this.options.formReadonly);
     }
 
-    return { isHidden, isReadonly, appliedRules };
+    return { isHidden: state.isHidden, isReadonly: state.isReadonly, appliedRules };
   }
 
   /**
@@ -149,8 +146,12 @@ export class ConditionStateComputer {
    */
   computeGridState(grid: FormGrid, rules: FieldConditionRule[]): ComputedGridState {
     // Start with grid's static properties (grids don't have hidden/readonly by default)
-    let isHidden = false;
-    let isReadonly = this.options.formReadonly || false;
+    const state: AccessState = {
+      isHidden: false,
+      isReadonly: this.options.formReadonly || false,
+      hiddenLocked: false,
+      readonlyLocked: false
+    };
     const appliedRules: string[] = [];
     const columnStates: Record<string, ComputedFieldState> = {};
 
@@ -163,34 +164,20 @@ export class ConditionStateComputer {
 
       appliedRules.push(rule.id);
 
-      switch (rule.effect) {
-        case 'hidden':
-          isHidden = true;
-          break;
-        case 'readonly':
-          isReadonly = true;
-          break;
-        case 'visible':
-          if (!appliedRules.some((id) => rules.find((r) => r.id === id && r.effect === 'hidden'))) {
-            isHidden = false;
-          }
-          break;
-        case 'editable':
-          if (
-            !appliedRules.some((id) => rules.find((r) => r.id === id && r.effect === 'readonly'))
-          ) {
-            isReadonly = this.options.formReadonly || false;
-          }
-          break;
-      }
+      this.applyRuleEffect(state, rule.effect, this.options.formReadonly || false);
     }
 
     // Compute individual column states
     for (const column of grid.columns) {
-      columnStates[column.name] = this.computeColumnState(grid.name, column, rules, isReadonly);
+      columnStates[column.name] = this.computeColumnState(
+        grid.name,
+        column,
+        rules,
+        state.isReadonly
+      );
     }
 
-    return { isHidden, isReadonly, columnStates, appliedRules };
+    return { isHidden: state.isHidden, isReadonly: state.isReadonly, columnStates, appliedRules };
   }
 
   /**
@@ -202,8 +189,12 @@ export class ConditionStateComputer {
     rules: FieldConditionRule[],
     gridReadonly: boolean
   ): ComputedFieldState {
-    let isHidden = false;
-    let isReadonly = gridReadonly;
+    const state: AccessState = {
+      isHidden: false,
+      isReadonly: gridReadonly,
+      hiddenLocked: false,
+      readonlyLocked: false
+    };
     const appliedRules: string[] = [];
 
     // Apply condition rules to column - LEAST ACCESS WINS
@@ -215,29 +206,39 @@ export class ConditionStateComputer {
 
       appliedRules.push(rule.id);
 
-      switch (rule.effect) {
-        case 'hidden':
-          isHidden = true;
-          break;
-        case 'readonly':
-          isReadonly = true;
-          break;
-        case 'visible':
-          if (!appliedRules.some((id) => rules.find((r) => r.id === id && r.effect === 'hidden'))) {
-            isHidden = false;
-          }
-          break;
-        case 'editable':
-          if (
-            !appliedRules.some((id) => rules.find((r) => r.id === id && r.effect === 'readonly'))
-          ) {
-            isReadonly = gridReadonly;
-          }
-          break;
-      }
+      this.applyRuleEffect(state, rule.effect, gridReadonly);
     }
 
-    return { isHidden, isReadonly, appliedRules };
+    return { isHidden: state.isHidden, isReadonly: state.isReadonly, appliedRules };
+  }
+
+  private applyRuleEffect(
+    state: AccessState,
+    effect: FieldConditionRule['effect'],
+    readonlyFallback: boolean
+  ): void {
+    switch (effect) {
+      case 'hidden':
+        state.isHidden = true;
+        state.hiddenLocked = true;
+        return;
+      case 'readonly':
+        state.isReadonly = true;
+        state.readonlyLocked = true;
+        return;
+      case 'visible':
+        if (!state.hiddenLocked) {
+          state.isHidden = false;
+        }
+        return;
+      case 'editable':
+        if (!state.readonlyLocked) {
+          state.isReadonly = readonlyFallback;
+        }
+        return;
+      default:
+        log.warn('Ignoring unsupported rule effect', { effect });
+    }
   }
 
   /**
@@ -250,6 +251,12 @@ export class ConditionStateComputer {
       case 'field':
         return target.fieldNames?.includes(fieldName) || false;
       default:
+        if (target.type === 'column' || target.type === 'grid') {
+          return false;
+        }
+        log.warn('Unexpected target type while checking field applicability', {
+          targetType: target
+        });
         return false;
     }
   }
@@ -264,6 +271,12 @@ export class ConditionStateComputer {
       case 'grid':
         return target.gridNames?.includes(gridName) || false;
       default:
+        if (target.type === 'column' || target.type === 'field') {
+          return false;
+        }
+        log.warn('Unexpected target type while checking grid applicability', {
+          targetType: target
+        });
         return false;
     }
   }

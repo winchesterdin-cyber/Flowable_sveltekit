@@ -30,7 +30,12 @@ describe('ConditionStateComputer', () => {
     ...overrides
   });
 
-  const createRule = (id: string, condition: string, effect: 'hidden'|'readonly'|'visible'|'editable', overrides: Partial<FieldConditionRule> = {}): FieldConditionRule => ({
+  const createRule = (
+    id: string,
+    condition: string,
+    effect: 'hidden' | 'readonly' | 'visible' | 'editable',
+    overrides: Partial<FieldConditionRule> = {}
+  ): FieldConditionRule => ({
     id,
     name: id,
     condition,
@@ -80,6 +85,15 @@ describe('ConditionStateComputer', () => {
       expect(state.isHidden).toBe(true);
     });
 
+    it('should keep field hidden when hidden expression is true even if visible rule matches', () => {
+      const field = createField('testField', { hiddenExpression: 'true' });
+      const ruleVisible = createRule('r1', 'true', 'visible');
+
+      const state = computer.computeFieldState(field, [ruleVisible]);
+      expect(state.isHidden).toBe(true);
+      expect(state.appliedRules).toEqual(['field:hiddenExpression', 'r1']);
+    });
+
     it('should allow visible rule to override default hidden if no other hidden rule matches', () => {
       const field = createField('testField', { hidden: true });
       const ruleVisible = createRule('r1', 'true', 'visible');
@@ -104,6 +118,15 @@ describe('ConditionStateComputer', () => {
       const state = computer.computeFieldState(field, [ruleEditable]);
       expect(state.isReadonly).toBe(false);
     });
+
+    it('should keep field readonly when readonly expression is true even if editable rule matches', () => {
+      const field = createField('testField', { readonlyExpression: 'true' });
+      const ruleEditable = createRule('r1', 'true', 'editable');
+
+      const state = computer.computeFieldState(field, [ruleEditable]);
+      expect(state.isReadonly).toBe(true);
+      expect(state.appliedRules).toEqual(['field:readonlyExpression', 'r1']);
+    });
   });
 
   describe('Grid State Computation', () => {
@@ -121,13 +144,21 @@ describe('ConditionStateComputer', () => {
 
     it('should compute grid visibility', () => {
       const grid = createGrid('grid1', []);
-      const rule = createRule('r1', 'true', 'hidden', { target: { type: 'grid', gridNames: ['grid1'] } });
+      const rule = createRule('r1', 'true', 'hidden', {
+        target: { type: 'grid', gridNames: ['grid1'] }
+      });
       const state = computer.computeGridState(grid, [rule]);
       expect(state.isHidden).toBe(true);
     });
 
     it('should compute column visibility', () => {
-      const col1: GridColumn = { id: 'c1', name: 'col1', type: 'text', label: 'Col 1', required: false };
+      const col1: GridColumn = {
+        id: 'c1',
+        name: 'col1',
+        type: 'text',
+        label: 'Col 1',
+        required: false
+      };
       const grid = createGrid('grid1', [col1]);
 
       const rule = createRule('r1', 'true', 'hidden', {
@@ -139,6 +170,32 @@ describe('ConditionStateComputer', () => {
 
       const state = computer.computeGridState(grid, [rule]);
       expect(state.columnStates['col1'].isHidden).toBe(true);
+    });
+
+    it('should process duplicate-priority rules deterministically by id', () => {
+      const field = createField('testField', { hidden: true });
+      const ruleVisible = createRule('b-visible', 'true', 'visible', { priority: 10 });
+      const ruleHidden = createRule('a-hidden', 'true', 'hidden', { priority: 10 });
+
+      const formState = computer.computeFormState([field], [], [ruleVisible], [ruleHidden]);
+
+      expect(formState.fields['testField'].appliedRules).toEqual(['a-hidden', 'b-visible']);
+      expect(formState.fields['testField'].isHidden).toBe(true);
+    });
+  });
+
+  describe('Edge Cases', () => {
+    it('should safely handle undefined rule arrays in computeFormState', () => {
+      const field = createField('testField');
+
+      const formState = computer.computeFormState(
+        [field],
+        [],
+        undefined as unknown as FieldConditionRule[]
+      );
+
+      expect(formState.fields['testField'].isHidden).toBe(false);
+      expect(formState.fields['testField'].isReadonly).toBe(false);
     });
   });
 });
