@@ -103,7 +103,7 @@ Each column can have the following properties:
 interface GridColumn {
   name: string; // Field name (required)
   label: string; // Display label (required)
-  type: 'text' | 'number' | 'date' | 'select' | 'textarea'; // Input type (required)
+  type: "text" | "number" | "date" | "select" | "textarea"; // Input type (required)
   validation?: ValidationRule[]; // Validation rules (optional)
   options?: string[]; // Options for select type (optional)
   placeholder?: string; // Placeholder text (optional)
@@ -212,15 +212,18 @@ See `/frontend/src/routes/processes/purchase/+page.svelte` for a complete exampl
 The GridForm component integrates with the application's validation system (`$lib/utils/validation.ts`). Each column can have validation rules applied:
 
 ```typescript
-import { rules } from '$lib/utils/validation';
+import { rules } from "$lib/utils/validation";
 
 const columns: GridColumn[] = [
   {
-    name: 'email',
-    label: 'Email',
-    type: 'text',
-    validation: [rules.required('Email is required'), rules.email('Please enter a valid email')]
-  }
+    name: "email",
+    label: "Email",
+    type: "text",
+    validation: [
+      rules.required("Email is required"),
+      rules.email("Please enter a valid email"),
+    ],
+  },
 ];
 ```
 
@@ -345,7 +348,7 @@ A component to display and add comments for a task or process.
 ```svelte
 <script>
   import Comments from '$lib/components/Comments.svelte';
-  
+
   let taskId = 'task-123';
 </script>
 
@@ -372,7 +375,7 @@ A component to manage documents associated with a task.
 ```svelte
 <script>
   import TaskDocuments from '$lib/components/TaskDocuments.svelte';
-  
+
   let taskId = 'task-123';
 </script>
 
@@ -399,7 +402,7 @@ A component to visualize the audit trail/history of a task.
 ```svelte
 <script>
   import TaskTimeline from '$lib/components/TaskTimeline.svelte';
-  
+
   let taskId = 'task-123';
 </script>
 
@@ -425,9 +428,9 @@ A component to view and edit task metadata (Priority, Due Date).
 ```svelte
 <script>
   import TaskProperties from '$lib/components/TaskProperties.svelte';
-  
+
   let task = { ... };
-  
+
   function handleUpdate(updatedTask) {
     task = updatedTask;
   }
@@ -453,14 +456,16 @@ A reusable component for filtering and searching tasks.
 - **Sort By option (Newest, Priority, Due Date)**
 - Clear filters button
 - Save filter presets to reuse common searches
+- Copy shareable task-filter links to clipboard
 - Auto-restore last used filters on page refresh
+- Keep URL query params synchronized with active filters
 
 ## Usage
 
 ```svelte
 <script>
   import TaskFilters from '$lib/components/TaskFilters.svelte';
-  
+
   function handleFilterChange(event) {
     const filters = event.detail;
     // Load tasks with filters
@@ -473,6 +478,7 @@ A reusable component for filtering and searching tasks.
 ## Events
 
 - `change`: Dispatched when any filter changes. Payload: `{ text: string, assignee: string, priority: string, sortBy: string }`.
+- `share`: Dispatched when user clicks **Copy Filter Link** with active filters. Payload: `{ text: string, assignee: string, priority: string, sortBy: string }`.
 
 ## Presets & Persistence
 

@@ -7,6 +7,7 @@ The application includes five core BPMN workflows.
 A threshold-based approval process for expenses.
 
 ### Flow
+
 1. **Start**: User submits an expense request with an `amount`.
 2. **Supervisor Approval**: A task is assigned to the `SUPERVISOR` group.
    - The supervisor reviews the request.
@@ -18,6 +19,7 @@ A threshold-based approval process for expenses.
 5. **End**: Process completes.
 
 ### Roles
+
 - **Initiator**: User (user1)
 - **Approver 1**: Supervisor (supervisor1)
 - **Approver 2**: Executive (executive1) (only if amount > 500)
@@ -27,6 +29,7 @@ A threshold-based approval process for expenses.
 A sequential approval process based on leave duration.
 
 ### Flow
+
 1. **Start**: User submits a leave request with `days`.
 2. **Supervisor Approval**: A task is assigned to the `SUPERVISOR` group.
 3. **Gateway Check**:
@@ -40,6 +43,7 @@ A sequential approval process based on leave duration.
 A simple ad-hoc task assignment workflow.
 
 ### Flow
+
 1. **Start**: User creates a task with `title`, `description`, and `assignee`.
 2. **Task Work**: A user task is created and assigned to the specified `assignee` (or `USER` group).
    - The assignee works on the task and completes it.
@@ -50,6 +54,7 @@ A simple ad-hoc task assignment workflow.
 A multi-level approval process based on purchase amount.
 
 ### Flow
+
 1. **Start**: User submits a purchase request with an `amount`.
 2. **Auto-Approval Check**:
    - If `amount <= 1000`: Auto-approved.
@@ -71,6 +76,7 @@ A multi-level approval process based on purchase amount.
 A parallel approval process for project initiation.
 
 ### Flow
+
 1. **Start**: User submits a project proposal with `budget` and `projectType`.
 2. **Parallel Review**: The process splits into parallel paths:
    - **Technical Review**: Assigned to `MANAGER`. Always required.
@@ -88,6 +94,7 @@ A parallel approval process for project initiation.
 Users can add comments to any active process instance to provide updates, ask questions, or document decisions.
 
 ### Usage
+
 1. Open the **Process Details** modal for any active process.
 2. Scroll to the **Comments** section.
 3. Enter your message in the text area.
@@ -100,6 +107,7 @@ Comments are visible to all users with access to the process instance and are in
 Users can view the live BPMN diagram of a process instance to understand the current progress and pending activities.
 
 ### Usage
+
 1. Open the **Process Details** modal for any active or completed process.
 2. Click the **Diagram** tab at the top of the modal.
 3. The application will render the BPMN 2.0 diagram.
@@ -111,6 +119,7 @@ Users can view the live BPMN diagram of a process instance to understand the cur
 Users can export the full history of a process instance, including details, variables, tasks, approvals, escalations, and comments, to a CSV file.
 
 ### Usage
+
 1. Open the **Process Details** modal for any active or completed process.
 2. Click the **Export CSV** button in the header.
 3. The browser will download a CSV file named `process_export_{id}.csv`.
@@ -120,16 +129,34 @@ Users can export the full history of a process instance, including details, vari
 Users can export the list of tasks visible in the task list to a CSV file. This is useful for reporting or offline analysis.
 
 ### Usage
+
 1. Navigate to the **Tasks** page.
 2. (Optional) Apply filters for text, assignee, or priority to narrow down the list.
 3. Click the **Export CSV** button located next to the Refresh button.
 4. The browser will download a CSV file containing the ID, Name, Assignee, Priority, and Creation Date of the filtered tasks.
+
+## Feature: Shareable Task Filter Links
+
+Users can copy a URL that preserves the current task filters so teammates can open the exact same filtered task list.
+
+### Usage
+
+1. Navigate to the **Tasks** page.
+2. Apply one or more filters (text, assignee, priority, or sort order).
+3. Click **Copy Filter Link** in the filter toolbar.
+4. Share the copied URL. Opening this link restores the same filters automatically.
+
+### Notes
+
+- Shared URL filters take precedence over locally saved filters on first load.
+- As filters are changed, the browser URL stays synchronized without a full page reload.
 
 ## Feature: Bulk Task Actions
 
 Users can select multiple tasks to perform bulk operations, such as claiming or unclaiming tasks in batches.
 
 ### Usage
+
 1. Navigate to the **Tasks** page.
 2. Click the **Checkbox** icon on the top right of any task card to select it.
 3. A **Bulk Actions Toolbar** will appear at the top of the list.
@@ -142,6 +169,7 @@ Users can select multiple tasks to perform bulk operations, such as claiming or 
 Users can view all documents associated with a specific process instance in a centralized location.
 
 ### Usage
+
 1. Open the **Process Details** modal for any active or completed process.
 2. Click the **Documents** tab at the top of the modal.
 3. A list of all related documents (uploaded via tasks or generated by the system) will be displayed.
@@ -152,6 +180,7 @@ Users can view all documents associated with a specific process instance in a ce
 Users can print a printer-friendly summary of the process details, including status, variables, timeline, and history.
 
 ### Usage
+
 1. Open the **Process Details** modal for any active or completed process.
 2. Click the **Print** button in the header (next to Export CSV).
 3. The browser's print dialog will open with a clean, formatted view of the process details.
@@ -161,6 +190,7 @@ Users can print a printer-friendly summary of the process details, including sta
 The task list now supports advanced sorting and provides visual cues for upcoming or missed deadlines.
 
 ### Usage
+
 1. Navigate to the **Tasks** page.
 2. Use the **Sort By** dropdown to organize tasks by:
    - **Creation Date** (Newest/Oldest)
@@ -176,6 +206,7 @@ The task list now supports advanced sorting and provides visual cues for upcomin
 Users can cancel their own active process instances if they are no longer needed. Administrators can cancel any process instance.
 
 ### Usage
+
 1. Navigate to the **Process Instances** page (My Processes).
 2. Locate the active process instance you wish to cancel.
 3. Click the **Cancel** button in the **Actions** column.
@@ -187,6 +218,7 @@ Users can cancel their own active process instances if they are no longer needed
 Users can suspend an active process instance to temporarily pause its execution. Suspended instances can be reactivated later to resume normal operations. This is useful when a process needs to be put on hold pending external information or investigation.
 
 ### Usage
+
 1. Navigate to the **Process Instances** page (My Processes) or open the **Process Details** modal.
 2. **Suspend**:
    - Locate the active process instance.
