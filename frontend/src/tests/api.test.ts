@@ -235,4 +235,46 @@ describe('fetchApi', () => {
     });
     expect(backendStatus.state).toBe('ready');
   });
+
+  it('ignores non-string field errors without crashing', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 400,
+      statusText: 'Bad Request',
+      text: () => Promise.resolve('{"error":"Validation failed","fieldErrors":{"name":123}}'),
+      headers: new Headers({ 'content-length': '57' })
+    });
+
+    await expect(fetchApi('/api/test')).rejects.toMatchObject({
+      name: 'ApiError',
+      message: 'Validation failed'
+    });
+  });
+
+  it('detects backend startup messages in either error or message field', async () => {
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 503,
+        statusText: 'Service Unavailable',
+        text: () => Promise.resolve('{"message":"could not connect to backend"}'),
+        headers: new Headers({ 'content-length': '41' })
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        text: () => Promise.resolve('{"ok":true}'),
+        statusText: 'OK',
+        headers: new Headers({ 'content-length': '11' })
+      });
+
+    const data = await fetchApi<{ ok: boolean }>('/api/retry');
+
+    expect(data).toEqual({ ok: true });
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+    expect(logger.info).toHaveBeenCalledWith(
+      expect.stringContaining('Backend is starting, retrying'),
+      expect.objectContaining({ method: 'GET' })
+    );
+  });
 });

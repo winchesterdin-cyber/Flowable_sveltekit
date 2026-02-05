@@ -110,15 +110,33 @@ function parseErrorResponse(
     return new ApiError(defaultInfo.error, status, statusText, detailsWithRaw);
   }
 
+  const extractString = (value: unknown): string | undefined =>
+    typeof value === 'string' && value.trim().length > 0 ? value : undefined;
+
+  const extractFieldErrors = (value: unknown): Record<string, string> | undefined => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      return undefined;
+    }
+
+    const normalized = Object.entries(value).reduce<Record<string, string>>((acc, [k, v]) => {
+      if (typeof v === 'string' && v.trim().length > 0) {
+        acc[k] = v;
+      }
+      return acc;
+    }, {});
+
+    return Object.keys(normalized).length > 0 ? normalized : undefined;
+  };
+
   // Extract error information from various response formats
   // Handle both Spring Boot and custom error formats
-  const error = (errorBody.error as string) ?? undefined;
-  const message = (errorBody.message as string) ?? undefined;
-  const details = (errorBody.details as string) ?? undefined;
-  const fieldErrors = (errorBody.fieldErrors as Record<string, string>) ?? undefined;
-  const timestamp = (errorBody.timestamp as string) ?? undefined;
+  const error = extractString(errorBody.error);
+  const message = extractString(errorBody.message);
+  const details = extractString(errorBody.details);
+  const fieldErrors = extractFieldErrors(errorBody.fieldErrors);
+  const timestamp = extractString(errorBody.timestamp);
   // Spring Boot specific fields
-  const path = (errorBody.path as string) ?? undefined;
+  const path = extractString(errorBody.path);
   // Note: trace is available but not used to avoid exposing stack traces to users
   const _trace = (errorBody.trace as string) ?? undefined;
   void _trace; // Suppress unused variable warning
@@ -177,19 +195,20 @@ function isBackendStartingError(
 
   if (!errorBody) return false;
 
-  const error = errorBody.error as string | undefined;
-  const message = errorBody.message as string | undefined;
+  const error = typeof errorBody.error === 'string' ? errorBody.error : '';
+  const message = typeof errorBody.message === 'string' ? errorBody.message : '';
+  const combinedText = `${error} ${message}`.toLowerCase();
 
   // Check for the specific startup message from Railway
   if (error === 'Service starting') return true;
-  if (message?.toLowerCase().includes('backend is initializing')) return true;
-  if (message?.toLowerCase().includes('service starting')) return true;
+  if (combinedText.includes('backend is initializing')) return true;
+  if (combinedText.includes('service starting')) return true;
 
   // Check for proxy error messages from hooks.server.ts
-  if (error?.toLowerCase().includes('backend unavailable')) return true;
-  if (error?.toLowerCase().includes('connection refused')) return true;
-  if (error?.toLowerCase().includes('connection timed out')) return true;
-  if (message?.toLowerCase().includes('could not connect')) return true;
+  if (combinedText.includes('backend unavailable')) return true;
+  if (combinedText.includes('connection refused')) return true;
+  if (combinedText.includes('connection timed out')) return true;
+  if (combinedText.includes('could not connect')) return true;
 
   return false;
 }
@@ -292,6 +311,11 @@ export async function fetchApi<T>(endpoint: string, options: FetchOptions = {}):
             await sleep(delay);
             continue; // Retry the request
           }
+          log.warn('Backend startup retries exhausted', {
+            url,
+            method,
+            attempts: STARTUP_RETRY_CONFIG.maxRetries + 1
+          });
           // Max retries reached, fall through to throw error
         }
 
