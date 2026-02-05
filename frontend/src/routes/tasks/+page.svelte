@@ -19,6 +19,7 @@
 
 	const logger = createLogger('TasksPage');
 	const filtersStorageKey = 'taskFilters:lastUsed';
+	const shareableFilterKeys = ['text', 'assignee', 'priority', 'sortBy'] as const;
 	
 	let filters = $state({
 		text: '',
@@ -31,12 +32,78 @@
 	let delegateTaskId = $state<string | null>(null);
 
 	onMount(async () => {
+		const urlFilters = loadFiltersFromQuery();
 		const persistedFilters = loadStoredFilters();
-		if (persistedFilters) {
+		if (urlFilters) {
+			filters = urlFilters;
+			persistFilters(urlFilters);
+		} else if (persistedFilters) {
 			filters = persistedFilters;
+			syncFiltersToQuery(persistedFilters);
 		}
 		await loadTasks();
 	});
+
+
+	/**
+	 * Read filter values from URL query parameters so users can share exact task views.
+	 * URL values always take precedence over localStorage on first page load.
+	 */
+	function loadFiltersFromQuery() {
+		if (typeof window === 'undefined') return null;
+		const params = new URLSearchParams(window.location.search);
+		const hasShareParams = shareableFilterKeys.some((key) => params.has(key));
+		if (!hasShareParams) return null;
+
+		const urlFilters = { ...filters };
+		for (const key of shareableFilterKeys) {
+			const value = params.get(key);
+			if (value !== null) {
+				urlFilters[key] = value;
+			}
+		}
+
+		logger.info('Loaded task filters from URL', { filters: urlFilters });
+		return urlFilters;
+	}
+
+	/**
+	 * Keep the address bar in sync with currently active filters so users can
+	 * bookmark/share task views without reloading the page.
+	 */
+	function syncFiltersToQuery(nextFilters: typeof filters) {
+		if (typeof window === 'undefined') return;
+		const params = new URLSearchParams(window.location.search);
+		for (const key of shareableFilterKeys) {
+			const value = nextFilters[key];
+			if (value) {
+				params.set(key, value);
+			} else {
+				params.delete(key);
+			}
+		}
+		const query = params.toString();
+		const nextUrl = query ? `${window.location.pathname}?${query}` : window.location.pathname;
+		window.history.replaceState({}, '', nextUrl);
+	}
+
+	/**
+	 * Copy a shareable URL containing all active filters to clipboard.
+	 */
+	async function handleShareFilters(event: CustomEvent<typeof filters>) {
+		const nextFilters = event.detail;
+		syncFiltersToQuery(nextFilters);
+		if (typeof window === 'undefined') return;
+
+		try {
+			await navigator.clipboard.writeText(window.location.href);
+			toast.success('Filter link copied to clipboard');
+			logger.info('Copied task filter link', { filters: nextFilters });
+		} catch (err) {
+			toast.error('Unable to copy link automatically. Copy it from your browser address bar.');
+			logger.error('Failed to copy task filter link', err, { filters: nextFilters });
+		}
+	}
 
 	/**
 	 * Restore last-used filters from localStorage to keep task reviews consistent
@@ -107,6 +174,7 @@
 	function handleFilterChange(event: CustomEvent) {
 		filters = event.detail;
 		persistFilters(filters);
+		syncFiltersToQuery(filters);
 		logger.info('Task filters updated', { filters });
 		loadTasks();
 	}
@@ -210,7 +278,7 @@
 		</div>
 	</div>
 
-	<TaskFilters initialFilters={filters} on:change={handleFilterChange} />
+	<TaskFilters initialFilters={filters} on:change={handleFilterChange} on:share={handleShareFilters} />
 
 	{#if loading}
 		<Loading text="Loading tasks..." />

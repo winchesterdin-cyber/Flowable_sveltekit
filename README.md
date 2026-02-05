@@ -1,6 +1,7 @@
 # Flowable + SvelteKit BPM Demo
 
 A production-ready Business Process Management (BPM) demo application featuring:
+
 - **Backend**: Spring Boot 3.2 + Flowable 7.0 (embedded BPM engine)
 - **Frontend**: SvelteKit 2.x + Svelte 5 (runes mode) + Tailwind CSS
 - **Deployment**: Docker + Railway
@@ -8,6 +9,7 @@ A production-ready Business Process Management (BPM) demo application featuring:
 ## Documentation
 
 Detailed documentation is available in the `guides/` directory:
+
 - [Setup Guide](guides/setup.md)
 - [Architecture](guides/architecture.md)
 - [Workflows](guides/workflows.md)
@@ -17,6 +19,7 @@ Detailed documentation is available in the `guides/` directory:
 ## Features
 
 ### 5 Workflow Types
+
 1. **Expense Approval** (Threshold-based)
 2. **Leave Request** (Sequential)
 3. **Task Assignment** (Simple)
@@ -24,13 +27,21 @@ Detailed documentation is available in the `guides/` directory:
 5. **Project Approval** (Parallel review)
 
 ### Notification System
+
 - **Notifications Page**: Dedicated view for managing alerts.
 - **In-App Alerts**: Real-time notifications for task assignments and SLA warnings.
 - **Backend Integration**: Centralized `NotificationService` with logging.
 
+### Task Productivity Improvements
+
+- **Saved Filter Presets**: Store and reuse common task searches.
+- **Shareable Filter Links**: Copy a URL that preserves active task filters for team handoff.
+- **Persistent Context**: Last-used filters are restored automatically after refresh.
+
 See [Workflows Guide](guides/workflows.md) for detailed diagrams and logic.
 
 ### Key Implementation Details
+
 - **Workflow Service**: Centralized logic for task completion, escalation, and history tracking.
 - **History Recording**: `HistoryRecorder` service encapsulates audit trail creation for escalations, handoffs, and approvals.
 - **Workflow Constants**: Standardized variable names (e.g., `currentLevel`, `escalationHistory`) are maintained in `WorkflowConstants.java`.
@@ -40,12 +51,13 @@ See [Workflows Guide](guides/workflows.md) for detailed diagrams and logic.
 - **Session Management**: Robust cookie handling and backend health checks in `session-utils.ts` to prevent login issues.
 
 ### 3 User Roles
-| Username | Password | Role | Capabilities |
-|----------|----------|------|--------------|
-| user1 | password | User | Submit requests, work on tasks |
+
+| Username    | Password | Role       | Capabilities                              |
+| ----------- | -------- | ---------- | ----------------------------------------- |
+| user1       | password | User       | Submit requests, work on tasks            |
 | supervisor1 | password | Supervisor | Approve ≤$500 expenses, first-level leave |
-| executive1 | password | Executive | Final approval for high-value items |
-| admin | admin | Admin | Full access |
+| executive1  | password | Executive  | Final approval for high-value items       |
+| admin       | admin    | Admin      | Full access                               |
 
 ## Quick Start
 
@@ -63,6 +75,7 @@ docker-compose up --build
 ### Option 2: Manual Development
 
 **Backend (requires Java 17+, Maven):**
+
 ```bash
 cd backend
 ./mvnw clean install
@@ -71,6 +84,7 @@ cd backend
 ```
 
 **Frontend (requires Node.js 20+):**
+
 ```bash
 cd frontend
 npm install
@@ -83,6 +97,7 @@ npm run dev
 The application uses an `.env` file for configuration. Copy `.env.example` to `.env` and adjust as needed.
 
 **Key Variables:**
+
 - `POSTGRES_DB`: Database name (default: `flowable`)
 - `POSTGRES_USER`: Database user (default: `postgres`)
 - `POSTGRES_PASSWORD`: Database password
@@ -93,12 +108,14 @@ The application uses an `.env` file for configuration. Copy `.env.example` to `.
 ### Testing
 
 **Backend Tests:**
+
 ```bash
 cd backend
 ./mvnw test
 ```
 
 **Frontend Verification:**
+
 ```bash
 cd frontend
 npm run check
@@ -127,11 +144,13 @@ npm run test:unit
 ## API Endpoints
 
 ### Authentication
+
 - `POST /api/auth/login` - Login with username/password
 - `POST /api/auth/logout` - Logout
 - `GET /api/auth/me` - Get current user
 
 ### Tasks
+
 - `GET /api/tasks` - Get all accessible tasks
 - `GET /api/tasks/{id}` - Get task details
 - `POST /api/tasks/{id}/claim` - Claim a task
@@ -139,11 +158,13 @@ npm run test:unit
 - `POST /api/tasks/{id}/escalate` - Escalate a task
 
 ### Processes
+
 - `GET /api/processes` - List available process definitions
 - `POST /api/processes/{key}/start` - Start a new process
 - `GET /api/processes/my-processes` - Get user's active processes
 
 ### Dashboard
+
 - `GET /api/dashboard` - Get dashboard statistics (optimized)
 
 ## Deployment to Railway
@@ -156,17 +177,18 @@ npm run test:unit
 
 ## Technology Stack
 
-| Component | Technology |
-|-----------|------------|
-| Backend | Java 17, Spring Boot 3.2, Flowable 7.0 |
-| Database | PostgreSQL |
-| Frontend | SvelteKit 2.x, Svelte 5, Tailwind CSS |
-| Build | Maven, Vite, Node.js 20 |
-| Container | Docker, Docker Compose |
+| Component | Technology                             |
+| --------- | -------------------------------------- |
+| Backend   | Java 17, Spring Boot 3.2, Flowable 7.0 |
+| Database  | PostgreSQL                             |
+| Frontend  | SvelteKit 2.x, Svelte 5, Tailwind CSS  |
+| Build     | Maven, Vite, Node.js 20                |
+| Container | Docker, Docker Compose                 |
 
 ## Demo Data
 
 The application auto-loads demo data on startup:
+
 - 2 pending expense requests
 - 1 pending leave request
 - 1 sample task

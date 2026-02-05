@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Search, X, BookmarkPlus, Trash2 } from '@lucide/svelte';
+	import { Search, X, BookmarkPlus, Trash2, Link as LinkIcon } from '@lucide/svelte';
 	import { browser } from '$app/environment';
 	import { createEventDispatcher, onMount } from 'svelte';
 	import { toast } from 'svelte-sonner';
@@ -42,6 +42,7 @@
 
 	const dispatch = createEventDispatcher<{
 		change: Filters;
+		share: Filters;
 	}>();
 
 	let timer: ReturnType<typeof setTimeout>;
@@ -64,6 +65,17 @@
 			sortBy: 'created_desc'
 		};
 		dispatch('change', filters);
+	}
+
+	function handleShareFilters() {
+		if (!hasActiveFilters) {
+			toast.error('Apply at least one filter before sharing.');
+			logger.warn('Share filters skipped due to inactive filters', { filters });
+			return;
+		}
+
+		dispatch('share', { ...filters });
+		logger.info('Task filters shared', { filters });
 	}
 
 	const hasActiveFilters = $derived(
@@ -249,6 +261,14 @@
 				>
 					<BookmarkPlus class="h-4 w-4" />
 					Save Preset
+				</button>
+				<button
+					type="button"
+					onclick={handleShareFilters}
+					class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-blue-700 border border-blue-200 bg-blue-50 rounded-md hover:bg-blue-100 transition-colors"
+				>
+					<LinkIcon class="h-4 w-4" />
+					Copy Filter Link
 				</button>
 			</div>
 		</div>
