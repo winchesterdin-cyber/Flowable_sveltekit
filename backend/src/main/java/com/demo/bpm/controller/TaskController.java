@@ -5,11 +5,13 @@ import com.demo.bpm.dto.FormDefinitionDTO;
 import com.demo.bpm.dto.TaskDTO;
 import com.demo.bpm.service.FormDefinitionService;
 import com.demo.bpm.service.TaskService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.validation.annotation.Validated;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
@@ -26,6 +28,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/tasks")
 @RequiredArgsConstructor
+@Validated
 public class TaskController {
 
     private final TaskService taskService;
@@ -173,10 +176,13 @@ public class TaskController {
     @PostMapping("/{taskId}/complete")
     public ResponseEntity<?> completeTask(
             @Parameter(description = "ID of the task to be completed") @PathVariable String taskId,
-            @RequestBody(required = false) CompleteTaskRequest request,
+            @Valid @RequestBody(required = false) CompleteTaskRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
         try {
-            Map<String, Object> variables = request != null ? request.getVariables() : Map.of();
+            Map<String, Object> variables = new java.util.HashMap<>();
+            if (request != null && request.getVariables() != null) {
+                variables.putAll(request.getVariables());
+            }
             taskService.completeTask(taskId, variables, userDetails.getUsername());
 
             return ResponseEntity.ok(Map.of(
