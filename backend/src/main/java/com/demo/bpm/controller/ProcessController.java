@@ -88,7 +88,10 @@ public class ProcessController {
             @AuthenticationPrincipal UserDetails userDetails) {
         try {
             String businessKey = request != null ? request.getBusinessKey() : null;
-            Map<String, Object> variables = request != null ? request.getVariables() : Map.of();
+            Map<String, Object> variables = new java.util.HashMap<>();
+            if (request != null && request.getVariables() != null) {
+                variables.putAll(request.getVariables());
+            }
 
             // Add user info to variables
             var userInfo = userService.getUserInfo(userDetails);

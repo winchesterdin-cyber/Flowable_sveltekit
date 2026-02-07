@@ -1,17 +1,27 @@
 package com.demo.bpm.controller;
 
 import com.demo.bpm.dto.ProcessDTO;
+import com.demo.bpm.dto.ProcessInstanceDTO;
+import com.demo.bpm.dto.UserDTO;
 import com.demo.bpm.exception.ResourceNotFoundException;
 import com.demo.bpm.service.ProcessService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.util.Map;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -60,5 +70,37 @@ class ProcessControllerTest {
 
         mockMvc.perform(get("/api/processes/nonexistent"))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @WithMockUser(username = "jane")
+    void startProcess_handlesMissingRequestBody() throws Exception {
+        when(userService.getUserInfo(any())).thenReturn(UserDTO.builder().displayName("Jane Doe").build());
+        when(processService.startProcess(eq("demo"), eq(null), any(Map.class), eq("jane")))
+                .thenReturn(ProcessInstanceDTO.builder().id("123").build());
+
+        mockMvc.perform(post("/api/processes/demo/start"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.processInstance.id").value("123"));
+
+        verify(processService, times(1))
+                .startProcess(eq("demo"), eq(null), any(Map.class), eq("jane"));
+    }
+
+    @Test
+    @WithMockUser(username = "jane")
+    void startProcess_handlesNullVariablesInRequest() throws Exception {
+        when(userService.getUserInfo(any())).thenReturn(UserDTO.builder().displayName("Jane Doe").build());
+        when(processService.startProcess(eq("demo"), eq("BK-1"), any(Map.class), eq("jane")))
+                .thenReturn(ProcessInstanceDTO.builder().id("234").build());
+
+        mockMvc.perform(post("/api/processes/demo/start")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"businessKey\":\"BK-1\",\"variables\":null}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.processInstance.id").value("234"));
+
+        verify(processService, times(1))
+                .startProcess(eq("demo"), eq("BK-1"), any(Map.class), eq("jane"));
     }
 }
