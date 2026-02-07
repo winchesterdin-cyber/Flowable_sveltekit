@@ -2,8 +2,10 @@ package com.demo.bpm.controller;
 
 import com.demo.bpm.entity.DocumentTypeDefinition;
 import com.demo.bpm.service.DocumentTypeService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -12,6 +14,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/document-types")
 @RequiredArgsConstructor
+@Validated
 public class DocumentTypeController {
 
     private final DocumentTypeService service;
@@ -29,7 +32,7 @@ public class DocumentTypeController {
     }
 
     @PostMapping
-    public ResponseEntity<?> createDocumentType(@RequestBody DocumentTypeDefinition documentType) {
+    public ResponseEntity<?> createDocumentType(@Valid @RequestBody DocumentTypeDefinition documentType) {
         try {
             return ResponseEntity.ok(service.createDocumentType(documentType));
         } catch (IllegalArgumentException e) {
@@ -38,8 +41,9 @@ public class DocumentTypeController {
     }
 
     @PutMapping("/{key}")
-    public ResponseEntity<?> updateDocumentType(@PathVariable String key, @RequestBody DocumentTypeDefinition documentType) {
+    public ResponseEntity<?> updateDocumentType(@PathVariable String key, @Valid @RequestBody DocumentTypeDefinition documentType) {
         try {
+            documentType.setKey(key); // Ensure body aligns with path to avoid accidental key changes
             return ResponseEntity.ok(service.updateDocumentType(key, documentType));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.notFound().build();

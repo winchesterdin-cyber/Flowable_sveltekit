@@ -1,6 +1,7 @@
 package com.demo.bpm.entity;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -25,9 +26,11 @@ public class DocumentTypeDefinition {
     private Long id;
 
     @Column(name = "key_id", unique = true, nullable = false)
+    @NotBlank(message = "key is required")
     private String key;
 
     @Column(nullable = false)
+    @NotBlank(message = "name is required")
     private String name;
 
     @Column(length = 1000)
