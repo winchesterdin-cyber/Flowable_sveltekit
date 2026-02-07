@@ -18,8 +18,6 @@ import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 
-import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
@@ -101,12 +99,22 @@ public class GlobalExceptionHandler {
 
     private ResponseEntity<ErrorResponseDTO> handleBindingErrors(org.springframework.validation.BindingResult bindingResult, WebRequest request) {
         String traceId = UUID.randomUUID().toString();
-        log.warn("Validation failed [TraceID: {}]", traceId);
+        log.warn("Validation failed [TraceID: {}] with {} error(s)", traceId, bindingResult.getErrorCount());
 
         Map<String, String> errors = new HashMap<>();
-        bindingResult.getAllErrors().forEach((error) -> {
-            String fieldName = ((FieldError) error).getField();
+        bindingResult.getAllErrors().forEach(error -> {
+            String fieldName;
+            if (error instanceof FieldError fieldError) {
+                fieldName = fieldError.getField();
+            } else {
+                fieldName = error.getObjectName();
+            }
+
             String errorMessage = error.getDefaultMessage();
+            if (errorMessage == null || errorMessage.isBlank()) {
+                errorMessage = "Invalid value";
+            }
+
             errors.put(fieldName, errorMessage);
         });
 
@@ -148,15 +156,12 @@ public class GlobalExceptionHandler {
 
     private String getPath(WebRequest request) {
         if (request instanceof ServletWebRequest) {
-            return ((ServletWebRequest) request).getRequest().getRequestURI();
+            HttpServletRequest servletRequest = ((ServletWebRequest) request).getRequest();
+            if (servletRequest != null && servletRequest.getRequestURI() != null) {
+                return servletRequest.getRequestURI();
+            }
         }
-        return request.getContextPath();
-    }
-
-    private String getStackTrace(Exception ex) {
-        StringWriter sw = new StringWriter();
-        PrintWriter pw = new PrintWriter(sw);
-        ex.printStackTrace(pw);
-        return sw.toString();
+        String contextPath = request.getContextPath();
+        return (contextPath == null || contextPath.isBlank()) ? "unknown" : contextPath;
     }
 }
