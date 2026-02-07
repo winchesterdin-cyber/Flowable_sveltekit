@@ -1,6 +1,8 @@
-/* eslint-disable no-console */
 import { fetchApi } from './core';
 import type { Dashboard, SlaStats } from '$lib/types';
+import { createLogger } from '$lib/utils/logger';
+
+const log = createLogger('api.analytics');
 
 export const analyticsApi = {
   // Analytics Endpoints
@@ -12,10 +14,7 @@ export const analyticsApi = {
   async getProcessDurationAnalytics(
     processDefinitionKey?: string
   ): Promise<{ label: string; count: number }[]> {
-    console.log(
-      '[analyticsApi] getProcessDurationAnalytics called with key:',
-      processDefinitionKey
-    );
+    log.debug('getProcessDurationAnalytics called', { processDefinitionKey });
     const query = processDefinitionKey ? `?processDefinitionKey=${processDefinitionKey}` : '';
     return fetchApi(`api/analytics/process-duration${query}`);
   },
@@ -27,7 +26,7 @@ export const analyticsApi = {
   async getUserPerformanceAnalytics(): Promise<
     { userId: string; tasksCompleted: number; avgDurationHours: number }[]
   > {
-    console.log('[analyticsApi] getUserPerformanceAnalytics called');
+    log.debug('getUserPerformanceAnalytics called');
     return fetchApi('api/analytics/user-performance');
   },
 
@@ -44,7 +43,7 @@ export const analyticsApi = {
       totalInstances: number;
     }>
   > {
-    console.log('[analyticsApi] getBottlenecks called');
+    log.debug('getBottlenecks called');
     return fetchApi('/api/analytics/bottlenecks');
   },
 
@@ -56,7 +55,7 @@ export const analyticsApi = {
   async getProcessCompletionTrend(
     days: number = 7
   ): Promise<{ date: string; count: number }[]> {
-    console.log('[analyticsApi] getProcessCompletionTrend called with days:', days);
+    log.debug('getProcessCompletionTrend called', { days });
     return fetchApi(`/api/analytics/completion-trend?days=${days}`);
   },
 
@@ -75,16 +74,7 @@ export const analyticsApi = {
     status?: string,
     type?: string
   ): Promise<Dashboard> {
-    console.log(
-      '[analyticsApi] getDashboard called with page:',
-      page,
-      'size:',
-      size,
-      'status:',
-      status,
-      'type:',
-      type
-    );
+    log.debug('getDashboard called', { page, size, status, type });
     const params = new URLSearchParams();
     params.append('page', page.toString());
     params.append('size', size.toString());
@@ -103,7 +93,7 @@ export const analyticsApi = {
    * @returns A promise that resolves to the SLA statistics.
    */
   async getSlaStats(): Promise<SlaStats> {
-    console.log('[analyticsApi] getSlaStats called');
+    log.debug('getSlaStats called');
     return fetchApi<SlaStats>('/api/slas/stats');
   },
 
@@ -122,12 +112,7 @@ export const analyticsApi = {
     duration: string,
     warningThreshold?: number
   ): Promise<void> {
-    console.log(
-      '[analyticsApi] createOrUpdateSLA called with name:',
-      name,
-      'targetKey:',
-      targetKey
-    );
+    log.debug('createOrUpdateSLA called', { name, targetKey, targetType });
     const params = new URLSearchParams();
     params.append('name', name);
     params.append('targetKey', targetKey);
@@ -146,7 +131,7 @@ export const analyticsApi = {
    * Trigger an SLA breach check.
    */
   async checkSLABreaches(): Promise<void> {
-    console.log('[analyticsApi] checkSLABreaches called');
+    log.debug('checkSLABreaches called');
     await fetchApi('/api/slas/check', { method: 'POST' });
   }
 };

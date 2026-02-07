@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 import { fetchApi } from './core';
 import type {
   TableColumn,
@@ -9,6 +8,9 @@ import type {
   GridRowDTO,
   SaveGridRowsRequest
 } from '$lib/types';
+import { createLogger } from '$lib/utils/logger';
+
+const log = createLogger('api.documents');
 
 export const documentsApi = {
   // Database Table Viewer
@@ -17,7 +19,7 @@ export const documentsApi = {
    * @returns A promise that resolves to an array of table names.
    */
   async getDatabaseTables(): Promise<string[]> {
-    console.log('[documentsApi] getDatabaseTables called');
+    log.debug('getDatabaseTables called');
     return fetchApi('/api/database/tables');
   },
 
@@ -27,7 +29,7 @@ export const documentsApi = {
    * @returns A promise that resolves to an array of table columns.
    */
   async getTableColumns(tableName: string): Promise<TableColumn[]> {
-    console.log('[documentsApi] getTableColumns called with tableName:', tableName);
+    log.debug('getTableColumns called', { tableName });
     return fetchApi(`/api/database/tables/${tableName}/columns`);
   },
 
@@ -43,7 +45,7 @@ export const documentsApi = {
     page: number = 0,
     size: number = 20
   ): Promise<TableDataResponse> {
-    console.log('[documentsApi] getTableData called with tableName:', tableName, 'page:', page);
+    log.debug('getTableData called', { tableName, page, size });
     const params = new URLSearchParams();
     params.append('page', page.toString());
     params.append('size', size.toString());
@@ -71,7 +73,7 @@ export const documentsApi = {
     businessKey?: string,
     documentType?: string
   ): Promise<{ message: string; processInstanceId: string }> {
-    console.log('[documentsApi] saveDraft called for process:', processDefinitionKey);
+    log.debug('saveDraft called', { processDefinitionKey, processInstanceId, businessKey });
     return fetchApi('/api/business/save-draft', {
       method: 'POST',
       body: JSON.stringify({
@@ -100,7 +102,7 @@ export const documentsApi = {
     page: number = 0,
     size: number = 10
   ): Promise<Page<DocumentDTO>> {
-    console.log('[documentsApi] getDocuments called with id:', processInstanceId);
+    log.debug('getDocuments called', { processInstanceId, page, size });
     const params = new URLSearchParams();
     params.append('page', page.toString());
     params.append('size', size.toString());
@@ -116,12 +118,7 @@ export const documentsApi = {
    * @returns A promise that resolves to the document DTO.
    */
   async getDocument(processInstanceId: string, documentType: string): Promise<DocumentDTO> {
-    console.log(
-      '[documentsApi] getDocument called with id:',
-      processInstanceId,
-      'type:',
-      documentType
-    );
+    log.debug('getDocument called', { processInstanceId, documentType });
     return fetchApi(`/api/business/processes/${processInstanceId}/document-types/${documentType}`);
   },
 
@@ -137,12 +134,7 @@ export const documentsApi = {
     documentType: string,
     request: SaveDocumentRequest
   ): Promise<DocumentDTO> {
-    console.log(
-      '[documentsApi] saveDocument called with id:',
-      processInstanceId,
-      'type:',
-      documentType
-    );
+    log.debug('saveDocument called', { processInstanceId, documentType });
     return fetchApi(`/api/business/processes/${processInstanceId}/document-types/${documentType}`, {
       method: 'POST',
       body: JSON.stringify(request)
@@ -165,7 +157,7 @@ export const documentsApi = {
     page: number = 0,
     size: number = 10
   ): Promise<Page<GridRowDTO>> {
-    console.log('[documentsApi] getGridRows called with id:', processInstanceId, 'grid:', gridName);
+    log.debug('getGridRows called', { processInstanceId, documentType, gridName, page, size });
     const params = new URLSearchParams();
     params.append('page', page.toString());
     params.append('size', size.toString());
@@ -188,12 +180,7 @@ export const documentsApi = {
     gridName: string,
     request: SaveGridRowsRequest
   ): Promise<Page<GridRowDTO>> {
-    console.log(
-      '[documentsApi] saveGridRows called with id:',
-      processInstanceId,
-      'grid:',
-      gridName
-    );
+    log.debug('saveGridRows called', { processInstanceId, documentType, gridName });
     return fetchApi(
       `/api/business/processes/${processInstanceId}/document-types/${documentType}/grids/${gridName}`,
       {
@@ -214,12 +201,7 @@ export const documentsApi = {
     documentType: string,
     gridName: string
   ): Promise<void> {
-    console.log(
-      '[documentsApi] deleteGridRows called with id:',
-      processInstanceId,
-      'grid:',
-      gridName
-    );
+    log.debug('deleteGridRows called', { processInstanceId, documentType, gridName });
     await fetchApi(
       `/api/business/processes/${processInstanceId}/document-types/${documentType}/grids/${gridName}`,
       {
@@ -240,7 +222,7 @@ export const documentsApi = {
     page: number = 0,
     size: number = 10
   ): Promise<Page<DocumentDTO>> {
-    console.log('[documentsApi] getDocumentsByBusinessKey called with key:', businessKey);
+    log.debug('getDocumentsByBusinessKey called', { businessKey, page, size });
     const params = new URLSearchParams();
     params.append('page', page.toString());
     params.append('size', size.toString());
@@ -255,7 +237,7 @@ export const documentsApi = {
    * @returns A promise that resolves to an array of document types.
    */
   async getDocumentTypes(): Promise<any[]> {
-    console.log('[documentsApi] getDocumentTypes called');
+    log.debug('getDocumentTypes called');
     return fetchApi('/api/document-types');
   },
 
@@ -265,7 +247,7 @@ export const documentsApi = {
    * @returns A promise that resolves to the document type definition.
    */
   async getDocumentType(key: string): Promise<any> {
-    console.log('[documentsApi] getDocumentType called with key:', key);
+    log.debug('getDocumentType called', { key });
     return fetchApi(`/api/document-types/${key}`);
   },
 
@@ -275,7 +257,7 @@ export const documentsApi = {
    * @returns A promise that resolves to the created document type.
    */
   async createDocumentType(data: any): Promise<any> {
-    console.log('[documentsApi] createDocumentType called');
+    log.debug('createDocumentType called');
     return fetchApi('/api/document-types', {
       method: 'POST',
       body: JSON.stringify(data)
@@ -289,7 +271,7 @@ export const documentsApi = {
    * @returns A promise that resolves to the updated document type.
    */
   async updateDocumentType(key: string, data: any): Promise<any> {
-    console.log('[documentsApi] updateDocumentType called with key:', key);
+    log.debug('updateDocumentType called', { key });
     return fetchApi(`/api/document-types/${key}`, {
       method: 'PUT',
       body: JSON.stringify(data)
@@ -301,7 +283,7 @@ export const documentsApi = {
    * @param key - The key of the document type.
    */
   async deleteDocumentType(key: string): Promise<void> {
-    console.log('[documentsApi] deleteDocumentType called with key:', key);
+    log.debug('deleteDocumentType called', { key });
     await fetchApi(`/api/document-types/${key}`, { method: 'DELETE' });
   }
 };

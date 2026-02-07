@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 import { fetchApi } from './core';
 import type {
   Task,
@@ -13,6 +12,9 @@ import type {
   DocumentDTO,
   TaskHistoryEvent
 } from '$lib/types';
+import { createLogger } from '$lib/utils/logger';
+
+const log = createLogger('api.tasks');
 
 export const tasksApi = {
   /**
@@ -25,7 +27,7 @@ export const tasksApi = {
     assignee?: string;
     priority?: number;
   }): Promise<Task[]> {
-    console.log('[tasksApi] getTasks called with:', filters);
+    log.debug('getTasks called', { filters });
     const params = new URLSearchParams();
     if (filters?.text) params.append('text', filters.text);
     if (filters?.assignee) params.append('assignee', filters.assignee);
@@ -42,7 +44,7 @@ export const tasksApi = {
    * @returns A promise that resolves to an array of assigned tasks.
    */
   async getAssignedTasks(): Promise<Task[]> {
-    console.log('[tasksApi] getAssignedTasks called');
+    log.debug('getAssignedTasks called');
     return fetchApi('/api/tasks/assigned');
   },
 
@@ -51,7 +53,7 @@ export const tasksApi = {
    * @returns A promise that resolves to an array of claimable tasks.
    */
   async getClaimableTasks(): Promise<Task[]> {
-    console.log('[tasksApi] getClaimableTasks called');
+    log.debug('getClaimableTasks called');
     return fetchApi('/api/tasks/claimable');
   },
 
@@ -61,7 +63,7 @@ export const tasksApi = {
    * @returns A promise that resolves to the task details.
    */
   async getTaskDetails(taskId: string): Promise<TaskDetails> {
-    console.log('[tasksApi] getTaskDetails called with taskId:', taskId);
+    log.debug('getTaskDetails called', { taskId });
     return fetchApi(`/api/tasks/${taskId}`);
   },
 
@@ -70,7 +72,7 @@ export const tasksApi = {
    * @param taskId - The ID of the task to claim.
    */
   async claimTask(taskId: string): Promise<void> {
-    console.log('[tasksApi] claimTask called with taskId:', taskId);
+    log.debug('claimTask called', { taskId });
     await fetchApi(`/api/tasks/${taskId}/claim`, { method: 'POST' });
   },
 
@@ -79,7 +81,7 @@ export const tasksApi = {
    * @param taskId - The ID of the task to unclaim.
    */
   async unclaimTask(taskId: string): Promise<void> {
-    console.log('[tasksApi] unclaimTask called with taskId:', taskId);
+    log.debug('unclaimTask called', { taskId });
     await fetchApi(`/api/tasks/${taskId}/unclaim`, { method: 'POST' });
   },
 
@@ -89,12 +91,7 @@ export const tasksApi = {
    * @param targetUserId - The ID of the user to delegate the task to.
    */
   async delegateTask(taskId: string, targetUserId: string): Promise<void> {
-    console.log(
-      '[tasksApi] delegateTask called with taskId:',
-      taskId,
-      'targetUserId:',
-      targetUserId
-    );
+    log.debug('delegateTask called', { taskId, targetUserId });
     await fetchApi(`/api/tasks/${taskId}/delegate`, {
       method: 'POST',
       body: JSON.stringify({ targetUserId })
@@ -107,7 +104,7 @@ export const tasksApi = {
    * @param variables - Key-value pairs of data to submit with the task completion.
    */
   async completeTask(taskId: string, variables: Record<string, unknown>): Promise<void> {
-    console.log('[tasksApi] completeTask called with taskId:', taskId, 'variables:', variables);
+    log.debug('completeTask called', { taskId });
     await fetchApi(`/api/tasks/${taskId}/complete`, {
       method: 'POST',
       body: JSON.stringify({ variables })
@@ -121,7 +118,7 @@ export const tasksApi = {
    * @returns A promise that resolves to the updated task.
    */
   async updateTask(taskId: string, data: Partial<Task>): Promise<Task> {
-    console.log('[tasksApi] updateTask called with taskId:', taskId, 'data:', data);
+    log.debug('updateTask called', { taskId });
     return fetchApi(`/api/tasks/${taskId}`, {
       method: 'PUT',
       body: JSON.stringify(data)
@@ -134,7 +131,7 @@ export const tasksApi = {
    * @returns A promise that resolves to an array of comments.
    */
   async getTaskComments(taskId: string): Promise<Comment[]> {
-    console.log('[tasksApi] getTaskComments called with taskId:', taskId);
+    log.debug('getTaskComments called', { taskId });
     return fetchApi(`/api/tasks/${taskId}/comments`);
   },
 
@@ -145,7 +142,7 @@ export const tasksApi = {
    * @returns A promise that resolves to the created comment.
    */
   async addTaskComment(taskId: string, message: string): Promise<Comment> {
-    console.log('[tasksApi] addTaskComment called with taskId:', taskId, 'message:', message);
+    log.debug('addTaskComment called', { taskId });
     return fetchApi(`/api/tasks/${taskId}/comments`, {
       method: 'POST',
       body: JSON.stringify({ message })
@@ -158,7 +155,7 @@ export const tasksApi = {
    * @returns A promise that resolves to an array of document DTOs.
    */
   async getTaskDocuments(taskId: string): Promise<DocumentDTO[]> {
-    console.log('[tasksApi] getTaskDocuments called with taskId:', taskId);
+    log.debug('getTaskDocuments called', { taskId });
     return fetchApi(`/api/tasks/${taskId}/documents`);
   },
 
@@ -169,12 +166,7 @@ export const tasksApi = {
    * @returns A promise that resolves to the uploaded document DTO.
    */
   async uploadTaskDocument(taskId: string, file: File): Promise<DocumentDTO> {
-    console.log(
-      '[tasksApi] uploadTaskDocument called with taskId:',
-      taskId,
-      'fileName:',
-      file.name
-    );
+    log.debug('uploadTaskDocument called', { taskId, fileName: file.name });
     // Mock payload for the mock server
     return fetchApi(`/api/tasks/${taskId}/documents`, {
       method: 'POST',
@@ -188,12 +180,7 @@ export const tasksApi = {
    * @param documentId - The ID of the document to delete.
    */
   async deleteTaskDocument(taskId: string, documentId: string): Promise<void> {
-    console.log(
-      '[tasksApi] deleteTaskDocument called with taskId:',
-      taskId,
-      'documentId:',
-      documentId
-    );
+    log.debug('deleteTaskDocument called', { taskId, documentId });
     await fetchApi(`/api/tasks/${taskId}/documents/${documentId}`, {
       method: 'DELETE'
     });
@@ -205,7 +192,7 @@ export const tasksApi = {
    * @returns A promise that resolves to an array of history events.
    */
   async getTaskHistory(taskId: string): Promise<TaskHistoryEvent[]> {
-    console.log('[tasksApi] getTaskHistory called with taskId:', taskId);
+    log.debug('getTaskHistory called', { taskId });
     return fetchApi(`/api/tasks/${taskId}/history`);
   },
 
@@ -216,7 +203,7 @@ export const tasksApi = {
    * @returns A promise that resolves to escalation options.
    */
   async getEscalationOptions(taskId: string): Promise<EscalationOptions> {
-    console.log('[tasksApi] getEscalationOptions called with taskId:', taskId);
+    log.debug('getEscalationOptions called', { taskId });
     return fetchApi(`/api/workflow/tasks/${taskId}/escalation-options`);
   },
 
@@ -230,7 +217,7 @@ export const tasksApi = {
     taskId: string,
     request: EscalationRequest
   ): Promise<{ message: string; escalation: Escalation }> {
-    console.log('[tasksApi] escalateTask called with taskId:', taskId, 'request:', request);
+    log.debug('escalateTask called', { taskId });
     return fetchApi(`/api/workflow/tasks/${taskId}/escalate`, {
       method: 'POST',
       body: JSON.stringify(request)
@@ -247,7 +234,7 @@ export const tasksApi = {
     taskId: string,
     request: EscalationRequest
   ): Promise<{ message: string; deEscalation: Escalation }> {
-    console.log('[tasksApi] deEscalateTask called with taskId:', taskId, 'request:', request);
+    log.debug('deEscalateTask called', { taskId });
     return fetchApi(`/api/workflow/tasks/${taskId}/de-escalate`, {
       method: 'POST',
       body: JSON.stringify(request)
@@ -262,7 +249,7 @@ export const tasksApi = {
    * @returns A promise that resolves to a message.
    */
   async handoffTask(taskId: string, request: HandoffRequest): Promise<{ message: string }> {
-    console.log('[tasksApi] handoffTask called with taskId:', taskId, 'request:', request);
+    log.debug('handoffTask called', { taskId });
     return fetchApi(`/api/workflow/tasks/${taskId}/handoff`, {
       method: 'POST',
       body: JSON.stringify(request)
@@ -280,7 +267,7 @@ export const tasksApi = {
     taskId: string,
     comments?: string
   ): Promise<{ message: string; approval: Approval }> {
-    console.log('[tasksApi] approveTask called with taskId:', taskId);
+    log.debug('approveTask called', { taskId });
     return fetchApi(`/api/workflow/tasks/${taskId}/approve`, {
       method: 'POST',
       body: JSON.stringify({ comments })
@@ -297,7 +284,7 @@ export const tasksApi = {
     taskId: string,
     comments: string
   ): Promise<{ message: string; approval: Approval }> {
-    console.log('[tasksApi] rejectTask called with taskId:', taskId);
+    log.debug('rejectTask called', { taskId });
     return fetchApi(`/api/workflow/tasks/${taskId}/reject`, {
       method: 'POST',
       body: JSON.stringify({ comments })
@@ -314,7 +301,7 @@ export const tasksApi = {
     taskId: string,
     comments: string
   ): Promise<{ message: string; approval: Approval }> {
-    console.log('[tasksApi] requestChanges called with taskId:', taskId);
+    log.debug('requestChanges called', { taskId });
     return fetchApi(`/api/workflow/tasks/${taskId}/request-changes`, {
       method: 'POST',
       body: JSON.stringify({ comments })
@@ -328,7 +315,7 @@ export const tasksApi = {
    * @returns A promise that resolves to the task form configuration.
    */
   async getTaskFormDefinition(taskId: string): Promise<TaskFormWithConfig> {
-    console.log('[tasksApi] getTaskFormDefinition called with taskId:', taskId);
+    log.debug('getTaskFormDefinition called', { taskId });
     return fetchApi(`/api/tasks/${taskId}/form`);
   }
 };

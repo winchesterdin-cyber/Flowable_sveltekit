@@ -241,6 +241,36 @@ export interface FetchOptions extends RequestInit {
   timeoutMs?: number;
 }
 
+// Preserve the existing default JSON content type while avoiding overrides
+// for bodies that rely on the browser to set the boundary/encoding.
+function shouldSetJsonContentType(body: BodyInit | null | undefined): boolean {
+  if (!body) return true;
+
+  if (typeof body === 'string') return true;
+  if (body instanceof URLSearchParams) return false;
+  if (typeof FormData !== 'undefined' && body instanceof FormData) return false;
+  if (typeof Blob !== 'undefined' && body instanceof Blob) return false;
+  if (body instanceof ArrayBuffer) return false;
+  if (ArrayBuffer.isView(body)) return false;
+  if (typeof ReadableStream !== 'undefined' && body instanceof ReadableStream) return false;
+
+  return true;
+}
+
+function buildRequestHeaders(options: RequestInit): Headers {
+  const headers = new Headers(options.headers || undefined);
+
+  if (!headers.has('accept')) {
+    headers.set('Accept', 'application/json');
+  }
+
+  if (!headers.has('content-type') && shouldSetJsonContentType(options.body ?? null)) {
+    headers.set('Content-Type', 'application/json');
+  }
+
+  return headers;
+}
+
 /**
  * Perform an API request with automatic error handling, logging, and retry logic.
  * @param endpoint - The API endpoint path (e.g., "/api/tasks").
@@ -253,8 +283,13 @@ export async function fetchApi<T>(endpoint: string, options: FetchOptions = {}):
   const url = `${API_BASE}${endpoint}`;
   const method = requestOptions.method || 'GET';
   const requestBody = formatRequestBodyForLogs(requestOptions.body);
+  const requestHeaders = buildRequestHeaders(requestOptions);
 
-  log.debug(`${method} ${url}`, { body: requestBody, timeoutMs });
+  const logContext: Record<string, unknown> = { body: requestBody };
+  if (timeoutMs && timeoutMs > 0) {
+    logContext.timeoutMs = timeoutMs;
+  }
+  log.debug(`${method} ${url}`, logContext);
 
   for (let attempt = 0; attempt <= STARTUP_RETRY_CONFIG.maxRetries; attempt++) {
     const signalController = createRequestSignal(timeoutMs, callerSignal);
@@ -264,11 +299,7 @@ export async function fetchApi<T>(endpoint: string, options: FetchOptions = {}):
         ...requestOptions,
         signal: signalController.signal,
         credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-          ...requestOptions.headers
-        }
+        headers: requestHeaders
       });
 
       if (!response.ok) {
@@ -520,7 +551,7 @@ function formatRequestBodyForLogs(body: BodyInit | null | undefined): unknown {
     return Object.fromEntries(body.entries());
   }
 
-  if (body instanceof FormData) {
+  if (typeof FormData !== 'undefined' && body instanceof FormData) {
     return Object.fromEntries(body.entries());
   }
 

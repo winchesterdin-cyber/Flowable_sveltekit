@@ -1,6 +1,8 @@
-/* eslint-disable no-console */
 import { fetchApi } from './core';
 import type { LoginRequest, RegisterRequest, User } from '$lib/types';
+import { createLogger } from '$lib/utils/logger';
+
+const log = createLogger('api.auth');
 
 export const authApi = {
   /**
@@ -9,7 +11,7 @@ export const authApi = {
    * @returns A promise that resolves to the login response.
    */
   async login(credentials: LoginRequest): Promise<{ message: string; user: User }> {
-    console.log('[authApi] login called for user:', credentials.username);
+    log.debug('login called', { username: credentials.username });
     return fetchApi('/api/auth/login', {
       method: 'POST',
       body: JSON.stringify(credentials)
@@ -22,7 +24,7 @@ export const authApi = {
    * @returns A promise that resolves to the registration response.
    */
   async register(request: RegisterRequest): Promise<{ message: string; user: User }> {
-    console.log('[authApi] register called for user:', request.username);
+    log.debug('register called', { username: request.username });
     return fetchApi('/api/auth/register', {
       method: 'POST',
       body: JSON.stringify(request)
@@ -33,7 +35,7 @@ export const authApi = {
    * Logout the current user.
    */
   async logout(): Promise<void> {
-    console.log('[authApi] logout called');
+    log.debug('logout called');
     await fetchApi('/api/auth/logout', { method: 'POST' });
   },
 
@@ -42,7 +44,7 @@ export const authApi = {
    * Used to recover from "Request Header Or Cookie Too Large" errors.
    */
   async clearSession(): Promise<{ message: string; details: string }> {
-    console.log('[authApi] clearSession called');
+    log.debug('clearSession called');
     return fetchApi('/api/auth/clear-session', { method: 'POST' });
   },
 
@@ -51,7 +53,7 @@ export const authApi = {
    * @returns A promise that resolves to the current user.
    */
   async getCurrentUser(): Promise<User> {
-    console.log('[authApi] getCurrentUser called');
+    log.debug('getCurrentUser called');
     return fetchApi('/api/auth/me');
   },
 
@@ -65,7 +67,7 @@ export const authApi = {
     lastName: string;
     email: string;
   }): Promise<User> {
-    console.log('[authApi] updateProfile called');
+    log.debug('updateProfile called');
     return fetchApi('/api/users/profile', {
       method: 'PUT',
       body: JSON.stringify(request)

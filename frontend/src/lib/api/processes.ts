@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 import { fetchApi } from './core';
 import type {
   ProcessDefinition,
@@ -9,6 +8,9 @@ import type {
   Comment,
   FormDefinition
 } from '$lib/types';
+import { createLogger } from '$lib/utils/logger';
+
+const log = createLogger('api.processes');
 
 export const processesApi = {
   /**
@@ -16,7 +18,7 @@ export const processesApi = {
    * @returns A promise that resolves to an array of process definitions.
    */
   async getProcesses(): Promise<ProcessDefinition[]> {
-    console.log('[processesApi] getProcesses called');
+    log.debug('getProcesses called');
     return fetchApi('/api/processes');
   },
 
@@ -25,7 +27,7 @@ export const processesApi = {
    * @returns A promise that resolves to an array of all process definitions.
    */
   async getAllProcessDefinitions(): Promise<ProcessDefinition[]> {
-    console.log('[processesApi] getAllProcessDefinitions called');
+    log.debug('getAllProcessDefinitions called');
     return fetchApi('/api/processes/definitions');
   },
 
@@ -41,14 +43,7 @@ export const processesApi = {
     variables: Record<string, unknown> = {},
     businessKey?: string
   ): Promise<{ message: string; processInstance: ProcessInstance }> {
-    console.log(
-      '[processesApi] startProcess called with key:',
-      processKey,
-      'variables:',
-      variables,
-      'businessKey:',
-      businessKey
-    );
+    log.debug('startProcess called', { processKey, businessKey });
     const payload: { variables: Record<string, unknown>; businessKey?: string } = { variables };
     if (businessKey) {
       payload.businessKey = businessKey;
@@ -66,7 +61,7 @@ export const processesApi = {
    * @returns A promise that resolves to the process instance details.
    */
   async getProcessInstance(processInstanceId: string): Promise<ProcessInstance> {
-    console.log('[processesApi] getProcessInstance called with id:', processInstanceId);
+    log.debug('getProcessInstance called', { processInstanceId });
     return fetchApi(`/api/processes/instance/${processInstanceId}`);
   },
 
@@ -76,7 +71,7 @@ export const processesApi = {
    * @returns A promise that resolves to a Blob containing the exported data.
    */
   async exportProcessInstance(processInstanceId: string): Promise<Blob> {
-    console.log('[processesApi] exportProcessInstance called with id:', processInstanceId);
+    log.debug('exportProcessInstance called', { processInstanceId });
     return fetchApi(`/api/processes/instance/${processInstanceId}/export`, {
       responseType: 'blob'
     });
@@ -92,12 +87,7 @@ export const processesApi = {
     processInstanceId: string,
     reason: string = 'User cancellation'
   ): Promise<{ message: string }> {
-    console.log(
-      '[processesApi] cancelProcessInstance called with id:',
-      processInstanceId,
-      'reason:',
-      reason
-    );
+    log.debug('cancelProcessInstance called', { processInstanceId, reason });
     const params = new URLSearchParams();
     if (reason) params.append('reason', reason);
     return fetchApi(`/api/processes/instance/${processInstanceId}?${params.toString()}`, {
@@ -111,7 +101,7 @@ export const processesApi = {
    * @returns A promise that resolves to a success message.
    */
   async suspendProcessInstance(processInstanceId: string): Promise<{ message: string }> {
-    console.log('[processesApi] suspendProcessInstance called with id:', processInstanceId);
+    log.debug('suspendProcessInstance called', { processInstanceId });
     return fetchApi(`/api/processes/instance/${processInstanceId}/suspend`, { method: 'PUT' });
   },
 
@@ -121,7 +111,7 @@ export const processesApi = {
    * @returns A promise that resolves to a success message.
    */
   async activateProcessInstance(processInstanceId: string): Promise<{ message: string }> {
-    console.log('[processesApi] activateProcessInstance called with id:', processInstanceId);
+    log.debug('activateProcessInstance called', { processInstanceId });
     return fetchApi(`/api/processes/instance/${processInstanceId}/activate`, { method: 'PUT' });
   },
 
@@ -132,7 +122,7 @@ export const processesApi = {
    * @returns A promise that resolves to a page of process instances.
    */
   async getMyProcesses(page: number = 0, size: number = 10): Promise<Page<ProcessInstance>> {
-    console.log('[processesApi] getMyProcesses called with page:', page, 'size:', size);
+    log.debug('getMyProcesses called', { page, size });
     const params = new URLSearchParams();
     params.append('page', page.toString());
     params.append('size', size.toString());
@@ -144,7 +134,7 @@ export const processesApi = {
    * @returns A promise that resolves to an array of users.
    */
   async getUsers(): Promise<User[]> {
-    console.log('[processesApi] getUsers called');
+    log.debug('getUsers called');
     return fetchApi('/api/processes/users');
   },
 
@@ -163,14 +153,7 @@ export const processesApi = {
     page: number = 0,
     size: number = 20
   ): Promise<WorkflowHistory[]> {
-    console.log(
-      '[processesApi] getAllWorkflowProcesses called with status:',
-      status,
-      'type:',
-      processType,
-      'page:',
-      page
-    );
+    log.debug('getAllWorkflowProcesses called', { status, processType, page, size });
     const params = new URLSearchParams();
     if (status) params.append('status', status);
     if (processType) params.append('processType', processType);
@@ -185,7 +168,7 @@ export const processesApi = {
    * @returns A promise that resolves to the workflow history.
    */
   async getWorkflowHistory(processInstanceId: string): Promise<WorkflowHistory> {
-    console.log('[processesApi] getWorkflowHistory called with id:', processInstanceId);
+    log.debug('getWorkflowHistory called', { processInstanceId });
     return fetchApi(`/api/workflow/processes/${processInstanceId}`);
   },
 
@@ -199,12 +182,7 @@ export const processesApi = {
     processInstanceId: string,
     message: string
   ): Promise<{ message: string; comment: Comment }> {
-    console.log(
-      '[processesApi] addComment called with id:',
-      processInstanceId,
-      'message:',
-      message
-    );
+    log.debug('addComment called', { processInstanceId });
     return fetchApi(`/api/workflow/processes/${processInstanceId}/comments`, {
       method: 'POST',
       body: JSON.stringify({ message })
@@ -222,7 +200,7 @@ export const processesApi = {
     processName: string,
     bpmnXml: string
   ): Promise<{ message: string; process: ProcessDefinition }> {
-    console.log('[processesApi] deployProcess called with name:', processName);
+    log.debug('deployProcess called', { processName });
     return fetchApi('/api/processes/deploy', {
       method: 'POST',
       body: JSON.stringify({ processName, bpmnXml })
@@ -235,7 +213,7 @@ export const processesApi = {
    * @returns A promise that resolves to an object containing the BPMN XML.
    */
   async getProcessBpmn(processDefinitionId: string): Promise<{ bpmn: string }> {
-    console.log('[processesApi] getProcessBpmn called with id:', processDefinitionId);
+    log.debug('getProcessBpmn called', { processDefinitionId });
     return fetchApi(`/api/processes/${processDefinitionId}/bpmn`);
   },
 
@@ -249,12 +227,7 @@ export const processesApi = {
     processDefinitionId: string,
     cascade: boolean = false
   ): Promise<{ message: string }> {
-    console.log(
-      '[processesApi] deleteProcess called with id:',
-      processDefinitionId,
-      'cascade:',
-      cascade
-    );
+    log.debug('deleteProcess called', { processDefinitionId, cascade });
     return fetchApi(`/api/processes/${processDefinitionId}?cascade=${cascade}`, {
       method: 'DELETE'
     });
@@ -266,7 +239,7 @@ export const processesApi = {
    * @returns A promise that resolves to a success message.
    */
   async suspendProcess(processDefinitionId: string): Promise<{ message: string }> {
-    console.log('[processesApi] suspendProcess called with id:', processDefinitionId);
+    log.debug('suspendProcess called', { processDefinitionId });
     return fetchApi(`/api/processes/${processDefinitionId}/suspend`, { method: 'PUT' });
   },
 
@@ -276,7 +249,7 @@ export const processesApi = {
    * @returns A promise that resolves to a success message.
    */
   async activateProcess(processDefinitionId: string): Promise<{ message: string }> {
-    console.log('[processesApi] activateProcess called with id:', processDefinitionId);
+    log.debug('activateProcess called', { processDefinitionId });
     return fetchApi(`/api/processes/${processDefinitionId}/activate`, { method: 'PUT' });
   },
 
@@ -290,12 +263,7 @@ export const processesApi = {
     processDefinitionId: string,
     category: string
   ): Promise<{ message: string }> {
-    console.log(
-      '[processesApi] updateProcessCategory called with id:',
-      processDefinitionId,
-      'category:',
-      category
-    );
+    log.debug('updateProcessCategory called', { processDefinitionId, category });
     return fetchApi(`/api/processes/${processDefinitionId}/category`, {
       method: 'PUT',
       body: JSON.stringify({ category })
@@ -309,7 +277,7 @@ export const processesApi = {
    * @returns A promise that resolves to the form definition.
    */
   async getStartFormDefinition(processDefinitionId: string): Promise<FormDefinition> {
-    console.log('[processesApi] getStartFormDefinition called with id:', processDefinitionId);
+    log.debug('getStartFormDefinition called', { processDefinitionId });
     return fetchApi(`/api/processes/${processDefinitionId}/start-form`);
   },
 
@@ -321,7 +289,7 @@ export const processesApi = {
   async getAllFormDefinitions(
     processDefinitionId: string
   ): Promise<Record<string, FormDefinition>> {
-    console.log('[processesApi] getAllFormDefinitions called with id:', processDefinitionId);
+    log.debug('getAllFormDefinitions called', { processDefinitionId });
     return fetchApi(`/api/processes/${processDefinitionId}/forms`);
   },
 
@@ -335,12 +303,7 @@ export const processesApi = {
     processDefinitionId: string,
     elementId: string
   ): Promise<FormDefinition> {
-    console.log(
-      '[processesApi] getElementFormDefinition called with processId:',
-      processDefinitionId,
-      'elementId:',
-      elementId
-    );
+    log.debug('getElementFormDefinition called', { processDefinitionId, elementId });
     return fetchApi(`/api/processes/${processDefinitionId}/forms/${elementId}`);
   }
 };

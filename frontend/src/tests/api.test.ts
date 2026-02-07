@@ -107,6 +107,28 @@ describe('fetchApi', () => {
     });
   });
 
+  it('does not force a JSON content type for FormData requests', async () => {
+    const formData = new FormData();
+    formData.append('file', 'payload');
+
+    mockFetch.mockImplementationOnce((_url: string, init?: RequestInit) => {
+      const headers = new Headers(init?.headers);
+      expect(headers.has('content-type')).toBe(false);
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        text: () => Promise.resolve('{"ok":true}'),
+        statusText: 'OK',
+        headers: new Headers({ 'content-length': '11' })
+      });
+    });
+
+    await fetchApi('/api/upload', {
+      method: 'POST',
+      body: formData
+    });
+  });
+
   it('returns text payload when responseType is text', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
