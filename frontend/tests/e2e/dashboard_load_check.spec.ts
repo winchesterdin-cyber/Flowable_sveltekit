@@ -1,56 +1,36 @@
-import { test, expect } from '@playwright/test';
-import * as path from 'path';
+import { test, expect } from './fixtures';
+import { login } from './support/auth';
+import { captureScreenshot } from './support/attachments';
 
-test('login and monitor dashboard load', async ({ page }) => {
-  // Set a very long test timeout to accommodate the 80s wait + extra time
-  test.setTimeout(180000); // 3 minutes
+const DASHBOARD_WAIT_MS = 80000;
+const EXTRA_WAIT_MS = 60000;
 
-  console.log('Starting login...');
-  // Go to login page
-  await page.goto('/login');
+test('login and monitor dashboard load', async ({ page, log }, testInfo) => {
+  test.setTimeout(DASHBOARD_WAIT_MS + EXTRA_WAIT_MS + 40000);
 
-  // Use quick login for John C. (Engineer)
-  await page.click('button[title*="eng.john"]');
+  await test.step('Login', async () => {
+    log.info('Starting login.');
+    await login(page, log);
+  });
 
-  // Submit the form
-  await page.click('button[type="submit"]');
+  await test.step('Navigate to dashboard', async () => {
+    log.info('Navigating to dashboard.');
+    await page.getByRole('link', { name: 'Dashboard' }).click();
+    await page.waitForURL('/dashboard');
+    await expect(page.getByRole('heading', { name: 'Workflow Dashboard' })).toBeVisible();
+  });
 
-  // Wait for navigation to home page
-  await page.waitForURL('/');
-  console.log('Logged in successfully.');
+  log.info('Dashboard page loaded (initial HTML). Waiting for content.');
 
-  // Navigate to Dashboard
-  console.log('Navigating to dashboard...');
-  await page.click('text=Workflow Dashboard');
-  await page.waitForURL('/dashboard');
-
-  console.log('Dashboard page loaded (initial HTML). Waiting for content...');
-
-  // The dashboard shows a spinner when loading:
-  // <div class="w-12 h-12 border-4 border-blue-600 ... animate-spin mx-auto"></div>
-  // We can locate it by the text "Loading dashboard..." which is right below it
-  const spinnerLocator = page.locator('text=Loading dashboard...');
-
-  // Potential error messages
-  // "Failed to load dashboard"
+  const spinnerLocator = page.getByText('Loading dashboard...');
   const errorLocator = page.locator('.bg-red-50').filter({
     hasNotText: /Overdue Tasks|Breached SLA/
   });
-
-  // Success indicator
-  // "Active Processes by Type" or "Workflow Dashboard" (header is always there, need content)
-  const successLocator = page.locator('text=Active Processes by Type');
-
-  // We need to wait for UP TO 80 seconds.
-  // If at any point an error appears -> Fail.
-  // If success appears -> Pass.
-  // If 80 seconds pass and spinner is still there -> Screenshot and Wait more.
+  const successLocator = page.getByText('Active Processes by Type');
 
   const startTime = Date.now();
-  const waitTime = 80000; // 80 seconds
-
-  // We will poll the state every 1 second
-  let state = 'loading'; // loading, error, success
+  const waitTime = DASHBOARD_WAIT_MS;
+  let state: 'loading' | 'error' | 'success' = 'loading';
 
   while (Date.now() - startTime < waitTime) {
     if (await errorLocator.isVisible()) {
@@ -61,11 +41,9 @@ test('login and monitor dashboard load', async ({ page }) => {
       state = 'success';
       break;
     }
-    // Still loading (presumably)
-    // Check if spinner is visible just to be sure
+
     if (!(await spinnerLocator.isVisible())) {
-      // If spinner is gone but success not visible, what happened?
-      // Maybe it's transitioning.
+      log.debug('Spinner hidden but success not visible yet.');
     }
 
     await page.waitForTimeout(500);
@@ -73,42 +51,38 @@ test('login and monitor dashboard load', async ({ page }) => {
 
   if (state === 'error') {
     const errorText = await errorLocator.innerText();
-    console.error(`Error detected on dashboard: ${errorText}`);
+    log.error(`Error detected on dashboard: ${errorText}`);
     throw new Error(`Dashboard showed error: ${errorText}`);
   }
 
   if (state === 'success') {
-    console.log('Dashboard loaded successfully within 80 seconds.');
+    log.info('Dashboard loaded successfully within 80 seconds.');
     return;
   }
 
-  // If we are here, we timed out (80s passed) and we are likely still loading
-  console.log('80 seconds passed. Checking status...');
+  log.warn('80 seconds passed. Checking status...');
 
   if (await spinnerLocator.isVisible()) {
-    console.log('Spinner is still visible after 80 seconds.');
+    log.warn('Spinner is still visible after 80 seconds.');
 
-    // "increase wait time, take screenshots and put them in /screenshots for testing folder"
+    const screenshotName = `dashboard_slow_load_${Date.now()}.png`;
+    log.info(`Taking screenshot: ${screenshotName}`);
+    await captureScreenshot(page, testInfo, screenshotName, { fullPage: false });
 
-    // Take screenshot
-    const screenshotPath = path.resolve('screenshots', `dashboard_slow_load_${Date.now()}.png`);
-    console.log(`Taking screenshot to: ${screenshotPath}`);
-    await page.screenshot({ path: screenshotPath });
-
-    // Increase wait time - let's wait another 60 seconds
-    console.log('Waiting another 60 seconds...');
+    log.info(`Waiting another ${EXTRA_WAIT_MS / 1000} seconds...`);
     try {
-      await expect(successLocator).toBeVisible({ timeout: 60000 });
-      console.log('Dashboard eventually loaded.');
+      await expect(successLocator).toBeVisible({ timeout: EXTRA_WAIT_MS });
+      log.info('Dashboard eventually loaded.');
     } catch (e) {
-      console.log('Dashboard still did not load after extra wait.');
-      // Take another screenshot?
-      await page.screenshot({ path: path.resolve('screenshots', `dashboard_still_loading_${Date.now()}.png`) });
+      log.warn('Dashboard still did not load after extra wait.');
+      await captureScreenshot(page, testInfo, `dashboard_still_loading_${Date.now()}.png`, {
+        fullPage: false
+      });
     }
   } else {
-    // Spinner gone, but success not found?
-    console.log('Spinner is gone but content not found. This is unexpected.');
-    await page.screenshot({ path: path.resolve('screenshots', `dashboard_unknown_state_${Date.now()}.png`) });
+    log.warn('Spinner is gone but content not found. This is unexpected.');
+    await captureScreenshot(page, testInfo, `dashboard_unknown_state_${Date.now()}.png`, {
+      fullPage: false
+    });
   }
-
 });
