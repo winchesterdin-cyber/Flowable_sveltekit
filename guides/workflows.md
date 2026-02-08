@@ -151,6 +151,18 @@ Users can copy a URL that preserves the current task filters so teammates can op
 - Shared URL filters take precedence over locally saved filters on first load.
 - As filters are changed, the browser URL stays synchronized without a full page reload.
 
+## Feature: Notification Filters and Search
+
+The Notifications page includes a filtering toolbar so users can quickly find the right alert.
+
+### Usage
+
+1. Navigate to the **Notifications** page.
+2. Use the **Search** box to find notifications by title or message content.
+3. Choose a **Type** filter to focus on specific alert categories.
+4. Use the **Status** dropdown to view unread or read notifications only.
+5. Click **Clear** to reset all filters.
+
 ## Feature: Bulk Task Actions
 
 Users can select multiple tasks to perform bulk operations, such as claiming or unclaiming tasks in batches.

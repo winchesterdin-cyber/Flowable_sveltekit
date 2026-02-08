@@ -1,16 +1,33 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { api } from '$lib/api/client';
-  import type { Notification } from '$lib/types';
-  import { Bell, CheckSquare, AlertCircle, CheckCircle, Info, Check } from '@lucide/svelte';
+  import type { Notification, NotificationType } from '$lib/types';
+  import { Bell, CheckSquare, AlertCircle, CheckCircle, Info, Check, Filter, X } from '@lucide/svelte';
   import Loading from '$lib/components/Loading.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
   import ErrorDisplay from '$lib/components/ErrorDisplay.svelte';
   import { notificationStore } from '$lib/stores/notifications.svelte';
+  import { createLogger } from '$lib/utils/logger';
 
   let loading = $state(true);
   let error = $state<string | null>(null);
   let notifications = $state<Notification[]>([]);
+  let searchText = $state('');
+  let typeFilter = $state<NotificationType | 'all'>('all');
+  let readFilter = $state<'all' | 'read' | 'unread'>('all');
+
+  const logger = createLogger('NotificationsPage');
+  const readFilterHelpId = 'notification-read-filter-help';
+  const notificationTypeLabels: Record<NotificationType, string> = {
+    TASK_ASSIGNED: 'Task assigned',
+    TASK_DUE_SOON: 'Task due soon',
+    TASK_OVERDUE: 'Task overdue',
+    PROCESS_COMPLETED: 'Process completed',
+    PROCESS_REJECTED: 'Process rejected',
+    SLA_WARNING: 'SLA warning',
+    SLA_BREACH: 'SLA breach',
+    INFO: 'Info'
+  };
 
   onMount(async () => {
     await loadNotifications();
@@ -22,10 +39,12 @@
     try {
       const data = await api.getNotifications();
       notifications = data;
+      logger.info('Loaded notifications', { count: data.length });
       // Also update store to sync badge
       notificationStore.loadNotifications();
     } catch (err) {
       error = err instanceof Error ? err.message : 'Failed to load notifications';
+      logger.error('Failed to load notifications', err);
     } finally {
       loading = false;
     }
@@ -33,10 +52,15 @@
 
   async function markAllRead() {
     try {
+      if (!notifications.some((notification) => !notification.read)) {
+        logger.warn('Mark all read skipped: no unread notifications');
+        return;
+      }
       await api.markAllNotificationsAsRead();
+      logger.info('Marked all notifications as read');
       await loadNotifications();
     } catch (err) {
-      console.error('Failed to mark all as read', err);
+      logger.error('Failed to mark all notifications as read', err);
     }
   }
 
@@ -46,9 +70,41 @@
         notifications = notifications.map(n => n.id === id ? { ...n, read: true } : n);
         await api.markNotificationAsRead(id);
         notificationStore.loadNotifications();
+        logger.info('Marked notification as read', { id });
     } catch (err) {
-        console.error('Failed to mark notification as read', err);
+        logger.error('Failed to mark notification as read', err, { id });
     }
+  }
+
+  /**
+   * Keep notification filtering centralized to support search, type, and read state.
+   */
+  const filteredNotifications = $derived(
+    notifications.filter((notification) => {
+      const matchesSearch =
+        searchText.trim().length === 0 ||
+        notification.title.toLowerCase().includes(searchText.trim().toLowerCase()) ||
+        notification.message.toLowerCase().includes(searchText.trim().toLowerCase());
+      const matchesType = typeFilter === 'all' || notification.type === typeFilter;
+      const matchesReadState =
+        readFilter === 'all' || (readFilter === 'read' ? notification.read : !notification.read);
+      return matchesSearch && matchesType && matchesReadState;
+    })
+  );
+
+  const activeFilterCount = $derived(
+    (searchText.trim().length > 0 ? 1 : 0) +
+      (typeFilter !== 'all' ? 1 : 0) +
+      (readFilter !== 'all' ? 1 : 0)
+  );
+
+  const unreadCount = $derived(notifications.filter((notification) => !notification.read).length);
+
+  function clearFilters() {
+    searchText = '';
+    typeFilter = 'all';
+    readFilter = 'all';
+    logger.info('Cleared notification filters');
   }
 
   function getIconColor(type: string) {
@@ -71,11 +127,14 @@
 
 <div class="max-w-4xl mx-auto px-4 py-8">
   <div class="flex items-center justify-between mb-6">
-    <h1 class="text-2xl font-bold text-gray-900 flex items-center gap-2">
+    <div class="flex flex-col">
+      <h1 class="text-2xl font-bold text-gray-900 flex items-center gap-2">
       <Bell class="w-6 h-6 text-gray-500" />
       Notifications
-    </h1>
-    {#if notifications.some(n => !n.read)}
+      </h1>
+      <p class="text-sm text-gray-500 mt-1">Unread: {unreadCount}</p>
+    </div>
+    {#if unreadCount > 0}
       <button
         onclick={markAllRead}
         class="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors"
@@ -84,6 +143,65 @@
         Mark all as read
       </button>
     {/if}
+  </div>
+
+  <div class="bg-white border border-gray-200 rounded-lg p-4 mb-6 shadow-sm">
+    <div class="flex flex-col lg:flex-row gap-4">
+      <div class="flex-1">
+        <label for="notification-search" class="sr-only">Search notifications</label>
+        <input
+          id="notification-search"
+          type="search"
+          bind:value={searchText}
+          placeholder="Search by title or message..."
+          class="w-full rounded-md border border-gray-300 p-2 text-sm focus:border-blue-500 focus:ring-blue-500"
+        />
+      </div>
+      <div class="flex flex-wrap gap-3">
+        <div class="w-44">
+          <label for="notification-type" class="sr-only">Filter by type</label>
+          <select
+            id="notification-type"
+            bind:value={typeFilter}
+            class="w-full rounded-md border border-gray-300 p-2 text-sm focus:border-blue-500 focus:ring-blue-500"
+          >
+            <option value="all">All types</option>
+            {#each Object.entries(notificationTypeLabels) as [value, label]}
+              <option value={value}>{label}</option>
+            {/each}
+          </select>
+        </div>
+        <div class="w-36">
+          <label for="notification-read" class="sr-only">Filter by read state</label>
+          <select
+            id="notification-read"
+            bind:value={readFilter}
+            aria-describedby={readFilterHelpId}
+            class="w-full rounded-md border border-gray-300 p-2 text-sm focus:border-blue-500 focus:ring-blue-500"
+          >
+            <option value="all">All statuses</option>
+            <option value="unread">Unread only</option>
+            <option value="read">Read only</option>
+          </select>
+          <p id={readFilterHelpId} class="sr-only">Filter notifications by read status.</p>
+        </div>
+        <button
+          type="button"
+          onclick={clearFilters}
+          disabled={activeFilterCount === 0}
+          aria-disabled={activeFilterCount === 0}
+          class="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {#if activeFilterCount === 0}
+            <Filter class="w-4 h-4" />
+            Filters
+          {:else}
+            <X class="w-4 h-4" />
+            Clear ({activeFilterCount})
+          {/if}
+        </button>
+      </div>
+    </div>
   </div>
 
   {#if loading}
@@ -98,10 +216,28 @@
       message="No notifications. You're all caught up! Check back later for updates."
       icon={bellIcon}
     />
+  {:else if filteredNotifications.length === 0}
+    {#snippet filterIcon()}
+      <Filter class="w-12 h-12 text-gray-400 mb-3" />
+    {/snippet}
+    <EmptyState
+      message="No notifications match the current filters."
+      icon={filterIcon}
+    />
+    <div class="mt-4 flex justify-center">
+      <button
+        type="button"
+        onclick={clearFilters}
+        class="inline-flex items-center gap-2 px-4 py-2 rounded-md border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50"
+      >
+        <X class="w-4 h-4" />
+        Clear filters
+      </button>
+    </div>
   {:else}
     <div class="bg-white shadow rounded-lg overflow-hidden border border-gray-200">
       <ul class="divide-y divide-gray-200">
-        {#each notifications as notification (notification.id)}
+        {#each filteredNotifications as notification (notification.id)}
           <li class="hover:bg-gray-50 transition-colors duration-150 {notification.read ? 'opacity-75' : 'bg-blue-50/30'}">
             <div class="p-4 sm:px-6">
               <div class="flex items-start">
