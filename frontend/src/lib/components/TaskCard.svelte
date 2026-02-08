@@ -64,6 +64,8 @@
 				type="checkbox"
 				checked={selected}
 				onclick={handleSelection}
+				aria-label={`Select task ${task.name}`}
+				aria-checked={selected}
 				class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
 			/>
 		</div>
@@ -133,9 +135,11 @@
 		<div
 			class="mt-3 pt-2 border-t border-gray-200 dark:border-gray-700 flex gap-2"
 			role="group"
+			aria-label="Task actions"
 		>
 			{#if !task.assignee}
 				<button
+					type="button"
 					onclick={(e) => handleAction(e, onClaim)}
 					class="px-2 py-1 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors"
 				>
@@ -143,12 +147,14 @@
 				</button>
 			{:else if authStore.user && task.assignee === authStore.user.username}
 				<button
+					type="button"
 					onclick={(e) => handleAction(e, onUnclaim)}
 					class="px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded hover:bg-gray-200 transition-colors dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-600"
 				>
 					Unclaim
 				</button>
 				<button
+					type="button"
 					onclick={(e) => handleAction(e, onDelegate)}
 					class="px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded hover:bg-gray-200 transition-colors dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-600"
 				>

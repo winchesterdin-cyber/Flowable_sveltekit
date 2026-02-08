@@ -85,10 +85,18 @@
 {:else}
 	<!-- Bulk Actions Toolbar -->
 	{#if onBulkClaim || onBulkUnclaim}
-		<div class="flex flex-wrap items-center justify-between gap-4 mb-4 bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
+		<div
+			class="flex flex-wrap items-center justify-between gap-4 mb-4 bg-white p-3 rounded-lg border border-gray-200 shadow-sm"
+			aria-label="Bulk task actions"
+			role="region"
+		>
 			<div class="flex items-center gap-2">
 				<button
+					type="button"
 					onclick={toggleSelectAll}
+					aria-pressed={selectedIds.size === sortedTasks.length && sortedTasks.length > 0}
+					disabled={sortedTasks.length === 0}
+					aria-disabled={sortedTasks.length === 0}
 					class="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
 				>
 					{#if selectedIds.size === sortedTasks.length && sortedTasks.length > 0}
@@ -99,33 +107,37 @@
 						Select All
 					{/if}
 				</button>
-				<span class="text-sm text-gray-500 border-l pl-3 ml-1">
+				<span class="text-sm text-gray-500 border-l pl-3 ml-1" aria-live="polite">
 					{selectedIds.size} selected
 				</span>
 			</div>
 
-			{#if selectedIds.size > 0}
-				<div class="flex items-center gap-2">
-					{#if onBulkClaim}
-						<button
-							onclick={handleBulkClaim}
-							class="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
-						>
-							<UserCheck class="w-4 h-4" />
-							Claim Selected
-						</button>
-					{/if}
-					{#if onBulkUnclaim}
-						<button
-							onclick={handleBulkUnclaim}
-							class="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
-						>
-							<UserX class="w-4 h-4" />
-							Unclaim Selected
-						</button>
-					{/if}
-				</div>
-			{/if}
+			<div class="flex items-center gap-2">
+				{#if onBulkClaim}
+					<button
+						type="button"
+						onclick={handleBulkClaim}
+						disabled={selectedIds.size === 0}
+						aria-disabled={selectedIds.size === 0}
+						class="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+					>
+						<UserCheck class="w-4 h-4" />
+						Claim Selected
+					</button>
+				{/if}
+				{#if onBulkUnclaim}
+					<button
+						type="button"
+						onclick={handleBulkUnclaim}
+						disabled={selectedIds.size === 0}
+						aria-disabled={selectedIds.size === 0}
+						class="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+					>
+						<UserX class="w-4 h-4" />
+						Unclaim Selected
+					</button>
+				{/if}
+			</div>
 		</div>
 	{/if}
 
