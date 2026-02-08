@@ -1,40 +1,21 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
+import { login } from './support/auth';
+import { getNavigationEntries } from './support/navigation';
 
 test.describe('Navigation', () => {
-	test('verifies all menu items point to the right pages', async ({ page }) => {
-		await page.goto('/login');
-		await page.fill('#username', 'user1');
-		await page.fill('#password', 'password');
-		await page.click('button[type="submit"]');
-		await page.waitForURL('/');
+  test('verifies all menu items point to the right pages', async ({ page, log }) => {
+    await test.step('Login', async () => {
+      await login(page, log);
+    });
 
-		// From `frontend/src/lib/nav-schema.ts`
-		const navigationSchema = [
-			{
-				title: 'Dashboard',
-				href: '/dashboard'
-			},
-			{
-				title: 'Tasks',
-				href: '/tasks'
-			},
-			{
-				title: 'Processes',
-				href: '/processes'
-			},
-			{
-				title: 'Document Types',
-				href: '/document-types'
-			},
-			{
-				title: 'Database',
-				href: '/database'
-			}
-		];
+    const navigationSchema = getNavigationEntries();
+    await expect(page.locator('nav')).toBeVisible();
 
-		for (const item of navigationSchema) {
-			await page.getByRole('link', { name: item.title }).click();
-			await expect(page).toHaveURL(item.href);
-		}
-	});
+    for (const item of navigationSchema) {
+      await test.step(`Navigate to ${item.title}`, async () => {
+        await page.getByRole('link', { name: item.title }).click();
+        await expect.soft(page).toHaveURL(item.href);
+      });
+    }
+  });
 });
