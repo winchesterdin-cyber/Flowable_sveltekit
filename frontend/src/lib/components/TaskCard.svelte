@@ -3,8 +3,8 @@
 	import { authStore } from '$lib/stores/auth.svelte';
 	import { getProcessCardClasses, getPriorityClasses, getPriorityLabel } from '$lib/utils/theme';
 	import { formatDate } from '$lib/utils/form-helpers';
-	import { isPast, isToday, addDays, isBefore } from 'date-fns';
 	import { Clock, AlertCircle } from '@lucide/svelte';
+	import { getDueDateStatus } from '$lib/utils/task-insights';
 
 	interface Props {
 		task: Task;
@@ -30,15 +30,6 @@
 		e.stopPropagation();
 		const checked = (e.target as HTMLInputElement).checked;
 		if (onSelect) onSelect(task.id, checked);
-	}
-
-	function getDueDateStatus(dueDate: string | undefined) {
-		if (!dueDate) return null;
-		const date = new Date(dueDate);
-		if (isPast(date) && !isToday(date)) return 'overdue';
-		if (isToday(date)) return 'today';
-		if (isBefore(date, addDays(new Date(), 2))) return 'soon';
-		return 'future';
 	}
 
 	const dueStatus = $derived(getDueDateStatus(task.dueDate));

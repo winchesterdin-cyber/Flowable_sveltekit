@@ -164,6 +164,17 @@ Users can select multiple tasks to perform bulk operations, such as claiming or 
 5. Click **Claim Selected** to claim all selected tasks (if they are unassigned).
 6. Click **Unclaim Selected** to release all selected tasks (if you are assigned to them).
 
+## Feature: Task Insights and Focus Filters
+
+The Tasks page now includes a Task Insights panel that summarizes your current workload and lets you focus the list on common priority buckets.
+
+### Usage
+
+1. Navigate to the **Tasks** page.
+2. Review the **Task insights** cards for totals, unassigned work, overdue items, and upcoming due dates.
+3. Click an insight card (for example, **Overdue** or **High priority**) to filter the task list instantly.
+4. Click **Total tasks** to return to the full list of tasks that match your other filters.
+
 ## Feature: Process Documents
 
 Users can view all documents associated with a specific process instance in a centralized location.
