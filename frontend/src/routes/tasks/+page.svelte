@@ -12,10 +12,17 @@
 	import { Download } from '@lucide/svelte';
 	import { exportToCSV } from '$lib/utils';
 	import { createLogger } from '$lib/utils/logger';
+	import TaskInsights from '$lib/components/TaskInsights.svelte';
+	import {
+		buildTaskInsightMetrics,
+		filterTasksByInsight,
+		type InsightFilter
+	} from '$lib/utils/task-insights';
 
 	let allTasks = $state<Task[]>([]);
 	let loading = $state(true);
 	let error = $state('');
+	let insightFilter = $state<InsightFilter>('all');
 
 	const logger = createLogger('TasksPage');
 	const filtersStorageKey = 'taskFilters:lastUsed';
@@ -30,6 +37,7 @@
 
 	let showDelegateModal = $state(false);
 	let delegateTaskId = $state<string | null>(null);
+	const filteredTasks = $derived(filterTasksByInsight(allTasks, insightFilter));
 
 	onMount(async () => {
 		const urlFilters = loadFiltersFromQuery();
@@ -144,7 +152,8 @@
 
 			logger.info('Loading tasks with filters', { filters: apiFilters });
 			allTasks = await api.getTasks(apiFilters);
-			logger.info('Loaded tasks', { count: allTasks.length });
+			const insights = buildTaskInsightMetrics(allTasks);
+			logger.info('Loaded tasks', { count: allTasks.length, insights });
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Failed to load tasks';
 			logger.error('Failed to load tasks', err);
@@ -177,6 +186,11 @@
 		syncFiltersToQuery(filters);
 		logger.info('Task filters updated', { filters });
 		loadTasks();
+	}
+
+	function handleInsightChange(nextInsight: InsightFilter) {
+		insightFilter = nextInsight;
+		logger.info('Task insight filter updated', { insight: nextInsight });
 	}
 
 	function handleTaskClick(taskId: string) {
@@ -279,6 +293,12 @@
 	</div>
 
 	<TaskFilters initialFilters={filters} on:change={handleFilterChange} on:share={handleShareFilters} />
+	<TaskInsights
+		tasks={allTasks}
+		activeInsight={insightFilter}
+		loading={loading}
+		onInsightChange={handleInsightChange}
+	/>
 
 	{#if loading}
 		<Loading text="Loading tasks..." />
@@ -286,7 +306,7 @@
 		<ErrorDisplay {error} onRetry={loadTasks} title="Error Loading Tasks" />
 	{:else}
 		<TaskList
-			tasks={allTasks}
+			tasks={filteredTasks}
 			sortBy={filters.sortBy}
 			onTaskClick={handleTaskClick}
 			onClaim={handleClaim}
@@ -294,7 +314,11 @@
 			onDelegate={handleDelegate}
 			onBulkClaim={handleBulkClaim}
 			onBulkUnclaim={handleBulkUnclaim}
-			emptyMessage="No tasks found matching your filters."
+			emptyMessage={
+				insightFilter === 'all'
+					? 'No tasks found matching your filters.'
+					: 'No tasks match the selected insight filter.'
+			}
 		/>
 	{/if}
 
