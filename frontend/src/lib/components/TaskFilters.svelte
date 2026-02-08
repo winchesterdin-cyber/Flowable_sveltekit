@@ -33,6 +33,8 @@
 	let presets = $state<FilterPreset[]>([]);
 	// Track the last applied incoming filters to avoid overwriting in-progress edits.
 	let lastAppliedSignature = $state('');
+	const searchHelpId = 'task-filter-search-help';
+	const presetHelpId = 'task-filter-preset-help';
 
 	interface Props {
 		initialFilters?: Filters | null;
@@ -81,6 +83,11 @@
 	const hasActiveFilters = $derived(
 		!!filters.text || !!filters.assignee || !!filters.priority || filters.sortBy !== 'created_desc'
 	);
+	const activeFilterCount = $derived(
+		[filters.text, filters.assignee, filters.priority].filter(Boolean).length +
+			(filters.sortBy !== 'created_desc' ? 1 : 0)
+	);
+	const canSavePreset = $derived(hasActiveFilters && presetName.trim().length > 0);
 
 	function readPresetsFromStorage(): FilterPreset[] {
 		if (!browser) return [];
@@ -177,16 +184,36 @@
 	<div class="flex flex-col md:flex-row gap-4">
 		<!-- Search -->
 		<div class="flex-grow relative">
+			<label for="task-filter-search" class="sr-only">Search tasks</label>
 			<div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
 				<Search class="h-4 w-4 text-gray-400" />
 			</div>
 			<input
-				type="text"
+				id="task-filter-search"
+				type="search"
 				bind:value={filters.text}
 				oninput={handleChange}
 				placeholder="Search tasks by name or description..."
+				aria-describedby={searchHelpId}
+				autocomplete="off"
 				class="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2"
 			/>
+			{#if filters.text}
+				<button
+					type="button"
+					onclick={() => {
+						filters.text = '';
+						handleChange();
+					}}
+					class="absolute inset-y-0 right-2 flex items-center text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded"
+					aria-label="Clear search text"
+				>
+					<X class="h-4 w-4" />
+				</button>
+			{/if}
+			<p id={searchHelpId} class="mt-1 text-xs text-gray-500">
+				Search by task name, description, or keyword.
+			</p>
 		</div>
 
 		<!-- Filters -->
@@ -195,6 +222,7 @@
 				<select
 					bind:value={filters.assignee}
 					onchange={handleChange}
+					aria-label="Filter by assignee"
 					class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2"
 				>
 					<option value="">All Assignees</option>
@@ -208,6 +236,7 @@
 				<select
 					bind:value={filters.priority}
 					onchange={handleChange}
+					aria-label="Filter by priority"
 					class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2"
 				>
 					<option value="">All Priorities</option>
@@ -222,6 +251,7 @@
 				<select
 					bind:value={filters.sortBy}
 					onchange={handleChange}
+					aria-label="Sort tasks"
 					class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2"
 				>
 					<option value="created_desc">Newest First</option>
@@ -235,9 +265,11 @@
 
 			{#if hasActiveFilters}
 				<button
+					type="button"
 					onclick={clearFilters}
 					class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
 					title="Clear Filters"
+					aria-label="Clear all filters"
 				>
 					<X class="h-4 w-4 text-gray-500" />
 				</button>
@@ -248,16 +280,25 @@
 	<div class="mt-4 flex flex-col gap-3">
 		<div class="flex flex-col sm:flex-row sm:items-center gap-3">
 			<div class="flex items-center gap-2 flex-1">
+				<label for="task-filter-preset" class="sr-only">Preset name</label>
 				<input
+					id="task-filter-preset"
 					type="text"
 					bind:value={presetName}
 					placeholder="Save current filters as a preset..."
+					aria-describedby={presetHelpId}
+					autocomplete="off"
 					class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2"
 				/>
+				<p id={presetHelpId} class="sr-only">
+					Enter a name to save your current filters as a preset.
+				</p>
 				<button
 					type="button"
 					onclick={handleSavePreset}
-					class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
+					disabled={!canSavePreset}
+					aria-disabled={!canSavePreset}
+					class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors disabled:cursor-not-allowed disabled:opacity-60"
 				>
 					<BookmarkPlus class="h-4 w-4" />
 					Save Preset
@@ -265,13 +306,21 @@
 				<button
 					type="button"
 					onclick={handleShareFilters}
-					class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-blue-700 border border-blue-200 bg-blue-50 rounded-md hover:bg-blue-100 transition-colors"
+					disabled={!hasActiveFilters}
+					aria-disabled={!hasActiveFilters}
+					class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-blue-700 border border-blue-200 bg-blue-50 rounded-md hover:bg-blue-100 transition-colors disabled:cursor-not-allowed disabled:opacity-60"
 				>
 					<LinkIcon class="h-4 w-4" />
 					Copy Filter Link
 				</button>
 			</div>
 		</div>
+
+		{#if activeFilterCount > 0}
+			<p class="text-xs text-gray-500" aria-live="polite">
+				Active filters: {activeFilterCount}
+			</p>
+		{/if}
 
 		{#if presets.length > 0}
 			<div>
