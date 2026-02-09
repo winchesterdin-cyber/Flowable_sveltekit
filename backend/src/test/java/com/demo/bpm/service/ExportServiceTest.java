@@ -13,6 +13,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -28,7 +29,7 @@ class ExportServiceTest {
     void exportProcessInstance_shouldReturnCsvBytes() {
         // Setup
         String processInstanceId = "123";
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.of(2024, 1, 5, 9, 30);
 
         WorkflowHistoryDTO history = WorkflowHistoryDTO.builder()
                 .processInstanceId(processInstanceId)
@@ -75,5 +76,40 @@ class ExportServiceTest {
         assertTrue(csv.contains("Task 1"));
         assertTrue(csv.contains("COMMENTS"));
         assertTrue(csv.contains("Hello"));
+    }
+
+    @Test
+    void exportProcessInstance_shouldSanitizeMissingValuesAndCsvEscapes() {
+        String processInstanceId = "456";
+        LocalDateTime now = LocalDateTime.of(2024, 2, 10, 14, 45);
+
+        WorkflowHistoryDTO history = WorkflowHistoryDTO.builder()
+                .processInstanceId(processInstanceId)
+                .processDefinitionName("Test Process")
+                .processDefinitionKey("test-process")
+                .businessKey("BK-456")
+                .status("ACTIVE")
+                .initiatorId("  ")
+                .initiatorName("Jane, Doe")
+                .startTime(now)
+                .currentLevel("SUPERVISOR")
+                .comments(List.of(
+                        CommentDTO.builder()
+                                .authorId("user1")
+                                .message("Line1\nLine2, \"quote\"")
+                                .timestamp(now)
+                                .build()
+                ))
+                .build();
+
+        when(workflowHistoryService.getWorkflowHistory(processInstanceId)).thenReturn(history);
+
+        byte[] result = exportService.exportProcessInstance(processInstanceId);
+
+        assertNotNull(result);
+        String csv = new String(result);
+        assertTrue(csv.contains("Initiator,\"Jane, Doe\""));
+        assertTrue(csv.contains("\"Line1 Line2, \"\"quote\"\"\""));
+        assertFalse(csv.contains("null ("));
     }
 }

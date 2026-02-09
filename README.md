@@ -61,6 +61,7 @@ See [Workflows Guide](guides/workflows.md) for detailed diagrams and logic.
 - **Workflow Constants**: Standardized variable names (e.g., `currentLevel`, `escalationHistory`) are maintained in `WorkflowConstants.java`.
 - **Error Handling**: Custom exceptions (`InvalidOperationException`) map to HTTP 400 Bad Request for better frontend error reporting.
 - **Logging**: Enhanced SLF4J logging includes `ProcessInstanceId` context for easier troubleshooting.
+- **CSV Export Hygiene**: Exported workflow history sanitizes newlines, escapes quotes/commas, and leaves missing values blank for consistent CSV output (including initiator fields).
 - **Frontend State**: Svelte 5 runes (`$state`) are used for reactive state management.
 - **Session Management**: Robust cookie handling and backend health checks in `session-utils.ts` to prevent login issues.
 

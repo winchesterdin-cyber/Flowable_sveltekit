@@ -20,6 +20,11 @@ const report = await fetchApi<string>("/api/processes/instance/123/export", {
   responseType: "text",
   timeoutMs: 8000,
 });
+
+const jsonReport = await fetchApi("/api/processes/instance/123/export/json", {
+  responseType: "json",
+  timeoutMs: 8000,
+});
 ```
 
 ### Timeout behavior
@@ -70,6 +75,7 @@ This makes slow-network failures explicit and easier to diagnose.
 | GET | `/api/processes/instance/{id}` | Get process instance details. |
 | DELETE | `/api/processes/instance/{id}` | Cancel (delete) a process instance. Params: `reason`. |
 | GET | `/api/processes/instance/{id}/export` | Export process instance details to CSV. |
+| GET | `/api/processes/instance/{id}/export/json` | Export process instance details as JSON. |
 | GET | `/api/processes/my-processes` | List processes started by the current user. |
 | POST | `/api/processes/deploy` | Deploy a new process (BPMN XML). |
 

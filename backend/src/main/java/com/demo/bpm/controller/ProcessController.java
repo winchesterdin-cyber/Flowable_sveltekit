@@ -4,6 +4,7 @@ import com.demo.bpm.dto.FormDefinitionDTO;
 import com.demo.bpm.dto.ProcessDTO;
 import com.demo.bpm.dto.ProcessInstanceDTO;
 import com.demo.bpm.dto.StartProcessRequest;
+import com.demo.bpm.dto.WorkflowHistoryDTO;
 import com.demo.bpm.exception.ResourceNotFoundException;
 import com.demo.bpm.service.ExportService;
 import com.demo.bpm.service.FormDefinitionService;
@@ -151,6 +152,24 @@ public class ProcessController {
                 .header("Content-Disposition", "attachment; filename=\"process_export_" + processInstanceId + ".csv\"")
                 .header("Content-Type", "text/csv")
                 .body(csvData);
+    }
+
+    @Operation(summary = "Export process instance details as JSON")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Found the process instance",
+                    content = { @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = WorkflowHistoryDTO.class)) }),
+            @ApiResponse(responseCode = "404", description = "Process instance not found",
+                    content = @Content) })
+    @GetMapping("/instance/{processInstanceId}/export/json")
+    public ResponseEntity<WorkflowHistoryDTO> exportProcessInstanceJson(
+            @Parameter(description = "ID of the process instance") @PathVariable String processInstanceId) {
+        // JSON export returns the workflow history for API integrations.
+        WorkflowHistoryDTO history = exportService.exportProcessInstanceJson(processInstanceId);
+        return ResponseEntity.ok()
+                .header("Content-Disposition", "attachment; filename=\"process_export_" + processInstanceId + ".json\"")
+                .header("Content-Type", "application/json")
+                .body(history);
     }
 
     @Operation(summary = "Get active processes for the current user")
