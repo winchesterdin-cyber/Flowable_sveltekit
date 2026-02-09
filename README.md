@@ -97,6 +97,8 @@ cd backend
 # API available at http://localhost:8080
 ```
 
+Note: Lombok annotation processing is required for DTOs and entities; ensure your IDE enables annotation processing when working on the backend.
+
 **Frontend (requires Node.js 20+):**
 
 ```bash
@@ -127,6 +129,8 @@ The application uses an `.env` file for configuration. Copy `.env.example` to `.
 cd backend
 ./mvnw test
 ```
+
+Note: the backend test suite enables Byte Buddy's experimental mode to support newer JDKs when mocking services.
 
 **Frontend Verification:**
 
