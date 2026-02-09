@@ -16,6 +16,7 @@ Welcome to the documentation for the Flowable BPM + SvelteKit application.
 - **2025-01-19**: Added auto-refresh controls for the dashboard and expanded e2e coverage for the refresh toggle.
 - **2025-01-20**: Added auto-refresh countdown/paused state and updated UI coverage for refresh timing.
 - **2025-01-21**: Added per-page dashboard summaries (average duration, newest/oldest) and expanded UI checks.
+- **2025-01-22**: Added personal task notes with optional reminder dates on task detail pages.
 
 ## Useful Notes
 
@@ -25,3 +26,4 @@ Welcome to the documentation for the Flowable BPM + SvelteKit application.
 - Use the per-page summary line to spot average durations and the newest/oldest process start times at a glance.
 - Escalation-only toggles help reviewers isolate high-priority work without altering server-side filters.
 - Use the dashboard “Copy link” control to share the current filter state with teammates.
+- Use task detail pages to store private notes and follow-up reminders (saved locally in your browser).
