@@ -163,6 +163,11 @@ The Notifications page includes a filtering toolbar so users can quickly find th
 4. Use the **Status** dropdown to view unread or read notifications only.
 5. Click **Clear** to reset all filters.
 
+### Notes
+
+- Notification creation falls back to the process initiator when no assignee is provided, and defaults title/message text when they are missing.
+- If neither an assignee nor initiator is available, the backend skips creating the notification to avoid storing invalid records.
+
 ## Feature: Bulk Task Actions
 
 Users can select multiple tasks to perform bulk operations, such as claiming or unclaiming tasks in batches.
