@@ -187,6 +187,39 @@ The Tasks page now includes a Task Insights panel that summarizes your current w
 3. Click an insight card (for example, **Overdue** or **High priority**) to filter the task list instantly.
 4. Click **Total tasks** to return to the full list of tasks that match your other filters.
 
+## Feature: Task Auto-Refresh Controls
+
+The Tasks page includes auto-refresh controls so you can keep task lists current during triage.
+
+### Usage
+
+1. Navigate to the **Tasks** page.
+2. Toggle **Auto refresh** on in the header toolbar.
+3. Select an interval (30s, 1m, 2m, or 5m).
+4. Watch the countdown badge to see when the next refresh is scheduled.
+
+### Notes
+
+- Auto-refresh pauses when the browser tab is hidden and resumes when you return.
+- Manual refresh stays available at any time without clearing your current filters.
+
+## Feature: Copy Task Summary
+
+Users can copy a preformatted task summary to share updates with teammates.
+
+### Usage
+
+1. Navigate to the **Tasks** page.
+2. Click **Copy Summary** on the task card you want to share.
+3. Paste the summary into chat, email, or documentation.
+
+### Notes
+
+- Summaries include task metadata and a direct link back to the task detail view.
+- Use **Copy Summaries** in the bulk actions toolbar to copy multiple tasks at once.
+- Use **Download Summaries** to save selected task summaries as a text file.
+- Use **Export Selected** to export only the highlighted tasks to CSV for reporting.
+
 ## Feature: Process Documents
 
 Users can view all documents associated with a specific process instance in a centralized location.

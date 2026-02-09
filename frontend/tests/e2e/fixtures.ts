@@ -16,7 +16,7 @@ export const test = base.extend<Fixtures>({
     const logger = createTestLogger(testInfo);
     if (shouldCaptureLogs()) {
       const metadata = {
-        titlePath: testInfo.titlePath(),
+        titlePath: testInfo.titlePath,
         file: testInfo.file,
         project: testInfo.project.name,
         baseURL: testInfo.project.use?.baseURL ?? null,
