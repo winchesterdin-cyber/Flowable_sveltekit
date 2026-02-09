@@ -3,6 +3,7 @@ package com.demo.bpm.controller;
 import com.demo.bpm.dto.ProcessDTO;
 import com.demo.bpm.dto.ProcessInstanceDTO;
 import com.demo.bpm.dto.UserDTO;
+import com.demo.bpm.dto.WorkflowHistoryDTO;
 import com.demo.bpm.exception.ResourceNotFoundException;
 import com.demo.bpm.service.ProcessService;
 import org.junit.jupiter.api.Test;
@@ -130,5 +131,23 @@ class ProcessControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.fieldErrors.category").value("category is required"))
                 .andExpect(jsonPath("$.path").value("/api/processes/def-1/category"));
+    }
+
+    @Test
+    @WithMockUser
+    void exportProcessInstanceJson_shouldReturnWorkflowHistory() throws Exception {
+        WorkflowHistoryDTO history = WorkflowHistoryDTO.builder()
+                .processInstanceId("instance-1")
+                .processDefinitionName("Export Test")
+                .status("ACTIVE")
+                .build();
+
+        when(exportService.exportProcessInstanceJson("instance-1")).thenReturn(history);
+
+        mockMvc.perform(get("/api/processes/instance/instance-1/export/json"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.processInstanceId").value("instance-1"))
+                .andExpect(jsonPath("$.processDefinitionName").value("Export Test"))
+                .andExpect(jsonPath("$.status").value("ACTIVE"));
     }
 }

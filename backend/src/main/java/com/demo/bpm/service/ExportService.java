@@ -9,7 +9,6 @@ import org.springframework.stereotype.Service;
 import java.nio.charset.StandardCharsets;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -24,10 +23,7 @@ public class ExportService {
     public byte[] exportProcessInstance(String processInstanceId) {
         log.info("Exporting process instance: {}", processInstanceId);
 
-        WorkflowHistoryDTO history = workflowHistoryService.getWorkflowHistory(processInstanceId);
-        if (history == null) {
-            throw new ResourceNotFoundException("Process instance not found: " + processInstanceId);
-        }
+        WorkflowHistoryDTO history = getWorkflowHistoryOrThrow(processInstanceId);
 
         StringBuilder csv = new StringBuilder();
 
@@ -38,7 +34,7 @@ public class ExportService {
         appendRow(csv, "Key", history.getProcessDefinitionKey());
         appendRow(csv, "Business Key", history.getBusinessKey());
         appendRow(csv, "Status", history.getStatus());
-        appendRow(csv, "Initiator", history.getInitiatorName() + " (" + history.getInitiatorId() + ")");
+        appendRow(csv, "Initiator", formatInitiator(history));
         appendRow(csv, "Start Time", formatDateTime(history.getStartTime()));
         appendRow(csv, "End Time", formatDateTime(history.getEndTime()));
         appendRow(csv, "Duration (ms)", String.valueOf(history.getDurationInMillis()));
@@ -48,17 +44,19 @@ public class ExportService {
         // 2. Variables
         csv.append("VARIABLES").append(LINE_SEPARATOR);
         appendRow(csv, "Name", "Value");
-        if (history.getVariables() != null) {
+        if (history.getVariables() != null && !history.getVariables().isEmpty()) {
             for (Map.Entry<String, Object> entry : history.getVariables().entrySet()) {
                 appendRow(csv, entry.getKey(), String.valueOf(entry.getValue()));
             }
+        } else {
+            log.debug("No variables recorded for process instance: {}", processInstanceId);
         }
         csv.append(LINE_SEPARATOR);
 
         // 3. Task History
         csv.append("TASK HISTORY").append(LINE_SEPARATOR);
         appendRow(csv, "Task Name", "Assignee", "Status", "Start Time", "End Time", "Duration (ms)");
-        if (history.getTaskHistory() != null) {
+        if (history.getTaskHistory() != null && !history.getTaskHistory().isEmpty()) {
             for (TaskHistoryDTO task : history.getTaskHistory()) {
                 appendRow(csv,
                         task.getName(),
@@ -69,13 +67,15 @@ public class ExportService {
                         String.valueOf(task.getDurationInMillis())
                 );
             }
+        } else {
+            log.debug("No task history recorded for process instance: {}", processInstanceId);
         }
         csv.append(LINE_SEPARATOR);
 
         // 4. Approvals
         csv.append("APPROVALS").append(LINE_SEPARATOR);
         appendRow(csv, "Task", "Approver", "Level", "Decision", "Time");
-        if (history.getApprovals() != null) {
+        if (history.getApprovals() != null && !history.getApprovals().isEmpty()) {
             for (ApprovalDTO approval : history.getApprovals()) {
                 appendRow(csv,
                         approval.getTaskName(),
@@ -85,13 +85,15 @@ public class ExportService {
                         formatDateTime(approval.getTimestamp())
                 );
             }
+        } else {
+            log.debug("No approvals recorded for process instance: {}", processInstanceId);
         }
         csv.append(LINE_SEPARATOR);
 
          // 5. Escalations
         csv.append("ESCALATIONS").append(LINE_SEPARATOR);
         appendRow(csv, "From", "To", "By", "Reason", "Type", "Time");
-        if (history.getEscalationHistory() != null) {
+        if (history.getEscalationHistory() != null && !history.getEscalationHistory().isEmpty()) {
             for (EscalationDTO esc : history.getEscalationHistory()) {
                 appendRow(csv,
                         esc.getFromLevel(),
@@ -102,13 +104,15 @@ public class ExportService {
                         formatDateTime(esc.getTimestamp())
                 );
             }
+        } else {
+            log.debug("No escalation history recorded for process instance: {}", processInstanceId);
         }
         csv.append(LINE_SEPARATOR);
 
         // 6. Comments
         csv.append("COMMENTS").append(LINE_SEPARATOR);
         appendRow(csv, "Author", "Message", "Time");
-        if (history.getComments() != null) {
+        if (history.getComments() != null && !history.getComments().isEmpty()) {
             for (CommentDTO comment : history.getComments()) {
                 appendRow(csv,
                         comment.getAuthorId(),
@@ -116,9 +120,17 @@ public class ExportService {
                         formatDateTime(comment.getTimestamp())
                 );
             }
+        } else {
+            log.debug("No comments recorded for process instance: {}", processInstanceId);
         }
 
         return csv.toString().getBytes(StandardCharsets.UTF_8);
+    }
+
+    public WorkflowHistoryDTO exportProcessInstanceJson(String processInstanceId) {
+        // Return structured workflow history for integrations that need JSON export.
+        log.info("Exporting process instance JSON: {}", processInstanceId);
+        return getWorkflowHistoryOrThrow(processInstanceId);
     }
 
     private void appendRow(StringBuilder sb, String... values) {
@@ -132,7 +144,9 @@ public class ExportService {
     }
 
     private String formatDateTime(java.time.LocalDateTime dateTime) {
-        if (dateTime == null) return "";
+        if (dateTime == null) {
+            return "";
+        }
         return dateTime.format(DATE_FORMATTER);
     }
 
@@ -140,11 +154,41 @@ public class ExportService {
         if (data == null) {
             return "";
         }
-        String escapedData = data.replaceAll("\\R", " ");
-        if (data.contains(",") || data.contains("\"") || data.contains("'")) {
-            data = data.replace("\"", "\"\"");
-            escapedData = "\"" + data + "\"";
+        // Normalize line breaks before applying CSV escaping rules.
+        String sanitized = data.replaceAll("\\R", " ");
+        String escaped = sanitized.replace("\"", "\"\"");
+        if (sanitized.contains(CSV_SEPARATOR) || sanitized.contains("\"") || sanitized.contains("'")) {
+            return "\"" + escaped + "\"";
         }
-        return escapedData;
+        return escaped;
+    }
+
+    private String formatInitiator(WorkflowHistoryDTO history) {
+        String name = nullIfBlank(history.getInitiatorName());
+        String id = nullIfBlank(history.getInitiatorId());
+        if (name == null && id == null) {
+            return "";
+        }
+        if (name != null && id != null) {
+            return name + " (" + id + ")";
+        }
+        return name != null ? name : id;
+    }
+
+    private String nullIfBlank(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private WorkflowHistoryDTO getWorkflowHistoryOrThrow(String processInstanceId) {
+        WorkflowHistoryDTO history = workflowHistoryService.getWorkflowHistory(processInstanceId);
+        if (history == null) {
+            log.warn("No workflow history found for process instance: {}", processInstanceId);
+            throw new ResourceNotFoundException("Process instance not found: " + processInstanceId);
+        }
+        return history;
     }
 }
