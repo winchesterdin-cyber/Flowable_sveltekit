@@ -137,6 +137,14 @@ export const logger = {
   },
 
   /**
+   * Event logging for user actions and state changes.
+   */
+  event(name: string, context?: LogContext): void {
+    if (!shouldLog('info')) return;
+    outputLog(createLogEntry('info', `event:${name}`, context));
+  },
+
+  /**
    * Create a child logger with additional context
    */
   child(defaultContext: LogContext) {
@@ -148,7 +156,9 @@ export const logger = {
       warn: (message: string, context?: LogContext) =>
         logger.warn(message, { ...defaultContext, ...context }),
       error: (message: string, error?: Error | unknown, context?: LogContext) =>
-        logger.error(message, error, { ...defaultContext, ...context })
+        logger.error(message, error, { ...defaultContext, ...context }),
+      event: (name: string, context?: LogContext) =>
+        logger.event(name, { ...defaultContext, ...context })
     };
   }
 };

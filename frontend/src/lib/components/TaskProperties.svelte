@@ -3,6 +3,7 @@
 	import type { Task } from '$lib/types';
 	import { toast } from 'svelte-sonner';
 	import { Calendar, AlertCircle, User, Edit2, Check, X } from '@lucide/svelte';
+	import { createLogger } from '$lib/utils/logger';
 
 	interface Props {
 		task: Task;
@@ -16,6 +17,7 @@
 
 	let editPriority = $state(0);
 	let editDueDate = $state('');
+	const logger = createLogger('TaskProperties');
 
 	// Sync initial values from task prop
 	$effect(() => {
@@ -29,12 +31,14 @@
 		if (isEditing) {
 			// Cancel
 			isEditing = false;
+			logger.event('task-properties-edit-cancelled', { taskId: task.id });
 			// Effect will sync values back
 		} else {
 			// Start edit
 			isEditing = true;
 			editPriority = task.priority;
 			editDueDate = task.dueDate ? new Date(task.dueDate).toISOString().slice(0, 10) : '';
+			logger.event('task-properties-edit-started', { taskId: task.id });
 		}
 	}
 
@@ -50,9 +54,11 @@
 			onUpdate({ ...task, ...updates }); // Optimistic/Merged update
 			toast.success('Task properties updated');
 			isEditing = false;
+			logger.event('task-properties-saved', { taskId: task.id });
 		} catch (error) {
 			console.error('Failed to update task:', error);
 			toast.error('Failed to update task');
+			logger.error('Failed to update task properties', error, { taskId: task.id });
 		} finally {
 			saving = false;
 		}

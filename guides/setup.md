@@ -58,6 +58,14 @@ Build and run:
 ```
 The backend will start on port 8080.
 
+### 2a. Resetting the local dev database (H2)
+Use the provided script to clear the local H2 database and seed sample data:
+```bash
+./scripts/reset-dev-db.sh
+SPRING_PROFILES_ACTIVE=h2 ./mvnw spring-boot:run
+```
+The reset script removes local DB files under `backend/data` and triggers `/api/database/seed` if the backend is running.
+
 ### 3. Frontend
 Navigate to the `frontend` directory:
 ```bash

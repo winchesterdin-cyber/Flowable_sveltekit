@@ -10,6 +10,7 @@
 		getInputClasses,
 		type ValidationRule
 	} from '$lib/utils/form-helpers';
+	import { createLogger } from '$lib/utils/logger';
 
 	// Form values
 	let amount = $state<number | null>(null);
@@ -23,6 +24,7 @@
 	let toast = $state<{ message: string; type: 'success' | 'error' } | null>(null);
 	const touched = $state<Record<string, boolean>>({});
 	const fieldErrors = $state<Record<string, string | null>>({});
+	const logger = createLogger('ExpenseProcess');
 
 	// Constants
 	const categories = ['Travel', 'Office Supplies', 'Meals', 'Equipment', 'Software', 'Training', 'Other'];
@@ -74,8 +76,10 @@
 
 			draftProcessInstanceId = result.processInstanceId;
 			toast = { message: 'Draft saved successfully!', type: 'success' };
+			logger.event('expense-draft-saved', { processInstanceId: result.processInstanceId });
 		} catch (err) {
 			toast = { message: err instanceof Error ? err.message : 'Failed to save draft', type: 'error' };
+			logger.error('Failed to save expense draft', err);
 		} finally {
 			savingDraft = false;
 		}
@@ -99,9 +103,11 @@
 			});
 
 			toast = { message: 'Expense submitted successfully!', type: 'success' };
+			logger.event('expense-submitted', { amount, category });
 			setTimeout(() => goto('/'), 1500);
 		} catch (err) {
 			toast = { message: err instanceof Error ? err.message : 'Failed to submit expense', type: 'error' };
+			logger.error('Failed to submit expense', err);
 		} finally {
 			submitting = false;
 		}
