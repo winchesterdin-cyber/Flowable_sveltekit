@@ -41,6 +41,7 @@ public class AuthController {
 
     @PostMapping("/register")
     public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request, HttpServletRequest httpRequest) {
+        // Validation: @Valid enforces required registration fields before attempting persistence.
         String clientIp = getClientIpAddress(httpRequest);
         log.info("Registration attempt for user '{}' from IP: {}", request.getUsername(), clientIp);
 
@@ -70,6 +71,7 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request, HttpServletRequest httpRequest) {
+        // Validation: @Valid ensures username/password are present and trimmed before auth.
         String username = request.getUsername();
         String clientIp = getClientIpAddress(httpRequest);
 

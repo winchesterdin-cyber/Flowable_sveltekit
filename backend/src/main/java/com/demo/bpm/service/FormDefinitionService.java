@@ -362,6 +362,7 @@ public class FormDefinitionService {
 
             return parseProcessFormConfigFromXml(bpmnXml, processDefinitionId);
         } catch (Exception e) {
+            // Error handling: fall back to an empty config to keep the UI resilient.
             log.error("Error getting process form config for {}: {}", processDefinitionId, e.getMessage(), e);
             return ProcessFormConfigDTO.builder()
                     .processDefinitionId(processDefinitionId)

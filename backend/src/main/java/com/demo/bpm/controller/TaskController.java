@@ -84,6 +84,7 @@ public class TaskController {
         try {
             return ResponseEntity.ok(taskService.getTaskDetails(taskId));
         } catch (Exception e) {
+            log.error("Failed to retrieve task details for {}", taskId, e);
             return ResponseEntity.notFound().build();
         }
     }
@@ -179,6 +180,7 @@ public class TaskController {
             @Valid @RequestBody(required = false) CompleteTaskRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
         try {
+            // Validation: request is optional; fall back to empty variables when absent.
             Map<String, Object> variables = new java.util.HashMap<>();
             if (request != null && request.getVariables() != null) {
                 variables.putAll(request.getVariables());
