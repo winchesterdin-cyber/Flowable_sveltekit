@@ -7,10 +7,12 @@
 	import Toast from '$lib/components/Toast.svelte';
 	import DynamicForm from '$lib/components/DynamicForm.svelte';
 	import DelegateTaskModal from '$lib/components/DelegateTaskModal.svelte';
-    import Comments from '$lib/components/Comments.svelte';
-    import TaskDocuments from '$lib/components/TaskDocuments.svelte';
-    import TaskTimeline from '$lib/components/TaskTimeline.svelte';
-    import TaskProperties from '$lib/components/TaskProperties.svelte';
+	import Comments from '$lib/components/Comments.svelte';
+	import TaskDocuments from '$lib/components/TaskDocuments.svelte';
+	import TaskTimeline from '$lib/components/TaskTimeline.svelte';
+	import TaskProperties from '$lib/components/TaskProperties.svelte';
+	import TaskPersonalNotes from '$lib/components/TaskPersonalNotes.svelte';
+	import { createLogger } from '$lib/utils/logger';
 	import type { TaskDetails, FormDefinition, TaskFormWithConfig, FormField, FormGrid, GridConfig } from '$lib/types';
 
 	let taskDetails = $state<TaskDetails | null>(null);
@@ -32,10 +34,16 @@
 	let dynamicFormValues = $state<Record<string, unknown>>({});
 	let dynamicFormRef = $state<DynamicForm | undefined>(undefined);
 
+	const logger = createLogger('TaskDetailsPage');
+
 	onMount(async () => {
 		await loadTask();
 	});
 
+	/**
+	 * Load task details plus optional dynamic form configuration.
+	 * This keeps the page resilient when a task has no custom form definition.
+	 */
 	async function loadTask() {
 		loading = true;
 		error = '';
@@ -43,8 +51,10 @@
 			const taskId = $page.params.id;
 			if (!taskId) {
 				error = 'Task ID is required';
+				logger.warn('Task detail load aborted: missing task ID');
 				return;
 			}
+			logger.info('Loading task details', { taskId });
 			taskDetails = await api.getTaskDetails(taskId);
 
 			// Try to load form definition for this task
@@ -53,15 +63,18 @@
 				const formData = await api.getTaskFormDefinition(taskId);
 				formDefinition = formData.taskForm;
 				processConfig = formData.processConfig;
+				logger.info('Loaded task form definition', { taskId, hasForm: true });
 			} catch {
 				// No custom form defined - will use legacy form
 				formDefinition = null;
 				processConfig = null;
+				logger.info('No custom form definition found', { taskId });
 			} finally {
 				loadingForm = false;
 			}
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Failed to load task';
+			logger.error('Failed to load task details', err, { taskId: $page.params.id });
 		} finally {
 			loading = false;
 		}
@@ -73,9 +86,11 @@
 		try {
 			await api.claimTask(taskDetails.task.id);
 			toast = { message: 'Task claimed successfully', type: 'success' };
+			logger.info('Task claimed from details view', { taskId: taskDetails.task.id });
 			await loadTask();
 		} catch (err) {
 			toast = { message: err instanceof Error ? err.message : 'Failed to claim task', type: 'error' };
+			logger.error('Failed to claim task from details view', err, { taskId: taskDetails.task.id });
 		} finally {
 			submitting = false;
 		}
@@ -107,8 +122,10 @@
 			);
 
 			toast = { message: 'Draft saved successfully', type: 'success' };
+			logger.info('Draft saved from task details', { taskId: taskDetails.task.id });
 		} catch (err) {
 			toast = { message: err instanceof Error ? err.message : 'Failed to save draft', type: 'error' };
+			logger.error('Failed to save draft from task details', err, { taskId: taskDetails.task.id });
 		} finally {
 			savingDraft = false;
 		}
@@ -144,10 +161,12 @@
 
 				await api.completeTask(taskDetails.task.id, variables);
 				toast = { message: 'Task completed successfully', type: 'success' };
+				logger.info('Task completed from dynamic form', { taskId: taskDetails.task.id });
 
 				setTimeout(() => goto('/tasks'), 1500);
 			} catch (err) {
 				toast = { message: err instanceof Error ? err.message : 'Failed to complete task', type: 'error' };
+				logger.error('Failed to complete task from dynamic form', err, { taskId: taskDetails.task.id });
 			} finally {
 				submitting = false;
 			}
@@ -177,10 +196,12 @@
 
 				await api.completeTask(taskDetails.task.id, variables);
 				toast = { message: 'Task completed successfully', type: 'success' };
+				logger.info('Task completed from legacy form', { taskId: taskDetails.task.id });
 
 				setTimeout(() => goto('/tasks'), 1500);
 			} catch (err) {
 				toast = { message: err instanceof Error ? err.message : 'Failed to complete task', type: 'error' };
+				logger.error('Failed to complete task from legacy form', err, { taskId: taskDetails.task.id });
 			} finally {
 				submitting = false;
 			}
@@ -189,6 +210,7 @@
 
 	function handleDynamicFormChange(values: Record<string, unknown>) {
 		dynamicFormValues = values;
+		logger.debug('Dynamic form values updated', { keys: Object.keys(values) });
 		// Extract decision and comments if present
 		if (values.decision !== undefined) {
 			decision = String(values.decision);
@@ -459,15 +481,16 @@
             </div>
             
             <!-- Sidebar: Timeline & Properties -->
-            <div>
-                <TaskProperties 
-                    task={taskDetails.task} 
-                    onUpdate={(updated) => {
-                        if (taskDetails) taskDetails.task = updated;
-                    }}
-                />
-                <TaskTimeline taskId={task.id} />
-            </div>
+			<div class="space-y-6">
+				<TaskProperties
+					task={taskDetails.task}
+					onUpdate={(updated) => {
+						if (taskDetails) taskDetails.task = updated;
+					}}
+				/>
+				<TaskPersonalNotes taskId={task.id} taskName={task.name} />
+				<TaskTimeline taskId={task.id} />
+			</div>
         </div>
 
 		<!-- Action Form -->

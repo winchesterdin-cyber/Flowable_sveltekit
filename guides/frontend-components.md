@@ -198,6 +198,26 @@ The component exposes the following methods via component reference:
 }
 ```
 
+# TaskPersonalNotes Component
+
+Provides a private, client-side notes area on task detail pages for capturing handoff context and optional reminder dates.
+
+## Key Behaviors
+
+- Stores notes and reminders in `localStorage` keyed by task ID (no backend updates).
+- Displays reminder timing (overdue, today, upcoming) to help with follow-ups.
+- Tracks unsaved changes and exposes a “Last saved” timestamp.
+
+## Usage
+
+```svelte
+<script lang="ts">
+	import TaskPersonalNotes from '$lib/components/TaskPersonalNotes.svelte';
+</script>
+
+<TaskPersonalNotes taskId={task.id} taskName={task.name} />
+```
+
 ## Complete Example (Purchase Line Items)
 
 See `/frontend/src/routes/processes/purchase/+page.svelte` for a complete example of using GridForm with line items, including:
