@@ -136,7 +136,9 @@ describe('ExpressionEvaluator', () => {
     });
 
     it('should evaluate complex expressions', () => {
-      expect(evaluator.evaluate('(amount > 500 && status == "pending") || process.priority == "low"')).toBe(true);
+      expect(
+        evaluator.evaluate('(amount > 500 && status == "pending") || process.priority == "low"')
+      ).toBe(true);
     });
   });
 
@@ -164,16 +166,16 @@ describe('ExpressionEvaluator', () => {
     });
 
     it('should evaluate array membership with "in"', () => {
-       expect(evaluator.evaluate('status in ["pending", "approved"]')).toBe(true);
-       expect(evaluator.evaluate('status in ["rejected", "draft"]')).toBe(false);
+      expect(evaluator.evaluate('status in ["pending", "approved"]')).toBe(true);
+      expect(evaluator.evaluate('status in ["rejected", "draft"]')).toBe(false);
     });
   });
 
   describe('Context Update', () => {
-      it('should reflect context changes', () => {
-          evaluator.updateContext({ form: { ...context.form, amount: 5000 } });
-          expect(evaluator.evaluate('amount')).toBe(5000);
-      });
+    it('should reflect context changes', () => {
+      evaluator.updateContext({ form: { ...context.form, amount: 5000 } });
+      expect(evaluator.evaluate('amount')).toBe(5000);
+    });
   });
 });
 
@@ -254,7 +256,9 @@ describe('SafeExpressionEvaluator', () => {
 
     it('should evaluate complex arithmetic', () => {
       // amount - (discount * price / 100) = 1000 - (10 * 200 / 100) = 1000 - 20 = 980
-      expect(evaluator.evaluateCalculation('form.amount - form.discount * form.price / 100')).toBe(980);
+      expect(evaluator.evaluateCalculation('form.amount - form.discount * form.price / 100')).toBe(
+        980
+      );
     });
 
     it('should handle parentheses', () => {
@@ -330,8 +334,12 @@ describe('SafeExpressionEvaluator', () => {
     });
 
     it('should evaluate combined conditions', () => {
-      expect(evaluator.evaluateVisibility('form.amount > 500 && form.status == "pending"')).toBe(true);
-      expect(evaluator.evaluateVisibility('form.amount < 500 || form.status == "pending"')).toBe(true);
+      expect(evaluator.evaluateVisibility('form.amount > 500 && form.status == "pending"')).toBe(
+        true
+      );
+      expect(evaluator.evaluateVisibility('form.amount < 500 || form.status == "pending"')).toBe(
+        true
+      );
     });
 
     it('should handle hasRole', () => {

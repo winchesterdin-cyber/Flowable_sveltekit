@@ -3,6 +3,8 @@ backend/target/
 backend/.mvn/wrapper/maven-wrapper.jar
 backend/*.iml
 backend/.idea/
+backend/**/__pycache__/
+backend/**/*.pyc
 
 # Frontend
 frontend/node_modules/
