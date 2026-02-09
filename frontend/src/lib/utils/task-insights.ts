@@ -1,4 +1,4 @@
-import { addDays, isBefore, isPast, isToday } from 'date-fns';
+import { addDays, isBefore, isSameDay } from 'date-fns';
 import type { Task } from '$lib/types';
 
 export type DueStatus = 'overdue' | 'today' | 'soon' | 'future' | null;
@@ -29,8 +29,9 @@ const HIGH_PRIORITY_THRESHOLD = 75;
 export function getDueDateStatus(dueDate: string | undefined, now: Date = new Date()): DueStatus {
   if (!dueDate) return null;
   const date = new Date(dueDate);
-  if (isPast(date) && !isToday(date)) return 'overdue';
-  if (isToday(date)) return 'today';
+  // Use the provided `now` anchor so tests and previews can be deterministic.
+  if (isBefore(date, now) && !isSameDay(date, now)) return 'overdue';
+  if (isSameDay(date, now)) return 'today';
   if (isBefore(date, addDays(now, 2))) return 'soon';
   return 'future';
 }

@@ -3,6 +3,11 @@
 	import TaskCard from './TaskCard.svelte';
 	import EmptyState from './EmptyState.svelte';
 	import { CheckSquare, Copy, Download, FileDown, Square, UserCheck, UserX } from '@lucide/svelte';
+	import { toast } from 'svelte-sonner';
+	import { createLogger } from '$lib/utils/logger';
+	import { buildTaskInsightMetrics } from '$lib/utils/task-insights';
+	import { buildTaskSelectionSummary, getDueDateRangeLabel } from '$lib/utils/task-selection-summary';
+	import { copyTextToClipboard, downloadTextFile } from '$lib/utils/clipboard';
 
 	interface Props {
 		tasks: Task[];
@@ -37,6 +42,7 @@
 	}: Props = $props();
 
 	let selectedIds = $state<Set<string>>(new Set());
+	const logger = createLogger('TaskList');
 
 	const sortedTasks = $derived(
 		[...tasks].sort((a, b) => {
@@ -58,6 +64,9 @@
 			}
 		})
 	);
+
+	const selectedTasks = $derived(sortedTasks.filter((task) => selectedIds.has(task.id)));
+	const selectedMetrics = $derived(buildTaskInsightMetrics(selectedTasks));
 
 	function handleSelect(taskId: string, selected: boolean) {
 		const newSet = new Set(selectedIds);
@@ -89,23 +98,65 @@
 
 	function handleBulkCopy() {
 		if (!onBulkCopySummary) return;
-		const selectedTasks = sortedTasks.filter((task) => selectedIds.has(task.id));
-		onBulkCopySummary(selectedTasks);
+		const selectedList = sortedTasks.filter((task) => selectedIds.has(task.id));
+		onBulkCopySummary(selectedList);
 		selectedIds = new Set();
 	}
 
 	function handleBulkDownload() {
 		if (!onBulkDownloadSummaries) return;
-		const selectedTasks = sortedTasks.filter((task) => selectedIds.has(task.id));
-		onBulkDownloadSummaries(selectedTasks);
+		const selectedList = sortedTasks.filter((task) => selectedIds.has(task.id));
+		onBulkDownloadSummaries(selectedList);
 		selectedIds = new Set();
 	}
 
 	function handleBulkExportSelected() {
 		if (!onBulkExportSelected) return;
-		const selectedTasks = sortedTasks.filter((task) => selectedIds.has(task.id));
-		onBulkExportSelected(selectedTasks);
+		const selectedList = sortedTasks.filter((task) => selectedIds.has(task.id));
+		onBulkExportSelected(selectedList);
 		selectedIds = new Set();
+	}
+
+	/**
+	 * Copy a selection breakdown so teammates can review workload slices quickly.
+	 */
+	async function handleCopySelectionInsights() {
+		if (selectedIds.size === 0) {
+			toast.error('Select at least one task to copy insights.');
+			logger.warn('Selection insight copy skipped because no tasks were selected');
+			return;
+		}
+
+		const summary = buildTaskSelectionSummary(selectedTasks);
+		try {
+			const copied = await copyTextToClipboard(summary);
+			if (!copied) {
+				toast.error('Unable to copy selection insights. Please try again.');
+				logger.warn('Selection insight copy failed', { count: selectedMetrics.total });
+				return;
+			}
+			toast.success('Selection insights copied to clipboard');
+			logger.info('Selection insights copied', { count: selectedMetrics.total });
+		} catch (error) {
+			toast.error('Unable to copy selection insights. Please try again.');
+			logger.error('Selection insight copy failed', error, { count: selectedMetrics.total });
+		}
+	}
+
+	/**
+	 * Download the selection insights so teams can attach them to status updates.
+	 */
+	function handleDownloadSelectionInsights() {
+		if (selectedIds.size === 0) {
+			toast.error('Select at least one task to download insights.');
+			logger.warn('Selection insight download skipped because no tasks were selected');
+			return;
+		}
+
+		const summary = buildTaskSelectionSummary(selectedTasks);
+		downloadTextFile(summary, `task-selection-insights-${new Date().toISOString().slice(0, 10)}.txt`);
+		toast.success('Selection insights downloaded');
+		logger.info('Selection insights downloaded', { count: selectedMetrics.total });
 	}
 </script>
 
@@ -139,6 +190,16 @@
 					<span class="text-sm text-gray-500 border-l pl-3 ml-1" aria-live="polite">
 						{selectedIds.size} selected
 					</span>
+						{#if selectedIds.size > 0}
+							<span class="text-xs text-gray-500 border-l pl-3 ml-2" aria-live="polite">
+								Insights: {selectedMetrics.unassigned} unassigned · {selectedMetrics.overdue} overdue ·
+								{selectedMetrics.dueToday} due today · {selectedMetrics.dueSoon} due soon ·
+								{selectedMetrics.highPriority} high priority
+							</span>
+							<span class="text-xs text-gray-500 border-l pl-3 ml-2" aria-live="polite">
+								{getDueDateRangeLabel(selectedTasks)}
+							</span>
+						{/if}
 				</div>
 
 				<div class="flex items-center gap-2">
@@ -154,6 +215,26 @@
 							Copy Summaries
 						</button>
 					{/if}
+					<button
+						type="button"
+						onclick={handleCopySelectionInsights}
+						disabled={selectedIds.size === 0}
+						aria-disabled={selectedIds.size === 0}
+						class="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+					>
+						<Copy class="w-4 h-4" />
+						Copy Insights
+					</button>
+					<button
+						type="button"
+						onclick={handleDownloadSelectionInsights}
+						disabled={selectedIds.size === 0}
+						aria-disabled={selectedIds.size === 0}
+						class="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+					>
+						<Download class="w-4 h-4" />
+						Download Insights
+					</button>
 					{#if onBulkDownloadSummaries}
 						<button
 							type="button"
