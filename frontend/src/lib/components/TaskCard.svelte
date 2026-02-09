@@ -13,10 +13,20 @@
 		onClaim?: (taskId: string) => void;
 		onUnclaim?: (taskId: string) => void;
 		onDelegate?: (taskId: string) => void;
+		onCopySummary?: (task: Task) => void;
 		onSelect?: (taskId: string, selected: boolean) => void;
 	}
 
-	const { task, selected = false, onclick, onClaim, onUnclaim, onDelegate, onSelect }: Props = $props();
+	const {
+		task,
+		selected = false,
+		onclick,
+		onClaim,
+		onUnclaim,
+		onDelegate,
+		onCopySummary,
+		onSelect
+	}: Props = $props();
 
 	import { getVariableDisplay } from '$lib/utils';
 	const displays = $derived(getVariableDisplay(task.variables || null));
@@ -32,7 +42,15 @@
 		if (onSelect) onSelect(task.id, checked);
 	}
 
+	function handleCopy(e: Event) {
+		e.stopPropagation();
+		if (onCopySummary) onCopySummary(task);
+	}
+
 	const dueStatus = $derived(getDueDateStatus(task.dueDate));
+	const canManageTask = $derived(
+		!task.assignee || (authStore.user && task.assignee === authStore.user.username)
+	);
 </script>
 
 <div
@@ -122,12 +140,21 @@
 	{/if}
 
 	<!-- Quick Actions -->
-	{#if !task.assignee || (authStore.user && task.assignee === authStore.user.username)}
+	{#if onCopySummary || canManageTask}
 		<div
 			class="mt-3 pt-2 border-t border-gray-200 dark:border-gray-700 flex gap-2"
 			role="group"
 			aria-label="Task actions"
 		>
+			{#if onCopySummary}
+				<button
+					type="button"
+					onclick={handleCopy}
+					class="px-2 py-1 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50 transition-colors dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-600"
+				>
+					Copy Summary
+				</button>
+			{/if}
 			{#if !task.assignee}
 				<button
 					type="button"

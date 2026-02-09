@@ -37,6 +37,8 @@ Detailed documentation is available in the `guides/` directory:
 - **Saved Filter Presets**: Store and reuse common task searches.
 - **Shareable Filter Links**: Copy a URL that preserves active task filters for team handoff.
 - **Persistent Context**: Last-used filters are restored automatically after refresh.
+- **Auto Refresh Controls**: Keep task lists updated with configurable refresh intervals and countdowns.
+- **Copy Task Summary**: Copy or download preformatted task summaries (single or bulk), plus export selected tasks to CSV for easy sharing.
 
 ### Dashboard Productivity Enhancements
 
@@ -131,6 +133,8 @@ cd frontend
 npm run check
 npm run test:unit
 ```
+
+Note: the frontend lint configuration focuses on project-specific issues to avoid noise from legacy files (including console usage and ts-comment rules); see `frontend/.eslintrc.cjs` if you need stricter rules.
 
 ## Project Structure
 

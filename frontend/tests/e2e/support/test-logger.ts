@@ -62,9 +62,7 @@ export const createTestLogger = (testInfo: TestInfo): TestLogger => {
 
   if (enabled) {
     terminalWriter.write(
-      formatMessage('info', [
-        `Test started: ${testInfo.titlePath().join(' > ')} (${testInfo.file})`
-      ])
+      formatMessage('info', [`Test started: ${testInfo.titlePath.join(' > ')} (${testInfo.file})`])
     );
   }
 
@@ -94,7 +92,7 @@ export const attachBrowserLogging = (page: Page, testInfo: TestInfo) => {
   const errorEntries: string[] = [];
   if (enabled) {
     browserWriter.write(
-      formatMessage('info', [`Browser logging enabled for: ${testInfo.titlePath().join(' > ')}`])
+      formatMessage('info', [`Browser logging enabled for: ${testInfo.titlePath.join(' > ')}`])
     );
   }
 

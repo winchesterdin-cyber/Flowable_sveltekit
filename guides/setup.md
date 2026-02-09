@@ -79,3 +79,4 @@ The frontend will start on [http://localhost:5173](http://localhost:5173).
 
 - **Database Connection**: Ensure `POSTGRES_USER` and `POSTGRES_PASSWORD` in `.env` match what's in `application.yml` (or override via environment variables).
 - **Frontend API**: The frontend proxies requests to `http://localhost:8080` by default. If your backend is on a different port, update `vite.config.ts`.
+- **Docker Compose Not Found**: Some environments (like restricted CI or sandboxed shells) do not include Docker/Docker Compose. In that case, install Docker Desktop locally or use the manual database setup steps instead of `docker-compose up -d postgres`.

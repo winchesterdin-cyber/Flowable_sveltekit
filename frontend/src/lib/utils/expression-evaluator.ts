@@ -16,6 +16,7 @@ export interface EvaluationContext {
   form: Record<string, unknown>; // Form field values
   process: Record<string, unknown>; // Process variables
   user: UserContext; // Current user context
+  value?: unknown; // Optional current field value for validation expressions
 }
 
 export interface UserContext {
@@ -303,6 +304,9 @@ export class ExpressionEvaluator {
         parts.slice(1)
       );
     }
+    if (parts[0] === 'value') {
+      return this.context.value;
+    }
 
     // Default: try form first, then process variables
     let value = this.getNestedValue(this.context.form, parts);
@@ -417,6 +421,10 @@ export class ExpressionEvaluator {
     try {
       // First resolve all variables in the expression
       const resolvedExpr = this.resolveVariablesInExpression(expr);
+      // Guard against trailing operators that indicate incomplete expressions.
+      if (/[+\-*/%]\s*$/.test(resolvedExpr)) {
+        return 0;
+      }
       return this.parseArithmeticExpression(resolvedExpr);
     } catch (error) {
       console.warn(`Failed to evaluate arithmetic expression: ${expr}`, error);
@@ -468,7 +476,7 @@ export class ExpressionEvaluator {
         const left = this.parseArithmeticExpression(expr.slice(0, i));
         const right = this.parseArithmeticExpression(expr.slice(i + 1));
         if (char === '*') return left * right;
-        if (char === '/') return right !== 0 ? left / right : 0;
+        if (char === '/') return right !== 0 ? left / right : Infinity;
         return right !== 0 ? left % right : 0;
       }
     }
@@ -504,6 +512,43 @@ export class ExpressionEvaluator {
         return grid.sum(columnName);
       }
       return 0;
+    }
+
+    // Match: grids.gridName.count()
+    const countFnMatch = expr.match(/^grids\.([a-zA-Z_][a-zA-Z0-9_]*)\.count\(\)$/);
+    if (countFnMatch) {
+      const gridName = countFnMatch[1];
+      const grid = grids[gridName];
+      if (grid && Array.isArray(grid.rows)) {
+        return grid.rows.length;
+      }
+      return 0;
+    }
+
+    // Match: grids.gridName.avg/min/max('columnName')
+    const aggregateMatch = expr.match(
+      /^grids\.([a-zA-Z_][a-zA-Z0-9_]*)\.(avg|min|max)\(['"]([a-zA-Z_][a-zA-Z0-9_]*)['"]\)$/
+    );
+    if (aggregateMatch) {
+      const [_, gridName, operation, columnName] = aggregateMatch;
+      const grid = grids[gridName];
+      if (!grid || !Array.isArray(grid.rows) || grid.rows.length === 0) {
+        return 0;
+      }
+      const values = grid.rows
+        .map((row) => Number(row[columnName]))
+        .filter((value) => !Number.isNaN(value));
+      if (values.length === 0) {
+        return 0;
+      }
+      if (operation === 'avg') {
+        const total = values.reduce((sum, value) => sum + value, 0);
+        return total / values.length;
+      }
+      if (operation === 'min') {
+        return Math.min(...values);
+      }
+      return Math.max(...values);
     }
 
     const countMatch = expr.match(/^grids\.([a-zA-Z_][a-zA-Z0-9_]*)\.rows\.length$/);
@@ -585,10 +630,11 @@ export class SafeExpressionEvaluator extends ExpressionEvaluator {
       }
 
       // Try boolean expression
-      return this.evaluate(expr);
+      const result = this.evaluate(expr);
+      return result ?? 0;
     } catch (error) {
       console.warn(`SafeExpressionEvaluator: Failed to evaluate calculation: ${expression}`, error);
-      return undefined;
+      return 0;
     }
   }
 
@@ -614,7 +660,7 @@ export class SafeExpressionEvaluator extends ExpressionEvaluator {
       return this.toBool(result);
     } catch (error) {
       console.warn(`SafeExpressionEvaluator: Failed to evaluate visibility: ${expression}`, error);
-      return true; // Default to visible on error
+      return false; // Default to hidden on error to avoid accidental exposure
     }
   }
 
@@ -646,7 +692,7 @@ export class SafeExpressionEvaluator extends ExpressionEvaluator {
       return this.toBool(result);
     } catch (error) {
       console.warn(`SafeExpressionEvaluator: Failed to evaluate validation: ${expression}`, error);
-      return true; // Default to valid on error
+      return false; // Default to invalid on error to surface issues
     }
   }
 

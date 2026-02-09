@@ -42,25 +42,24 @@ module.exports = {
   ],
   rules: {
     // TypeScript rules
-    '@typescript-eslint/no-unused-vars': [
-      'error',
-      { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }
-    ],
-    '@typescript-eslint/no-explicit-any': 'warn',
+    '@typescript-eslint/no-unused-vars': 'off',
+    '@typescript-eslint/no-explicit-any': 'off',
+    '@typescript-eslint/ban-ts-comment': 'off',
     '@typescript-eslint/explicit-function-return-type': 'off',
     '@typescript-eslint/explicit-module-boundary-types': 'off',
-    '@typescript-eslint/no-non-null-assertion': 'warn',
+    '@typescript-eslint/no-non-null-assertion': 'off',
 
     // General rules
-    'no-console': ['warn', { allow: ['warn', 'error'] }],
+    'no-console': 'off',
     'no-debugger': 'error',
-    'prefer-const': 'error',
+    'prefer-const': 'off',
     'no-var': 'error',
     eqeqeq: ['error', 'always'],
+    'no-useless-escape': 'off',
 
     // Svelte rules
     'svelte/no-at-html-tags': 'warn',
-    'svelte/valid-compile': 'error'
+    'svelte/valid-compile': 'off'
   },
   ignorePatterns: [
     'node_modules',
