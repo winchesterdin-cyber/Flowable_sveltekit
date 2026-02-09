@@ -16,6 +16,7 @@
 	import TaskInsights from '$lib/components/TaskInsights.svelte';
 	import { getPriorityLabel } from '$lib/utils/theme';
 	import { formatDate } from '$lib/utils/form-helpers';
+	import { copyTextToClipboard, downloadTextFile } from '$lib/utils/clipboard';
 	import {
 		buildTaskInsightMetrics,
 		filterTasksByInsight,
@@ -328,26 +329,6 @@
 		].join('\n');
 	}
 
-	/**
-	 * Attempt clipboard copy with a DOM fallback for browsers that block the async API.
-	 */
-	async function copyTextToClipboard(text: string) {
-		if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
-			await navigator.clipboard.writeText(text);
-			return true;
-		}
-		const textarea = document.createElement('textarea');
-		textarea.value = text;
-		textarea.setAttribute('readonly', '');
-		textarea.style.position = 'absolute';
-		textarea.style.left = '-9999px';
-		document.body.appendChild(textarea);
-		textarea.select();
-		const copied = document.execCommand('copy');
-		document.body.removeChild(textarea);
-		return copied;
-	}
-
 	async function handleCopySummary(task: Task) {
 		if (!browser) return;
 		const summary = buildTaskSummary(task);
@@ -405,15 +386,7 @@
 			return;
 		}
 		const summary = tasks.map(buildTaskSummary).join('\n\n---\n\n');
-		const blob = new Blob([summary], { type: 'text/plain;charset=utf-8;' });
-		const url = URL.createObjectURL(blob);
-		const link = document.createElement('a');
-		link.href = url;
-		link.download = `task-summaries-${new Date().toISOString().slice(0, 10)}.txt`;
-		document.body.appendChild(link);
-		link.click();
-		document.body.removeChild(link);
-		URL.revokeObjectURL(url);
+		downloadTextFile(summary, `task-summaries-${new Date().toISOString().slice(0, 10)}.txt`);
 		toast.success(`Downloaded ${tasks.length} task summaries`);
 		logger.info('Bulk task summaries downloaded', { count: tasks.length });
 	}

@@ -181,6 +181,18 @@ Users can select multiple tasks to perform bulk operations, such as claiming or 
 5. Click **Claim Selected** to claim all selected tasks (if they are unassigned).
 6. Click **Unclaim Selected** to release all selected tasks (if you are assigned to them).
 
+## Feature: Bulk Selection Insights
+
+The bulk actions toolbar now provides a quick insights strip for selected tasks and a copy action to share the breakdown with teammates.
+
+### Usage
+
+1. Navigate to the **Tasks** page.
+2. Select one or more tasks using the selection checkbox on task cards.
+3. Review the inline **Insights** summary in the bulk toolbar to see unassigned, overdue, due today, due soon, high-priority counts, and the overall due-date range.
+4. Click **Copy Insights** to place the selection summary on your clipboard for status updates or handoffs.
+5. Click **Download Insights** to save the summary as a text file when you need an attachment for reports.
+
 ## Feature: Task Insights and Focus Filters
 
 The Tasks page now includes a Task Insights panel that summarizes your current workload and lets you focus the list on common priority buckets.
