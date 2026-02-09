@@ -40,6 +40,7 @@ Detailed documentation is available in the `guides/` directory:
 - **Auto Refresh Controls**: Keep task lists updated with configurable refresh intervals and countdowns.
 - **Copy Task Summary**: Copy or download preformatted task summaries (single or bulk), plus export selected tasks to CSV for easy sharing.
 - **Personal Task Notes**: Capture private notes and follow-up reminders directly on task detail pages (stored locally).
+- **Task Checklists**: Track personal follow-up items per task with a private checklist stored locally.
 
 ### Dashboard Productivity Enhancements
 

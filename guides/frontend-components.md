@@ -198,6 +198,39 @@ The component exposes the following methods via component reference:
 }
 ```
 
+# TaskChecklist Component
+
+A lightweight Svelte 5 component that lets users keep a private checklist of follow-up items per task. Checklist data is stored in localStorage and never written back to the workflow engine.
+
+## Features
+
+- Add, complete, and remove checklist items
+- Clear completed items in bulk
+- Persisted locally per task (no workflow changes)
+- Structured logging for checklist actions
+
+## Usage
+
+```svelte
+<script lang="ts">
+	import TaskChecklist from '$lib/components/TaskChecklist.svelte';
+
+	const taskId = 'task-123';
+	const taskName = 'Expense Review';
+</script>
+
+<TaskChecklist {taskId} {taskName} />
+```
+
+## Component Props
+
+```typescript
+interface Props {
+  taskId: string; // Required task identifier used for storage
+  taskName?: string; // Optional task name for log context
+}
+```
+
 # TaskPersonalNotes Component
 
 Provides a private, client-side notes area on task detail pages for capturing handoff context and optional reminder dates.

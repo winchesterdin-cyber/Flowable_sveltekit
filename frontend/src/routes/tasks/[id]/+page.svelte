@@ -12,6 +12,7 @@
 	import TaskTimeline from '$lib/components/TaskTimeline.svelte';
 	import TaskProperties from '$lib/components/TaskProperties.svelte';
 	import TaskPersonalNotes from '$lib/components/TaskPersonalNotes.svelte';
+	import TaskChecklist from '$lib/components/TaskChecklist.svelte';
 	import { createLogger } from '$lib/utils/logger';
 	import type { TaskDetails, FormDefinition, TaskFormWithConfig, FormField, FormGrid, GridConfig } from '$lib/types';
 
@@ -489,6 +490,7 @@
 					}}
 				/>
 				<TaskPersonalNotes taskId={task.id} taskName={task.name} />
+				<TaskChecklist taskId={task.id} taskName={task.name} />
 				<TaskTimeline taskId={task.id} />
 			</div>
         </div>
