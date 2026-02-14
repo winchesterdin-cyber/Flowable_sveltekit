@@ -1,302 +1,86 @@
-# Implementation Plan: Flowable + SvelteKit Demo
+# Unified Improvement Plan
 
-## Overview
-A production-ready demo application featuring Flowable BPM engine with a SvelteKit (Svelte 5 runes) frontend, deployable to Railway via Docker.
+This is the single planning source of truth for process and delivery improvements.
+Each item includes evaluation and concrete implementation notes.
 
----
+## Todo + Implementation Notes (20 Major Improvements)
 
-## Architecture
+- [x] **1) Consolidate planning artifacts into one source of truth**
+  - **Evaluation:** Multiple plan files create drift and conflicting status updates.
+  - **Implementation notes:** Retained one canonical planning file (`PLAN.md`) and removed legacy alternatives.
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                    Docker Compose                        │
-├─────────────────────────────────────────────────────────┤
-│  ┌─────────────────────┐    ┌─────────────────────────┐ │
-│  │   SvelteKit App     │    │   Spring Boot + Flowable│ │
-│  │   (Node.js)         │───▶│   (Java 17)             │ │
-│  │   Port: 3000        │    │   Port: 8080            │ │
-│  │                     │    │   H2 Database (embedded)│ │
-│  └─────────────────────┘    └─────────────────────────┘ │
-└─────────────────────────────────────────────────────────┘
-```
+- [x] **2) Baseline repository health audit**
+  - **Evaluation:** Teams need a repeatable baseline to validate future changes.
+  - **Implementation notes:** Added and validated a reusable gate runner script: `scripts/quality-gates.sh`.
 
----
+- [x] **3) Define a strict quality gate sequence**
+  - **Evaluation:** A fixed sequence improves diagnosability and failure isolation.
+  - **Implementation notes:** Encoded ordered checks in `scripts/quality-gates.sh` (format → lint → type → unit → backend tests → e2e smoke).
 
-## User Roles (3 Levels)
+- [x] **4) Standardize task tracking format**
+  - **Evaluation:** Inconsistent progress tracking causes execution ambiguity.
+  - **Implementation notes:** Standardized all plan items into checkbox + evaluation + implementation-notes format.
 
-| Role | Username | Password | Capabilities |
-|------|----------|----------|--------------|
-| User | user1 | password | Submit expenses, leave requests, work on assigned tasks |
-| Supervisor | supervisor1 | password | Approve user requests, escalate to executive, manage team |
-| Executive | executive1 | password | Final approval for high-value items, override decisions |
+- [x] **5) Add explicit ownership expectations per initiative**
+  - **Evaluation:** Work slows when responsibilities are not explicit.
+  - **Implementation notes:** Added role-based ownership guidance in `notes.md` and `guides/delivery-playbook.md`.
 
----
+- [x] **6) Improve change safety with smaller vertical slices**
+  - **Evaluation:** Large change sets increase regression risk and review latency.
+  - **Implementation notes:** Added PR-scope guidance in `guides/delivery-playbook.md` to enforce vertical-slice delivery.
 
-## Workflows
+- [x] **7) Enforce deterministic local test data usage**
+  - **Evaluation:** Non-deterministic local data drives flaky behavior and brittle tests.
+  - **Implementation notes:** Added deterministic local-data guidance in `guides/delivery-playbook.md` and team notes.
 
-### 1. Expense Approval (Threshold-based)
-```
-User submits expense
-       │
-       ▼
-   Amount > $500?
-   ┌────┴────┐
-   No       Yes
-   │         │
-   ▼         ▼
-Supervisor  Supervisor
- Approves    Reviews
-   │         │
-   │    Approves/Escalates
-   │         │
-   │         ▼
-   │    Executive
-   │     Approves
-   │         │
-   └────┬────┘
-        ▼
-   Process Complete
-```
+- [x] **8) Add guidance for logging quality**
+  - **Evaluation:** Weak logging slows MTTR in workflow incidents.
+  - **Implementation notes:** Added explicit logging conventions to `guides/delivery-playbook.md` and gate script logs for every step.
 
-### 2. Leave Request (Sequential)
-```
-User submits leave request
-       │
-       ▼
-   Supervisor Reviews
-       │
-   Approve/Reject/Escalate
-       │
-       ▼ (if escalated or > 5 days)
-   Executive Reviews
-       │
-   Approve/Reject
-       │
-       ▼
-   Process Complete
-```
+- [x] **9) Add guidance for code comments in complex workflow logic**
+  - **Evaluation:** BPM branching requires intent-focused comments to preserve maintainability.
+  - **Implementation notes:** Added comment strategy guidance in `guides/delivery-playbook.md`.
 
-### 3. Task Assignment (Simple)
-```
-Any user creates task
-       │
-       ▼
-   Assign to user
-       │
-       ▼
-   Assignee works on task
-       │
-       ▼
-   Mark complete
-       │
-       ▼
-   Process Complete
-```
+- [x] **10) Add a release-readiness checklist expectation**
+  - **Evaluation:** Teams need objective exit criteria before merge/release.
+  - **Implementation notes:** Added release-readiness checklist section in `guides/delivery-playbook.md` and `notes.md`.
 
----
+- [x] **11) Introduce test gap identification process**
+  - **Evaluation:** Test debt persists when gaps are not tracked.
+  - **Implementation notes:** Added explicit gap-tracking workflow in `guides/delivery-playbook.md` and `notes.md`.
 
-## Project Structure
+- [x] **12) Improve frontend observability workflow**
+  - **Evaluation:** UI regressions often surface first in console/network logs.
+  - **Implementation notes:** Added frontend observability expectations in `guides/delivery-playbook.md`.
 
-```
-/Flowable_sveltekit/
-├── docker-compose.yml
-├── Dockerfile.frontend
-├── Dockerfile.backend
-├── railway.json
-│
-├── /backend/                    # Spring Boot + Flowable
-│   ├── pom.xml
-│   ├── /src/main/java/com/demo/bpm/
-│   │   ├── BpmApplication.java
-│   │   ├── /config/
-│   │   │   ├── SecurityConfig.java
-│   │   │   ├── CorsConfig.java
-│   │   │   └── FlowableConfig.java
-│   │   ├── /controller/
-│   │   │   ├── AuthController.java
-│   │   │   ├── TaskController.java
-│   │   │   └── ProcessController.java
-│   │   ├── /service/
-│   │   │   ├── TaskService.java
-│   │   │   ├── ProcessService.java
-│   │   │   └── UserService.java
-│   │   ├── /dto/
-│   │   │   ├── TaskDTO.java
-│   │   │   ├── ProcessDTO.java
-│   │   │   ├── LoginRequest.java
-│   │   │   └── UserDTO.java
-│   │   └── /delegate/
-│   │       ├── ExpenseValidationDelegate.java
-│   │       └── NotificationDelegate.java
-│   └── /src/main/resources/
-│       ├── application.yml
-│       └── /processes/
-│           ├── expense-approval.bpmn20.xml
-│           ├── leave-request.bpmn20.xml
-│           └── task-assignment.bpmn20.xml
-│
-├── /frontend/                   # SvelteKit + Svelte 5
-│   ├── package.json
-│   ├── svelte.config.js
-│   ├── vite.config.ts
-│   ├── tailwind.config.js
-│   ├── /src/
-│   │   ├── app.html
-│   │   ├── app.css
-│   │   ├── /lib/
-│   │   │   ├── /api/
-│   │   │   │   └── client.ts
-│   │   │   ├── /components/
-│   │   │   │   ├── TaskCard.svelte
-│   │   │   │   ├── TaskList.svelte
-│   │   │   │   ├── ProcessCard.svelte
-│   │   │   │   ├── DynamicForm.svelte
-│   │   │   │   ├── Navbar.svelte
-│   │   │   │   └── Toast.svelte
-│   │   │   ├── /stores/
-│   │   │   │   └── auth.svelte.ts
-│   │   │   └── /types/
-│   │   │       └── index.ts
-│   │   └── /routes/
-│   │       ├── +layout.svelte
-│   │       ├── +layout.server.ts
-│   │       ├── +page.svelte           # Dashboard
-│   │       ├── /login/
-│   │       │   └── +page.svelte
-│   │       ├── /tasks/
-│   │       │   ├── +page.svelte       # Task inbox
-│   │       │   └── /[id]/
-│   │       │       └── +page.svelte   # Task detail
-│   │       └── /processes/
-│   │           ├── +page.svelte       # Start new process
-│   │           ├── /expense/
-│   │           │   └── +page.svelte
-│   │           ├── /leave/
-│   │           │   └── +page.svelte
-│   │           └── /task/
-│   │               └── +page.svelte
-│   └── /static/
-│       └── favicon.png
-│
-└── /docs/
-    └── API.md
-```
+- [x] **13) Improve backend failure-triage workflow**
+  - **Evaluation:** Faster triage requires layer-first categorization.
+  - **Implementation notes:** Documented backend triage sequence in `guides/delivery-playbook.md`.
 
----
+- [x] **14) Add documentation maintenance cadence**
+  - **Evaluation:** Docs degrade quickly when updates are out-of-band.
+  - **Implementation notes:** Added in-PR documentation update policy in `guides/delivery-playbook.md` and `notes.md`.
 
-## Implementation Steps
+- [x] **15) Improve onboarding efficiency with practical team notes**
+  - **Evaluation:** New teammates require concise operational context.
+  - **Implementation notes:** Expanded onboarding pointers in `notes.md` and linked playbook in `README.md`.
 
-### Phase 1: Backend Setup
-1. Create Spring Boot project structure
-2. Add Flowable dependency and configuration
-3. Create BPMN process definitions (3 workflows)
-4. Implement REST controllers (Auth, Tasks, Processes)
-5. Configure H2 database and security
-6. Add service delegates for business logic
+- [x] **16) Reduce risk through explicit dependency checks**
+  - **Evaluation:** Dependency drift can silently break CI and runtime behavior.
+  - **Implementation notes:** Added scheduled dependency hygiene guidance in `guides/delivery-playbook.md`.
 
-### Phase 2: Frontend Setup
-7. Create SvelteKit project with Svelte 5
-8. Configure Tailwind CSS
-9. Create TypeScript types
-10. Build API client
-11. Create auth store (Svelte 5 runes)
+- [x] **17) Add API contract consistency review checkpoints**
+  - **Evaluation:** Unannounced contract changes break frontend integrations.
+  - **Implementation notes:** Added API contract review expectations in `guides/delivery-playbook.md`.
 
-### Phase 3: Frontend Components
-12. Build Navbar component
-13. Build TaskCard and TaskList components
-14. Build DynamicForm component
-15. Build ProcessCard component
-16. Build Toast notification component
+- [x] **18) Improve performance regression awareness**
+  - **Evaluation:** Worklist/dashboard features can degrade with data growth.
+  - **Implementation notes:** Added performance awareness guidance in `guides/delivery-playbook.md`.
 
-### Phase 4: Frontend Routes
-17. Create layout with auth check
-18. Build login page
-19. Build dashboard page
-20. Build task inbox page
-21. Build task detail page
-22. Build process starter pages (expense, leave, task)
+- [x] **19) Improve security hygiene reminders in delivery workflow**
+  - **Evaluation:** Security hygiene must be explicit in daily development flow.
+  - **Implementation notes:** Added security guardrails in `guides/delivery-playbook.md` and reinforced in `notes.md`.
 
-### Phase 5: Docker & Deployment
-23. Create Dockerfile for backend
-24. Create Dockerfile for frontend
-25. Create docker-compose.yml
-26. Create railway.json configuration
-27. Test local Docker deployment
-28. Document deployment steps
-
----
-
-## Demo Data
-
-Pre-populated on startup:
-- 3 users (user1, supervisor1, executive1)
-- 2 sample expense requests (one pending supervisor, one pending executive)
-- 1 sample leave request (pending approval)
-- 2 sample tasks (one assigned, one unassigned)
-
----
-
-## Tech Stack
-
-| Component | Technology |
-|-----------|------------|
-| Backend Runtime | Java 17 |
-| Backend Framework | Spring Boot 3.2 |
-| BPM Engine | Flowable 7.0 |
-| Database | H2 (embedded) |
-| Frontend Runtime | Node.js 20 |
-| Frontend Framework | SvelteKit 2.x |
-| UI Library | Svelte 5 (runes mode) |
-| CSS Framework | Tailwind CSS 3.x |
-| Containerization | Docker |
-| Deployment | Railway |
-
----
-
-## API Endpoints
-
-### Authentication
-- `POST /api/auth/login` - Login
-- `POST /api/auth/logout` - Logout
-- `GET /api/auth/me` - Get current user
-
-### Tasks
-- `GET /api/tasks` - Get user's tasks
-- `GET /api/tasks/claimable` - Get claimable tasks
-- `GET /api/tasks/{id}` - Get task details
-- `POST /api/tasks/{id}/complete` - Complete task
-- `POST /api/tasks/{id}/claim` - Claim task
-
-### Processes
-- `GET /api/processes` - List available processes
-- `POST /api/processes/expense/start` - Start expense process
-- `POST /api/processes/leave/start` - Start leave process
-- `POST /api/processes/task/start` - Start task assignment
-- `GET /api/processes/{id}` - Get process status
-
----
-
-## Estimated File Count
-- Backend: ~20 files
-- Frontend: ~25 files
-- Config/Docker: ~5 files
-- **Total: ~50 files**
-
----
-
-## Questions Resolved
-- ✅ 3 workflows: Expense, Leave, Task
-- ✅ H2 database (in-memory)
-- ✅ 3 roles: User, Supervisor, Executive
-- ✅ Mixed approval: Threshold for expense, Sequential for leave
-- ✅ Railway deployment
-- ✅ Standard UI with Tailwind
-
----
-
-## Ready to Implement?
-
-Please review this plan and confirm:
-1. Does the workflow logic look correct?
-2. Is the project structure acceptable?
-3. Any features to add or remove?
+- [x] **20) Close the loop with post-implementation review notes**
+  - **Evaluation:** Teams improve quality faster with concise retrospectives.
+  - **Implementation notes:** Updated `notes.md` with review notes and explicit ongoing update expectations.
