@@ -1,78 +1,49 @@
 # Delivery Playbook
 
-This playbook turns the 20-point improvement plan into repeatable team behaviors and concrete artifacts.
+This playbook turns the enhancement plan into repeatable team behaviors and concrete artifacts.
 
-## 1) Single planning source of truth
-- Use only `PLAN.md` for roadmap tracking.
-- Archive superseded planning artifacts instead of creating parallel plan files.
+## 1) Canonical enhancement planning
+- Keep the active enhancement execution plan in `plan.md`.
+- Track implementation status and validation evidence in the same file.
 
 ## 2) Baseline health audit
-- Run `scripts/quality-gates.sh` before opening a PR.
-- Save output snippets when failures occur to simplify triage.
+- Use `scripts/enhancement-gates.sh` as the primary validation command.
+- Store the generated report (`.reports/gate-report-*.md`) with your review artifacts.
 
 ## 3) Strict quality gate sequence
 1. Frontend formatting checks.
 2. Frontend lint.
 3. Frontend type checks.
 4. Frontend unit tests.
-5. Backend tests.
-6. Frontend E2E smoke tests.
+5. Backend tests (full profile).
+6. Frontend E2E smoke tests (full profile unless explicitly skipped).
 
-## 4) Standard task tracking format
-- Every plan item must include: objective, risk, owner, status, notes.
+## 4) Profile-based execution model
+- **Quick profile:** `scripts/enhancement-gates.sh --profile quick`
+- **Full profile:** `scripts/enhancement-gates.sh --profile full`
+- **With dependency bootstrap:** add `--install`
+- **When browser constraints exist:** add `--skip-e2e`
 
-## 5) Ownership expectations
-- Backend owner: services/controllers/data integrity.
-- Frontend owner: routes/components/state restoration.
-- Shared owner: release checks/contracts/docs.
+## 5) Dependency hygiene and reproducibility
+- Run full profile with `--install` when onboarding a new environment.
+- Keep Node/Maven dependency install output in CI logs for traceability.
 
-## 6) Small vertical slices
-- Keep each PR focused on one behavior or one operational capability.
+## 6) Logging quality
+- Include process/task/user context identifiers in application logs.
+- Use timestamped gate logs for command-level diagnostics.
 
-## 7) Deterministic local test data
-- Prefer local disposable DB and reproducible seed sets.
-- Avoid time-dependent assertions without freezing time.
-
-## 8) Logging quality
-- Include process/task/user context identifiers in logs.
-- Avoid ambiguous messages; always log action + outcome.
-
-## 9) Comment strategy
+## 7) Comment strategy
 - Add intent comments around complex branching or compensation logic.
 - Avoid comments that merely repeat code.
 
-## 10) Release-readiness checklist
-- Automated checks pass.
+## 8) Release-readiness checklist
+- Automated checks pass for required profile.
+- Generated gate report is attached/referenced.
 - No unresolved runtime warnings/errors.
 - Docs updated for user-facing changes.
 
-## 11) Test gap workflow
+## 9) Test gap workflow
 - Track uncovered scenarios directly in `notes.md` until addressed.
 
-## 12) Frontend observability
-- During E2E, watch browser console and failed network requests.
-
-## 13) Backend triage workflow
-- Classify failures first: controller/service/engine/database.
-
-## 14) Documentation cadence
-- Update docs in same PR for behavior changes.
-
-## 15) Onboarding efficiency
-- Keep this file and `notes.md` current as first-stop onboarding docs.
-
-## 16) Dependency hygiene
-- Schedule regular update windows and rerun full gates.
-
-## 17) API contract consistency
-- Validate DTO/response shapes with tests when API payloads evolve.
-
-## 18) Performance regression awareness
-- Monitor expensive dashboard/process list calls during load growth.
-
-## 19) Security hygiene
-- Never commit secrets.
-- Preserve auth checks and audit events for privileged actions.
-
-## 20) Post-implementation review
-- Add short retrospectives to `notes.md`: what changed, what broke, what to improve next.
+## 10) Documentation cadence
+- Update `plan.md`, `notes.md`, and this playbook in the same PR when process changes.

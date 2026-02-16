@@ -15,6 +15,7 @@ Detailed documentation is available in the `guides/` directory:
 - [Workflows](guides/workflows.md)
 - [API Reference](guides/api.md)
 - [Frontend Components](guides/frontend-components.md)
+- [Enhancement Plan](plan.md)
 - [Delivery Playbook](guides/delivery-playbook.md)
 
 ## Features
