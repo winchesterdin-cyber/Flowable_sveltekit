@@ -1,40 +1,26 @@
 # Improvement Notes
 
-## Step 1: Centralized backend logging helper
-- Added `StructuredLogger` utility for consistent, structured log formatting in backend services.
+## Enhancement Gates v2 Highlights
 
-## Step 2: Request lifecycle logging filter
-- Added a request logging filter to record request start/end and latency for all HTTP calls.
+### Operational controls
+- Added profile expansion (`quick`, `full`, `ci`).
+- Added `--continue-on-error` for complete failure inventories.
+- Added `--retries` for transient command instability.
+- Added `--timeout` to protect against hanging commands.
 
-## Step 3: Controller validation annotations commentary
-- Documented request validation intent in auth and task controllers to clarify expected payload rules.
+### Reporting and observability
+- Added per-run logs at `.reports/logs/gate-run-<timestamp>.log`.
+- Added markdown summary matrices with per-gate status and duration.
+- Added optional JSON report generation for machine processing.
+- Added environment metadata snapshot for reproducibility context.
 
-## Step 4: Frontend event logger helper
-- Extended the frontend logger with a dedicated `event` method for user action tracking.
+### Reliability and maintainability
+- Centralized execution through a shared `run_gate` helper.
+- Added prerequisite checks for tools and expected repo directories.
+- Expanded documentation freshness checks.
+- Added intent comments in script sections that need execution context.
 
-## Step 5: UI event logging for critical actions
-- Added event/error logging for task property edits and expense draft/submit actions.
-
-## Step 6: Logging conventions documentation
-- Added a logging conventions guide covering backend and frontend usage.
-
-## Step 7: Dev database reset script
-- Added an H2 profile plus a reset script that clears local DB files and seeds when possible.
-
-## Step 8: Documented DB reset workflow
-- Documented the local H2 reset process in the setup guide.
-
-## Step 9: Logging helper unit tests
-- Added backend tests for structured log formatting and frontend tests for event logging helpers.
-
-## Step 10: Request logging filter test
-- Added a MockMvc test that asserts request start/end log entries are emitted by the filter.
-
-## Step 11: Frontend component logging test
-- Added a component test ensuring task property saves emit event logs.
-
-## Step 12: Error handling comments in backend services
-- Documented fallback behavior in form definition parsing to clarify error handling.
-
-## Step 13: Backend error log coverage
-- Added an explicit error log when task detail retrieval fails.
+## Recommended next optimizations
+- Add CI step to publish JSON report as build artifact.
+- Add parser script to trend pass/fail durations over time.
+- Add optional selective gate targeting for single-surface change validation.

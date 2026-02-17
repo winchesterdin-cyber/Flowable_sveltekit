@@ -1,49 +1,58 @@
 # Delivery Playbook
 
-This playbook turns the enhancement plan into repeatable team behaviors and concrete artifacts.
+This playbook defines the operational standard for enhancement delivery and validation.
 
-## 1) Canonical enhancement planning
-- Keep the active enhancement execution plan in `plan.md`.
-- Track implementation status and validation evidence in the same file.
+## 1) Canonical planning and execution artifacts
+- Keep active execution intent in `plan.md`.
+- Capture outcomes in generated reports under `.reports/`.
 
-## 2) Baseline health audit
-- Use `scripts/enhancement-gates.sh` as the primary validation command.
-- Store the generated report (`.reports/gate-report-*.md`) with your review artifacts.
+## 2) Primary validation entrypoint
+Use `scripts/enhancement-gates.sh` as the canonical command for local and CI checks.
 
-## 3) Strict quality gate sequence
-1. Frontend formatting checks.
-2. Frontend lint.
-3. Frontend type checks.
-4. Frontend unit tests.
-5. Backend tests (full profile).
-6. Frontend E2E smoke tests (full profile unless explicitly skipped).
+## 3) Gate profiles
+- **Quick:** frontend-only validation for iteration speed.
+  - `scripts/enhancement-gates.sh --profile quick`
+- **Full:** full validation (frontend + backend + E2E unless skipped).
+  - `scripts/enhancement-gates.sh --profile full`
+- **CI:** same broad coverage with report-first ergonomics for pipelines.
+  - `scripts/enhancement-gates.sh --profile ci --json`
 
-## 4) Profile-based execution model
-- **Quick profile:** `scripts/enhancement-gates.sh --profile quick`
-- **Full profile:** `scripts/enhancement-gates.sh --profile full`
-- **With dependency bootstrap:** add `--install`
-- **When browser constraints exist:** add `--skip-e2e`
+## 4) Recommended flag combinations
+- Install dependencies first:
+  - `scripts/enhancement-gates.sh --profile full --install`
+- Continue and inventory all failures:
+  - `scripts/enhancement-gates.sh --profile full --continue-on-error`
+- Add retry behavior for transient checks:
+  - `scripts/enhancement-gates.sh --profile full --retries 2`
+- Prevent hanging commands:
+  - `scripts/enhancement-gates.sh --profile full --timeout 1200`
+- Skip browser automation when blocked:
+  - `scripts/enhancement-gates.sh --profile full --skip-e2e`
 
-## 5) Dependency hygiene and reproducibility
-- Run full profile with `--install` when onboarding a new environment.
-- Keep Node/Maven dependency install output in CI logs for traceability.
+## 5) Dependency and prerequisite hygiene
+- Prefer `npm ci` with lockfiles for deterministic installs.
+- Pre-fetch backend dependencies using Maven offline goal.
+- Validate required tools (`bash`, `npm`, and `java` for full/ci) before execution.
 
-## 6) Logging quality
-- Include process/task/user context identifiers in application logs.
-- Use timestamped gate logs for command-level diagnostics.
+## 6) Reporting standards
+- Markdown report is mandatory and generated every run.
+- JSON report is optional and recommended in CI.
+- Persist run logs from `.reports/logs/` for troubleshooting.
 
-## 7) Comment strategy
-- Add intent comments around complex branching or compensation logic.
-- Avoid comments that merely repeat code.
+## 7) Documentation freshness gate
+The script verifies required docs exist before major gates:
+- `plan.md`
+- `notes.md`
+- `guides/delivery-playbook.md`
+- `guides/improvement-notes.md`
 
-## 8) Release-readiness checklist
-- Automated checks pass for required profile.
-- Generated gate report is attached/referenced.
-- No unresolved runtime warnings/errors.
-- Docs updated for user-facing changes.
+## 8) Comment strategy
+- Add intent comments around non-obvious control flow and operational safeguards.
+- Keep comments synchronized with behavior changes.
 
-## 9) Test gap workflow
-- Track uncovered scenarios directly in `notes.md` until addressed.
-
-## 10) Documentation cadence
-- Update `plan.md`, `notes.md`, and this playbook in the same PR when process changes.
+## 9) Definition of done
+A change is complete when:
+- Required gate profile passes (or all failures are explicitly triaged).
+- Reports and logs are attached to review context.
+- Planning + notes + playbook docs are updated together.
+- No unresolved runtime blockers remain.
