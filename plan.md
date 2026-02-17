@@ -1,79 +1,85 @@
-# Comprehensive Feature Enhancement Plan and Implementation
+# Comprehensive Feature Enhancement Plan and Execution Ledger
 
-This plan is intentionally execution-focused and fully implemented in this pass.  
-It defines 12 major improvements to strengthen feature delivery, validation depth, observability, and documentation quality.
+This implementation pass delivers a repository-wide enhancement of the quality-gate platform and associated delivery documentation.
+The scope is intentionally broad, and every listed item below has been implemented in this pass.
 
 ## Execution status
 - **Status:** Complete
-- **Scope:** Repository-wide delivery workflow and quality controls
-- **Verification:** Automated checks executed and documented in the generated gate report
+- **Scope:** Tooling, validation orchestration, observability, and process documentation
+- **Primary artifact:** `scripts/enhancement-gates.sh`
+- **Evidence:** generated reports in `.reports/`
 
-## Major improvements (implemented)
+## Major improvements (20/20 implemented)
 
-### 1) Canonical enhancement plan artifact (`plan.md`)
-- **Goal:** Provide a single lower-case planning artifact requested for this implementation pass.
-- **Implementation:** Added this file as the canonical execution plan and implementation ledger.
-- **Verification:** Confirmed file creation and integration into docs and automation.
+### 1) Expanded profile model (`quick`, `full`, `ci`)
+Introduced a third execution profile to support CI-focused behavior while preserving local quick/full workflows.
 
-### 2) Enhanced quality gate orchestrator with profiles
-- **Goal:** Move from a fixed command sequence to profile-based execution (`quick` and `full`).
-- **Implementation:** Added `scripts/enhancement-gates.sh` with profile-aware gate selection.
-- **Verification:** Ran dry-run and real execution paths.
+### 2) Strong CLI contract and richer option parsing
+Added support for `--continue-on-error`, `--report-dir`, `--json`, `--retries`, `--timeout`, and `--verbose`.
 
-### 3) Dependency bootstrap automation
-- **Goal:** Ensure missing packages/tools are identified and installed automatically when requested.
-- **Implementation:** Added `--install` workflow for frontend (`npm install`) and backend (`./mvnw -q -DskipTests dependency:go-offline`).
-- **Verification:** Dry-run confirmed command flow; non-dry run validates command availability.
+### 3) Strict argument validation
+Implemented integer and enum validation for retries/profile/timeout to fail fast on malformed commands.
 
-### 4) Structured logging with timestamps and durations
-- **Goal:** Improve operational visibility and troubleshooting for every gate.
-- **Implementation:** Added step-level timestamped logs and gate duration tracking.
-- **Verification:** Logs emitted into terminal and persisted report file.
+### 4) Deterministic report path controls
+Enabled report directory overrides so teams can redirect artifacts to CI workspaces.
 
-### 5) Persistent gate reporting
-- **Goal:** Keep auditable records of executed checks.
-- **Implementation:** Added `.reports/gate-report-<timestamp>.md` generation with executed command outcomes.
-- **Verification:** Report generated and contains gate-by-gate status.
+### 5) Markdown + JSON dual reporting
+Added optional machine-readable JSON summary generation alongside the markdown report.
 
-### 6) Documentation freshness guardrails
-- **Goal:** Enforce documentation updates as part of implementation.
-- **Implementation:** Added docs gate validating presence of `plan.md`, `notes.md`, and `guides/delivery-playbook.md`.
-- **Verification:** Gate executed in the orchestrator.
+### 6) Persistent run log output
+Added a dedicated per-run log file under `.reports/logs/` for post-failure diagnostics.
 
-### 7) Backward-compatible `quality-gates.sh` wrapper
-- **Goal:** Preserve existing command entrypoint while improving capability.
-- **Implementation:** Updated `scripts/quality-gates.sh` to delegate to `enhancement-gates.sh --profile full`.
-- **Verification:** Legacy command path still works.
+### 7) Environment snapshot capture
+Reports now include shell, user, host, and root path metadata for reproducibility context.
 
-### 8) Explicit comments and intent documentation in scripts
-- **Goal:** Improve maintainability and onboarding clarity.
-- **Implementation:** Added intent-focused comments for every major function and control block.
-- **Verification:** Manual review of script internals.
+### 8) Gate-level telemetry arrays
+Implemented in-memory gate tracking arrays for names, status, command, duration, and note fields.
 
-### 9) Robust argument validation and usage help
-- **Goal:** Prevent accidental misuse and ambiguous runs.
-- **Implementation:** Added option parser, guard clauses, and detailed usage text.
-- **Verification:** Ran parser checks with dry-run profile.
+### 9) Summary matrix generation
+Added a markdown gate matrix plus aggregate counters for pass/fail/warn/skip/duration.
 
-### 10) Deterministic command execution helper
-- **Goal:** Centralize command execution behavior for consistency.
-- **Implementation:** Added `run_cmd` helper with dry-run support and structured output.
-- **Verification:** Executed through docs/lint/test gates.
+### 10) Command timeout control
+Added optional timeout enforcement per command when GNU `timeout` is available.
 
-### 11) Team notes upgrade for operational expectations
-- **Goal:** Keep cross-team operating model aligned with new capabilities.
-- **Implementation:** Updated `notes.md` with new profile guidance, report usage, and logging expectations.
-- **Verification:** Notes include commands and operational flow.
+### 11) Retry support for flaky gates
+Added configurable attempt retries for each gate command.
 
-### 12) Delivery playbook update to include enhanced gate workflow
-- **Goal:** Make process documentation reflect implemented tooling.
-- **Implementation:** Updated `guides/delivery-playbook.md` with profile usage and reporting model.
-- **Verification:** Playbook now references `enhancement-gates.sh` and report artifacts.
+### 12) Continue-on-error mode
+Added a non-blocking mode to execute all gates and return consolidated failures at the end.
 
-## Implementation completeness checklist
-- [x] Plan file created as `plan.md`
-- [x] 10+ major improvements documented and implemented
-- [x] Tooling enhancements committed
-- [x] Notes and delivery docs updated
-- [x] Automated checks executed
-- [x] Results captured in generated gate report
+### 13) Centralized gate runner abstraction
+Standardized all gate execution through `run_gate` for consistent logs and outcomes.
+
+### 14) Dependency bootstrap hardening
+Improved install behavior to prefer `npm ci` when lockfile exists and preserve Maven prefetch.
+
+### 15) Prerequisite verification
+Added preflight checks for required executables and expected repository directories.
+
+### 16) Documentation freshness expansion
+Expanded docs gate to validate `guides/improvement-notes.md` in addition to existing docs.
+
+### 17) Profile-aware skip bookkeeping
+Quick mode now records skipped backend/E2E gates explicitly for transparent reporting.
+
+### 18) Enhanced usage documentation
+Updated notes and playbook with concrete examples for retries, JSON artifacts, and resilient runs.
+
+### 19) Intent-focused inline comments
+Added explanatory comments around control flow, optional timeout handling, and telemetry structures.
+
+### 20) Regression-safe dry-run verification workflow
+Validated the enhanced command surface via dry-run executions that generate both markdown and JSON artifacts.
+
+## Verification completed
+- Script syntax validated.
+- Dry-run quick profile executed successfully.
+- JSON and markdown reports generated and inspected.
+- Notes/playbook/plan docs updated in the same implementation pass.
+
+
+## Post-review corrective fixes (this pass)
+- Fixed CLI parsing edge-cases for options requiring values (`--profile`, `--report-dir`, `--retries`, `--timeout`) with explicit error logs.
+- Reworked JSON report generation to use Python-based serialization for safe escaping of commands/notes.
+- Fixed environment propagation for JSON serialization inputs so dry-run JSON generation is stable.
+- Re-ran script lint/syntax and dry-run checks after each change.
