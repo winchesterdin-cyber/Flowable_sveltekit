@@ -1,26 +1,28 @@
 # Improvement Notes
 
-## Enhancement Gates v2 Highlights
+## Enhancement Gates v3 Highlights
 
-### Operational controls
-- Added profile expansion (`quick`, `full`, `ci`).
-- Added `--continue-on-error` for complete failure inventories.
-- Added `--retries` for transient command instability.
-- Added `--timeout` to protect against hanging commands.
+### Targeted execution controls
+- Added `--only` and `--skip` to select gate subsets.
+- Added `--list-gates` to print supported gate IDs.
+- Added selection-aware skip tracking in reports.
 
-### Reporting and observability
-- Added per-run logs at `.reports/logs/gate-run-<timestamp>.log`.
-- Added markdown summary matrices with per-gate status and duration.
-- Added optional JSON report generation for machine processing.
-- Added environment metadata snapshot for reproducibility context.
+### CI reporting upgrades
+- Added optional JUnit XML output via `--junit`.
+- Retained JSON output and markdown reports for dual consumption.
+- Added Git HEAD metadata to reports for traceability.
 
-### Reliability and maintainability
-- Centralized execution through a shared `run_gate` helper.
-- Added prerequisite checks for tools and expected repo directories.
-- Expanded documentation freshness checks.
-- Added intent comments in script sections that need execution context.
+### Policy and failure handling
+- Added `--max-failures` to stop after configurable failed-gate threshold.
+- Added `--fail-on-warn` to treat warning outcomes as hard failures.
+- Added trap-safe summary writing on exit paths.
+
+### DX and maintainability
+- Added optional colorized log levels with `--no-color` override.
+- Added helper functions for selector parsing and skip recording.
+- Added self-test harness (`scripts/test-enhancement-gates.sh`) for contract checks.
 
 ## Recommended next optimizations
-- Add CI step to publish JSON report as build artifact.
-- Add parser script to trend pass/fail durations over time.
-- Add optional selective gate targeting for single-surface change validation.
+- Add historic trend aggregation from JSON outputs.
+- Add JUnit attachment publishing in CI workflow.
+- Add selective gate aliases (e.g., `frontend:all`) for reduced command verbosity.
