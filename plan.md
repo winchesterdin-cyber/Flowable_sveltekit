@@ -1,85 +1,76 @@
-# Comprehensive Feature Enhancement Plan and Execution Ledger
+# Comprehensive Enhancement Plan and Implementation Record
 
-This implementation pass delivers a repository-wide enhancement of the quality-gate platform and associated delivery documentation.
-The scope is intentionally broad, and every listed item below has been implemented in this pass.
+Status: **Complete**
+Scope: `scripts/enhancement-gates.sh` quality platform hardening, operator workflows, and regression safeguards.
 
-## Execution status
-- **Status:** Complete
-- **Scope:** Tooling, validation orchestration, observability, and process documentation
-- **Primary artifact:** `scripts/enhancement-gates.sh`
-- **Evidence:** generated reports in `.reports/`
+This plan was fully implemented in this pass and verified with automated checks.
 
-## Major improvements (20/20 implemented)
+## 20 Major Improvements (Planned + Implemented)
 
-### 1) Expanded profile model (`quick`, `full`, `ci`)
-Introduced a third execution profile to support CI-focused behavior while preserving local quick/full workflows.
+1. **Gate selection model (`--only`, `--skip`)**  
+   Added explicit gate targeting to support scoped validation for focused changes.
 
-### 2) Strong CLI contract and richer option parsing
-Added support for `--continue-on-error`, `--report-dir`, `--json`, `--retries`, `--timeout`, and `--verbose`.
+2. **Discoverability command (`--list-gates`)**  
+   Added self-documenting gate inventory output for users and CI scripts.
 
-### 3) Strict argument validation
-Implemented integer and enum validation for retries/profile/timeout to fail fast on malformed commands.
+3. **JUnit XML reporting (`--junit`)**  
+   Added JUnit artifact generation for CI test report ingestion.
 
-### 4) Deterministic report path controls
-Enabled report directory overrides so teams can redirect artifacts to CI workspaces.
+4. **Warning escalation mode (`--fail-on-warn`)**  
+   Added policy toggle to fail runs when warnings are present.
 
-### 5) Markdown + JSON dual reporting
-Added optional machine-readable JSON summary generation alongside the markdown report.
+5. **Failure budget control (`--max-failures`)**  
+   Added deterministic early termination after a configured number of failed gates.
 
-### 6) Persistent run log output
-Added a dedicated per-run log file under `.reports/logs/` for post-failure diagnostics.
+6. **ANSI color controls (`--no-color`)**  
+   Added readable colorized logs by default with explicit disable switch for plain log collectors.
 
-### 7) Environment snapshot capture
-Reports now include shell, user, host, and root path metadata for reproducibility context.
+7. **Gate filter parser normalization**  
+   Added CSV parsing and whitespace normalization for robust multi-gate selectors.
 
-### 8) Gate-level telemetry arrays
-Implemented in-memory gate tracking arrays for names, status, command, duration, and note fields.
+8. **Selection-aware skip telemetry**  
+   Added explicit skip records when gates are omitted by selection filters.
 
-### 9) Summary matrix generation
-Added a markdown gate matrix plus aggregate counters for pass/fail/warn/skip/duration.
+9. **Shared skip recorder helper**  
+   Added `record_skipped_gate` helper to standardize skipped gate accounting/report lines.
 
-### 10) Command timeout control
-Added optional timeout enforcement per command when GNU `timeout` is available.
+10. **Exit trap summary safety**  
+    Added trap-based finalization so summaries are still written on abrupt failures.
 
-### 11) Retry support for flaky gates
-Added configurable attempt retries for each gate command.
+11. **Pre-summary guard for non-report exits**  
+    Prevented trap-time write failures when exiting before report initialization.
 
-### 12) Continue-on-error mode
-Added a non-blocking mode to execute all gates and return consolidated failures at the end.
+12. **Run metadata expansion**  
+    Added report metadata for fail-on-warn/max-failures and current Git HEAD.
 
-### 13) Centralized gate runner abstraction
-Standardized all gate execution through `run_gate` for consistent logs and outcomes.
+13. **Gate validation hardening**  
+    Added strict validation for unknown gate IDs in selectors.
 
-### 14) Dependency bootstrap hardening
-Improved install behavior to prefer `npm ci` when lockfile exists and preserve Maven prefetch.
+14. **CLI contract expansion**  
+    Updated usage/help and parser coverage for all newly introduced options.
 
-### 15) Prerequisite verification
-Added preflight checks for required executables and expected repository directories.
+15. **Max-failure enforcement inside accounting layer**  
+    Enforced thresholds immediately at gate recording time for deterministic behavior.
 
-### 16) Documentation freshness expansion
-Expanded docs gate to validate `guides/improvement-notes.md` in addition to existing docs.
+16. **Dry-run compatibility for all new controls**  
+    Ensured dry-run flows still produce markdown/json/junit artifacts with selection logic.
 
-### 17) Profile-aware skip bookkeeping
-Quick mode now records skipped backend/E2E gates explicitly for transparent reporting.
+17. **Improved operational logging context**  
+    Added logs for JUnit output paths and retained structured per-level terminal logging.
 
-### 18) Enhanced usage documentation
-Updated notes and playbook with concrete examples for retries, JSON artifacts, and resilient runs.
+18. **Self-test harness added**  
+    Added `scripts/test-enhancement-gates.sh` to validate parser behavior and artifact generation.
 
-### 19) Intent-focused inline comments
-Added explanatory comments around control flow, optional timeout handling, and telemetry structures.
+19. **Negative-path validation tests**  
+    Added automated assertion for invalid gate selector failure messaging.
 
-### 20) Regression-safe dry-run verification workflow
-Validated the enhanced command surface via dry-run executions that generate both markdown and JSON artifacts.
+20. **Documentation synchronization**  
+    Updated plan, notes, and playbook/improvement docs to match the expanded execution surface.
 
-## Verification completed
-- Script syntax validated.
-- Dry-run quick profile executed successfully.
-- JSON and markdown reports generated and inspected.
-- Notes/playbook/plan docs updated in the same implementation pass.
+## Verification Completed
 
+- Script syntax validated (`bash -n`).
+- Self-test harness executed successfully.
+- Dry-run reports generated and inspected (Markdown + JSON + JUnit).
+- Selector behavior, skip accounting, and invalid selector rejection validated.
 
-## Post-review corrective fixes (this pass)
-- Fixed CLI parsing edge-cases for options requiring values (`--profile`, `--report-dir`, `--retries`, `--timeout`) with explicit error logs.
-- Reworked JSON report generation to use Python-based serialization for safe escaping of commands/notes.
-- Fixed environment propagation for JSON serialization inputs so dry-run JSON generation is stable.
-- Re-ran script lint/syntax and dry-run checks after each change.

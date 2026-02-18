@@ -13,15 +13,23 @@ SKIP_E2E=false
 CONTINUE_ON_ERROR=false
 VERBOSE=false
 EMIT_JSON=false
+EMIT_JUNIT=false
+FAIL_ON_WARN=false
+COLOR=true
 RETRIES=1
 TIMEOUT_SECONDS=0
+MAX_FAILURES=0
+ONLY_GATES=()
+SKIP_GATES=()
 REPORT_DIR_DEFAULT="$ROOT_DIR/.reports"
 REPORT_DIR="$REPORT_DIR_DEFAULT"
 LOG_DIR=""
 TIMESTAMP="$(date +%Y%m%d-%H%M%S)"
 REPORT_FILE=""
 JSON_REPORT_FILE=""
+JUNIT_REPORT_FILE=""
 RUN_LOG_FILE=""
+EXIT_TRAPPED=false
 
 # Gate bookkeeping for deterministic summaries.
 GATE_COUNT=0
@@ -38,6 +46,16 @@ declare -a GATE_DURATIONS=()
 declare -a GATE_COMMANDS=()
 declare -a GATE_NOTES=()
 
+declare -a SUPPORTED_GATES=(
+	"docs"
+	"frontend:format"
+	"frontend:lint"
+	"frontend:check"
+	"frontend:unit"
+	"backend:test"
+	"frontend:e2e"
+)
+
 usage() {
 	cat <<USAGE
 Usage: scripts/enhancement-gates.sh [options]
@@ -49,8 +67,15 @@ Options:
   --continue-on-error        Continue running remaining gates after a failure
   --report-dir <path>        Override report output directory (default: .reports)
   --json                     Emit JSON summary report in addition to markdown
+  --junit                    Emit JUnit XML summary report
+  --fail-on-warn             Treat warning gates as failures
+  --max-failures <n>         Stop execution after n failed gates (0 disables)
+  --only <gate[,gate...]>    Run only listed gate ids
+  --skip <gate[,gate...]>    Skip listed gate ids
   --retries <n>              Retry each gate command up to n attempts (default: 1)
   --timeout <seconds>        Apply command timeout when GNU timeout exists
+  --no-color                 Disable ANSI color output in terminal logs
+  --list-gates               Print supported gate ids and exit
   --verbose                  Echo additional debug detail
   --dry-run                  Print commands without executing
   --help                     Show this message
@@ -61,7 +86,15 @@ log() {
 	local level="$1"
 	shift
 	local msg="$*"
-	printf '[enhancement-gates][%s][%s] %s\n' "$(date +%H:%M:%S)" "$level" "$msg"
+	local level_render="$level"
+	if [[ "$COLOR" == true ]]; then
+		case "$level" in
+		INFO) level_render="\033[1;34m$level\033[0m" ;;
+		WARN) level_render="\033[1;33m$level\033[0m" ;;
+		ERROR) level_render="\033[1;31m$level\033[0m" ;;
+		esac
+	fi
+	printf '[enhancement-gates][%s][%b] %s\n' "$(date +%H:%M:%S)" "$level_render" "$msg"
 	if [[ -n "$RUN_LOG_FILE" ]]; then
 		printf '[enhancement-gates][%s][%s] %s\n' "$(date +%H:%M:%S)" "$level" "$msg" >>"$RUN_LOG_FILE"
 	fi
@@ -69,6 +102,26 @@ log() {
 
 append_report() {
 	printf '%s\n' "$*" >>"$REPORT_FILE"
+}
+
+list_gates() {
+	printf '%s\n' "Supported gates:"
+	local gate
+	for gate in "${SUPPORTED_GATES[@]}"; do
+		printf ' - %s\n' "$gate"
+	done
+}
+
+normalize_csv_list() {
+	local input="$1"
+	local -n output_ref=$2
+	output_ref=()
+	local part
+	IFS=',' read -r -a parts <<<"$input"
+	for part in "${parts[@]}"; do
+		part="${part//[[:space:]]/}"
+		[[ -n "$part" ]] && output_ref+=("$part")
+	done
 }
 
 record_gate() {
@@ -92,6 +145,11 @@ record_gate() {
 	warn) WARN_COUNT=$((WARN_COUNT + 1)) ;;
 	skip) SKIP_COUNT=$((SKIP_COUNT + 1)) ;;
 	esac
+
+	if [[ "$MAX_FAILURES" -gt 0 && "$FAIL_COUNT" -ge "$MAX_FAILURES" ]]; then
+		log ERROR "Reached max failures threshold ($MAX_FAILURES)."
+		exit 1
+	fi
 }
 
 validate_args() {
@@ -109,6 +167,22 @@ validate_args() {
 		log ERROR "Invalid timeout '$TIMEOUT_SECONDS'. Use integer >= 0."
 		exit 1
 	fi
+
+	if ! [[ "$MAX_FAILURES" =~ ^[0-9]+$ ]]; then
+		log ERROR "Invalid max-failures '$MAX_FAILURES'. Use integer >= 0."
+		exit 1
+	fi
+
+	local requested_gate
+	for requested_gate in "${ONLY_GATES[@]}" "${SKIP_GATES[@]}"; do
+		if [[ -z "$requested_gate" ]]; then
+			continue
+		fi
+		if [[ ! " ${SUPPORTED_GATES[*]} " =~ " $requested_gate " ]]; then
+			log ERROR "Unknown gate id '$requested_gate'. Use --list-gates to inspect valid ids."
+			exit 1
+		fi
+	done
 }
 
 parse_args() {
@@ -146,6 +220,38 @@ parse_args() {
 			EMIT_JSON=true
 			shift
 			;;
+		--junit)
+			EMIT_JUNIT=true
+			shift
+			;;
+		--fail-on-warn)
+			FAIL_ON_WARN=true
+			shift
+			;;
+		--max-failures)
+			if [[ $# -lt 2 ]]; then
+				log ERROR "Missing value for --max-failures"
+				exit 1
+			fi
+			MAX_FAILURES="$2"
+			shift 2
+			;;
+		--only)
+			if [[ $# -lt 2 ]]; then
+				log ERROR "Missing value for --only"
+				exit 1
+			fi
+			normalize_csv_list "$2" ONLY_GATES
+			shift 2
+			;;
+		--skip)
+			if [[ $# -lt 2 ]]; then
+				log ERROR "Missing value for --skip"
+				exit 1
+			fi
+			normalize_csv_list "$2" SKIP_GATES
+			shift 2
+			;;
 		--retries)
 			if [[ $# -lt 2 ]]; then
 				log ERROR "Missing value for --retries"
@@ -165,6 +271,14 @@ parse_args() {
 		--verbose)
 			VERBOSE=true
 			shift
+			;;
+		--no-color)
+			COLOR=false
+			shift
+			;;
+		--list-gates)
+			list_gates
+			exit 0
 			;;
 		--dry-run)
 			DRY_RUN=true
@@ -189,6 +303,7 @@ prepare_reports() {
 	mkdir -p "$LOG_DIR"
 	REPORT_FILE="$REPORT_DIR/gate-report-$TIMESTAMP.md"
 	JSON_REPORT_FILE="$REPORT_DIR/gate-report-$TIMESTAMP.json"
+	JUNIT_REPORT_FILE="$REPORT_DIR/gate-report-$TIMESTAMP.junit.xml"
 	RUN_LOG_FILE="$LOG_DIR/gate-run-$TIMESTAMP.log"
 
 	cat >"$REPORT_FILE" <<REPORT
@@ -202,6 +317,8 @@ prepare_reports() {
 - Dry-run: $DRY_RUN
 - Retries: $RETRIES
 - Timeout (seconds): $TIMEOUT_SECONDS
+- Fail on warn: $FAIL_ON_WARN
+- Max failures: $MAX_FAILURES
 - Root directory: $ROOT_DIR
 - Run log: ${RUN_LOG_FILE#$ROOT_DIR/}
 
@@ -209,9 +326,30 @@ prepare_reports() {
 - Shell: ${SHELL:-unknown}
 - User: $(id -un)
 - Host: $(hostname)
+- Git HEAD: $(git -C "$ROOT_DIR" rev-parse --short HEAD 2>/dev/null || echo "unknown")
 
 ## Gate Results
 REPORT
+}
+
+gate_enabled() {
+	local gate_id="$1"
+	local item
+	if [[ ${#ONLY_GATES[@]} -gt 0 ]]; then
+		local found=false
+		for item in "${ONLY_GATES[@]}"; do
+			if [[ "$item" == "$gate_id" ]]; then
+				found=true
+				break
+			fi
+		done
+		[[ "$found" == true ]] || return 1
+	fi
+
+	for item in "${SKIP_GATES[@]}"; do
+		[[ "$item" == "$gate_id" ]] && return 1
+	done
+	return 0
 }
 
 ensure_prerequisites() {
@@ -302,7 +440,21 @@ run_gate() {
 	exit 1
 }
 
+record_skipped_gate() {
+	local gate_name="$1"
+	local gate_cmd="$2"
+	local reason="$3"
+	record_gate "$gate_name" "skip" 0 "$gate_cmd" "$reason"
+	append_report "- ℹ️ $gate_name"
+	append_report "  - Result: skipped ($reason)"
+}
+
 run_docs_gate() {
+	if ! gate_enabled "docs"; then
+		record_skipped_gate "Documentation freshness gate" "file-existence-check" "selection filters"
+		return
+	fi
+
 	local docs=(
 		"plan.md"
 		"notes.md"
@@ -350,28 +502,35 @@ install_dependencies() {
 }
 
 run_quality_gates() {
-	run_gate "Frontend format check" "cd '$ROOT_DIR/frontend' && npm run format:check"
-	run_gate "Frontend lint" "cd '$ROOT_DIR/frontend' && npm run lint"
-	run_gate "Frontend type checks" "cd '$ROOT_DIR/frontend' && npm run check"
-	run_gate "Frontend unit tests" "cd '$ROOT_DIR/frontend' && npm run test:unit"
+	gate_enabled "frontend:format" && run_gate "Frontend format check" "cd '$ROOT_DIR/frontend' && npm run format:check" || record_skipped_gate "Frontend format check" "cd '$ROOT_DIR/frontend' && npm run format:check" "selection filters"
+	gate_enabled "frontend:lint" && run_gate "Frontend lint" "cd '$ROOT_DIR/frontend' && npm run lint" || record_skipped_gate "Frontend lint" "cd '$ROOT_DIR/frontend' && npm run lint" "selection filters"
+	gate_enabled "frontend:check" && run_gate "Frontend type checks" "cd '$ROOT_DIR/frontend' && npm run check" || record_skipped_gate "Frontend type checks" "cd '$ROOT_DIR/frontend' && npm run check" "selection filters"
+	gate_enabled "frontend:unit" && run_gate "Frontend unit tests" "cd '$ROOT_DIR/frontend' && npm run test:unit" || record_skipped_gate "Frontend unit tests" "cd '$ROOT_DIR/frontend' && npm run test:unit" "selection filters"
 
 	if [[ "$PROFILE" == "full" || "$PROFILE" == "ci" ]]; then
-		run_gate "Backend tests" "cd '$ROOT_DIR/backend' && $(resolve_maven_cmd) test"
+		gate_enabled "backend:test" && run_gate "Backend tests" "cd '$ROOT_DIR/backend' && $(resolve_maven_cmd) test" || record_skipped_gate "Backend tests" "cd '$ROOT_DIR/backend' && $(resolve_maven_cmd) test" "selection filters"
 		if [[ "$SKIP_E2E" == true ]]; then
-			record_gate "Frontend E2E smoke" "skip" 0 "cd '$ROOT_DIR/frontend' && npm run test:e2e:smoke" "Skipped by --skip-e2e"
-			append_report "- ⚠️ Frontend E2E smoke"
-			append_report "  - Result: skipped by --skip-e2e"
-		else
+			record_skipped_gate "Frontend E2E smoke" "cd '$ROOT_DIR/frontend' && npm run test:e2e:smoke" "--skip-e2e"
+		elif gate_enabled "frontend:e2e"; then
 			run_gate "Frontend E2E smoke" "cd '$ROOT_DIR/frontend' && npm run test:e2e:smoke"
+		else
+			record_skipped_gate "Frontend E2E smoke" "cd '$ROOT_DIR/frontend' && npm run test:e2e:smoke" "selection filters"
 		fi
 	else
-		record_gate "Backend tests" "skip" 0 "cd '$ROOT_DIR/backend' && $(resolve_maven_cmd) test" "Quick profile"
-		record_gate "Frontend E2E smoke" "skip" 0 "cd '$ROOT_DIR/frontend' && npm run test:e2e:smoke" "Quick profile"
-		append_report "- ℹ️ Quick profile skips backend and E2E gates"
+		record_skipped_gate "Backend tests" "cd '$ROOT_DIR/backend' && $(resolve_maven_cmd) test" "quick profile"
+		record_skipped_gate "Frontend E2E smoke" "cd '$ROOT_DIR/frontend' && npm run test:e2e:smoke" "quick profile"
 	fi
 }
 
 write_summary() {
+	if [[ "$EXIT_TRAPPED" == true ]]; then
+		return
+	fi
+	if [[ -z "$REPORT_FILE" ]]; then
+		return
+	fi
+	EXIT_TRAPPED=true
+
 	append_report ""
 	append_report "## Summary"
 	append_report "- Total gates tracked: $GATE_COUNT"
@@ -397,7 +556,6 @@ write_summary() {
 		export JSON_GATE_DURATIONS="$(IFS=$'\x1f'; echo "${GATE_DURATIONS[*]}")"
 		export JSON_GATE_COMMANDS="$(IFS=$'\x1f'; echo "${GATE_COMMANDS[*]}")"
 		export JSON_GATE_NOTES="$(IFS=$'\x1f'; echo "${GATE_NOTES[*]}")"
-		# Use Python for robust JSON encoding so commands/notes with quotes remain valid JSON.
 		PROFILE="$PROFILE" DRY_RUN="$DRY_RUN" CONTINUE_ON_ERROR="$CONTINUE_ON_ERROR" \
 		GATE_COUNT="$GATE_COUNT" PASS_COUNT="$PASS_COUNT" FAIL_COUNT="$FAIL_COUNT" \
 		WARN_COUNT="$WARN_COUNT" SKIP_COUNT="$SKIP_COUNT" TOTAL_DURATION="$TOTAL_DURATION" \
@@ -441,9 +599,36 @@ PY
 		append_report ""
 		append_report "- JSON report: ${JSON_REPORT_FILE#$ROOT_DIR/}"
 	fi
+
+	if [[ "$EMIT_JUNIT" == true ]]; then
+		{
+			echo '<?xml version="1.0" encoding="UTF-8"?>'
+			echo "<testsuite name=\"enhancement-gates\" tests=\"$GATE_COUNT\" failures=\"$FAIL_COUNT\" skipped=\"$SKIP_COUNT\">"
+			for ((i = 0; i < ${#GATE_NAMES[@]}; i++)); do
+				echo "  <testcase name=\"${GATE_NAMES[$i]}\" time=\"${GATE_DURATIONS[$i]}\">"
+				if [[ "${GATE_STATUSES[$i]}" == "fail" ]]; then
+					echo "    <failure message=\"gate failed\">${GATE_COMMANDS[$i]}</failure>"
+				elif [[ "${GATE_STATUSES[$i]}" == "skip" ]]; then
+					echo "    <skipped message=\"${GATE_NOTES[$i]}\" />"
+				fi
+				echo '  </testcase>'
+			done
+			echo '</testsuite>'
+		} >"$JUNIT_REPORT_FILE"
+		append_report "- JUnit report: ${JUNIT_REPORT_FILE#$ROOT_DIR/}"
+	fi
+}
+
+handle_exit() {
+	local code="$?"
+	if [[ -n "$REPORT_FILE" ]]; then
+		write_summary
+	fi
+	exit "$code"
 }
 
 main() {
+	trap handle_exit EXIT
 	parse_args "$@"
 	validate_args
 	prepare_reports
@@ -453,15 +638,22 @@ main() {
 	install_dependencies
 	run_docs_gate
 	run_quality_gates
-	write_summary
 
 	log INFO "Report saved to $REPORT_FILE"
 	if [[ "$EMIT_JSON" == true ]]; then
 		log INFO "JSON report saved to $JSON_REPORT_FILE"
 	fi
+	if [[ "$EMIT_JUNIT" == true ]]; then
+		log INFO "JUnit report saved to $JUNIT_REPORT_FILE"
+	fi
 
 	if [[ "$FAIL_COUNT" -gt 0 ]]; then
 		log ERROR "Completed with gate failures ($FAIL_COUNT)"
+		exit 1
+	fi
+
+	if [[ "$FAIL_ON_WARN" == true && "$WARN_COUNT" -gt 0 ]]; then
+		log ERROR "Warnings present with --fail-on-warn enabled"
 		exit 1
 	fi
 
