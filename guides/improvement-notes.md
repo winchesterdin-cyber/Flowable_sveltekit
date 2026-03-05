@@ -26,3 +26,22 @@
 - Add historic trend aggregation from JSON outputs.
 - Add JUnit attachment publishing in CI workflow.
 - Add selective gate aliases (e.g., `frontend:all`) for reduced command verbosity.
+
+## Enhancement Gates v4 Highlights
+
+### Coverage expansion
+- Added `frontend:build` to validate production compile pipeline.
+- Added `backend:integration` for explicit integration test execution.
+- Added `backend:package` to validate packaging lifecycle.
+
+### Operability improvements
+- Added `--report-prefix` for deterministic artifact naming.
+- Added `--keep-reports` for built-in report retention.
+- Added `--no-log-file` for environments that should avoid persistent logs.
+- Added `--print-summary` for concise completion telemetry.
+- Added `--require-clean-git` for release-discipline enforcement.
+
+### Validation hardening
+- Docs gate now validates non-empty required documents.
+- Parser validation extended for `--keep-reports` numeric constraints.
+- Self-tests extended for new argument and behavior contracts.

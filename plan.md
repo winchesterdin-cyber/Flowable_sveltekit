@@ -1,76 +1,49 @@
-# Comprehensive Enhancement Plan and Implementation Record
+# Comprehensive Enhancement Plan (Implemented)
 
 Status: **Complete**
-Scope: `scripts/enhancement-gates.sh` quality platform hardening, operator workflows, and regression safeguards.
+Date: 2026-02-18
+Scope: `scripts/enhancement-gates.sh`, `scripts/test-enhancement-gates.sh`, and operations documentation.
 
-This plan was fully implemented in this pass and verified with automated checks.
+This plan was executed end-to-end in this change set. All listed enhancements were implemented, reviewed, and validated via automated checks.
 
-## 20 Major Improvements (Planned + Implemented)
+## Major Improvements (20/20)
 
-1. **Gate selection model (`--only`, `--skip`)**  
-   Added explicit gate targeting to support scoped validation for focused changes.
+1. **Expanded gate inventory with production build verification** (`frontend:build`).
+2. **Added dedicated backend integration gate** (`backend:integration`) for `*IT` classes.
+3. **Added backend package gate** (`backend:package`) to verify artifact packaging.
+4. **Introduced `--report-prefix`** for deterministic custom artifact naming.
+5. **Introduced `--keep-reports`** retention control to auto-prune old report artifacts.
+6. **Introduced `--require-clean-git`** to prevent running validation on dirty trees when required.
+7. **Introduced `--no-log-file`** for restricted environments that should avoid persistent logs.
+8. **Introduced `--print-summary`** to emit concise terminal summaries after completion.
+9. **Extended docs gate to detect empty files** (not only missing files).
+10. **Extended report metadata with clean-git/retention/summary controls** for traceability.
+11. **Extended supported gate discovery output** to include new gate IDs.
+12. **Extended argument validation to enforce integer retention values** (`--keep-reports`).
+13. **Added new CLI parser branches with explicit missing-value handling** for all new options.
+14. **Updated quick profile behavior to explicitly skip new backend gates** with recorded reasons.
+15. **Added report cleanup workflow post-summary generation** to enforce retention policy.
+16. **Made run-log metadata conditional when log files are disabled** (`Run log: disabled`).
+17. **Augmented self-test suite to assert new gate discovery behavior**.
+18. **Augmented self-test suite to assert custom-prefix/no-log metadata output**.
+19. **Augmented self-test suite to verify dirty-tree rejection with `--require-clean-git`**.
+20. **Updated team/operator documentation and implementation notes** to reflect the expanded gate runner contract.
 
-2. **Discoverability command (`--list-gates`)**  
-   Added self-documenting gate inventory output for users and CI scripts.
+## Implementation Review Checklist (Completed)
 
-3. **JUnit XML reporting (`--junit`)**  
-   Added JUnit artifact generation for CI test report ingestion.
+- [x] CLI options added with help text and parser support.
+- [x] Runtime validation updated for new argument types.
+- [x] Gate execution matrix updated for new gates/profiles.
+- [x] Report generation updated for new metadata and retention lifecycle.
+- [x] Self-tests updated for regression coverage of new behavior.
+- [x] Team notes and improvement notes synchronized.
 
-4. **Warning escalation mode (`--fail-on-warn`)**  
-   Added policy toggle to fail runs when warnings are present.
+## Verification Executed
 
-5. **Failure budget control (`--max-failures`)**  
-   Added deterministic early termination after a configured number of failed gates.
+- Shell syntax validation for updated scripts.
+- Self-test harness execution for gate-runner contract checks.
+- End-to-end dry-run report generation assertions via self-tests.
 
-6. **ANSI color controls (`--no-color`)**  
-   Added readable colorized logs by default with explicit disable switch for plain log collectors.
+## Dependencies / Tools Check
 
-7. **Gate filter parser normalization**  
-   Added CSV parsing and whitespace normalization for robust multi-gate selectors.
-
-8. **Selection-aware skip telemetry**  
-   Added explicit skip records when gates are omitted by selection filters.
-
-9. **Shared skip recorder helper**  
-   Added `record_skipped_gate` helper to standardize skipped gate accounting/report lines.
-
-10. **Exit trap summary safety**  
-    Added trap-based finalization so summaries are still written on abrupt failures.
-
-11. **Pre-summary guard for non-report exits**  
-    Prevented trap-time write failures when exiting before report initialization.
-
-12. **Run metadata expansion**  
-    Added report metadata for fail-on-warn/max-failures and current Git HEAD.
-
-13. **Gate validation hardening**  
-    Added strict validation for unknown gate IDs in selectors.
-
-14. **CLI contract expansion**  
-    Updated usage/help and parser coverage for all newly introduced options.
-
-15. **Max-failure enforcement inside accounting layer**  
-    Enforced thresholds immediately at gate recording time for deterministic behavior.
-
-16. **Dry-run compatibility for all new controls**  
-    Ensured dry-run flows still produce markdown/json/junit artifacts with selection logic.
-
-17. **Improved operational logging context**  
-    Added logs for JUnit output paths and retained structured per-level terminal logging.
-
-18. **Self-test harness added**  
-    Added `scripts/test-enhancement-gates.sh` to validate parser behavior and artifact generation.
-
-19. **Negative-path validation tests**  
-    Added automated assertion for invalid gate selector failure messaging.
-
-20. **Documentation synchronization**  
-    Updated plan, notes, and playbook/improvement docs to match the expanded execution surface.
-
-## Verification Completed
-
-- Script syntax validated (`bash -n`).
-- Self-test harness executed successfully.
-- Dry-run reports generated and inspected (Markdown + JSON + JUnit).
-- Selector behavior, skip accounting, and invalid selector rejection validated.
-
+No additional packages were required for this implementation. Existing toolchain (`bash`, `npm`, `java`, `maven`) remains unchanged; new capabilities are implemented purely in repository scripts.

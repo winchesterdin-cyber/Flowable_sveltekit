@@ -29,3 +29,20 @@
 - Run `scripts/test-enhancement-gates.sh` whenever gate-runner behavior is changed.
 - Keep selector IDs synchronized with parser validation and `--list-gates` output.
 - Update docs in the same change set as any CLI contract change.
+
+## What changed in this pass (v4 gate hardening)
+- Added three new gate IDs: `frontend:build`, `backend:integration`, and `backend:package` for broader release readiness checks.
+- Added operator controls: `--report-prefix`, `--keep-reports`, `--require-clean-git`, `--no-log-file`, and `--print-summary`.
+- Strengthened docs gate validation by failing on empty required documentation files.
+- Added artifact retention cleanup to keep report directories bounded.
+- Expanded self-tests to cover new CLI and behavior paths (gate listing, no-log metadata, dirty-tree protection).
+
+## Operational examples (new)
+1. **Run only build + package checks in CI dry-run mode**
+   - `scripts/enhancement-gates.sh --profile ci --dry-run --only frontend:build,backend:package`
+2. **Use custom report names and keep last 5 runs**
+   - `scripts/enhancement-gates.sh --profile full --report-prefix release-gates --keep-reports 5`
+3. **Protect against dirty working trees**
+   - `scripts/enhancement-gates.sh --profile full --require-clean-git`
+4. **Disable persistent logs while keeping markdown report**
+   - `scripts/enhancement-gates.sh --profile quick --no-log-file`

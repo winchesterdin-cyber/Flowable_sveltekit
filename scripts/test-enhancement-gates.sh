@@ -25,6 +25,12 @@ bash -n "$TARGET"
 
 "$TARGET" --list-gates >"$TEST_DIR/list-gates.txt"
 assert_contains "$TEST_DIR/list-gates.txt" "frontend:unit"
+assert_contains "$TEST_DIR/list-gates.txt" "backend:integration"
+
+"$TARGET" --profile quick --dry-run --print-summary --report-prefix custom --no-log-file --keep-reports 2 --report-dir "$TEST_DIR/run-prefix" >/dev/null
+LATEST_CUSTOM_MD="$(ls -1 "$TEST_DIR/run-prefix"/custom-*.md | tail -n 1)"
+assert_contains "$LATEST_CUSTOM_MD" "Run log: disabled"
+assert_contains "$LATEST_CUSTOM_MD" "Keep reports: 2"
 
 "$TARGET" --profile quick --dry-run --json --junit --report-dir "$TEST_DIR/run1" >/dev/null
 LATEST_JSON="$(ls -1 "$TEST_DIR/run1"/*.json | tail -n 1)"
@@ -43,5 +49,11 @@ if "$TARGET" --profile quick --dry-run --only invalid-gate --report-dir "$TEST_D
 	exit 1
 fi
 assert_contains "$TEST_DIR/invalid.log" "Unknown gate id"
+
+if "$TARGET" --profile quick --dry-run --require-clean-git --report-dir "$TEST_DIR/run4" >"$TEST_DIR/dirty.log" 2>&1; then
+	echo "ASSERTION FAILED: require-clean-git should fail in dirty repository" >&2
+	exit 1
+fi
+assert_contains "$TEST_DIR/dirty.log" "uncommitted changes"
 
 echo "Self-tests completed successfully."
