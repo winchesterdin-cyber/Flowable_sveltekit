@@ -9,6 +9,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PROFILE="full"
 INSTALL_DEPS=false
 DRY_RUN=false
+PRINT_SUMMARY=false
 SKIP_E2E=false
 CONTINUE_ON_ERROR=false
 VERBOSE=false
@@ -23,6 +24,7 @@ ONLY_GATES=()
 SKIP_GATES=()
 REPORT_DIR_DEFAULT="$ROOT_DIR/.reports"
 REPORT_DIR="$REPORT_DIR_DEFAULT"
+REPORT_PREFIX="gate-report"
 LOG_DIR=""
 TIMESTAMP="$(date +%Y%m%d-%H%M%S)"
 REPORT_FILE=""
@@ -30,6 +32,9 @@ JSON_REPORT_FILE=""
 JUNIT_REPORT_FILE=""
 RUN_LOG_FILE=""
 EXIT_TRAPPED=false
+REQUIRE_CLEAN_GIT=false
+KEEP_REPORTS=0
+NO_LOG_FILE=false
 
 # Gate bookkeeping for deterministic summaries.
 GATE_COUNT=0
@@ -52,7 +57,10 @@ declare -a SUPPORTED_GATES=(
 	"frontend:lint"
 	"frontend:check"
 	"frontend:unit"
+	"frontend:build"
 	"backend:test"
+	"backend:integration"
+	"backend:package"
 	"frontend:e2e"
 )
 
@@ -78,6 +86,11 @@ Options:
   --list-gates               Print supported gate ids and exit
   --verbose                  Echo additional debug detail
   --dry-run                  Print commands without executing
+  --print-summary            Print concise gate summary to stdout at completion
+  --report-prefix <prefix>   Prefix for generated report files (default: gate-report)
+  --keep-reports <n>         Retain only newest n report sets in report directory (0 disables)
+  --require-clean-git        Fail early if repository has uncommitted changes
+  --no-log-file              Skip persistent run log file creation
   --help                     Show this message
 USAGE
 }
@@ -170,6 +183,11 @@ validate_args() {
 
 	if ! [[ "$MAX_FAILURES" =~ ^[0-9]+$ ]]; then
 		log ERROR "Invalid max-failures '$MAX_FAILURES'. Use integer >= 0."
+		exit 1
+	fi
+
+	if ! [[ "$KEEP_REPORTS" =~ ^[0-9]+$ ]]; then
+		log ERROR "Invalid keep-reports '$KEEP_REPORTS'. Use integer >= 0."
 		exit 1
 	fi
 
@@ -284,6 +302,34 @@ parse_args() {
 			DRY_RUN=true
 			shift
 			;;
+		--print-summary)
+			PRINT_SUMMARY=true
+			shift
+			;;
+		--report-prefix)
+			if [[ $# -lt 2 ]]; then
+				log ERROR "Missing value for --report-prefix"
+				exit 1
+			fi
+			REPORT_PREFIX="$2"
+			shift 2
+			;;
+		--keep-reports)
+			if [[ $# -lt 2 ]]; then
+				log ERROR "Missing value for --keep-reports"
+				exit 1
+			fi
+			KEEP_REPORTS="$2"
+			shift 2
+			;;
+		--require-clean-git)
+			REQUIRE_CLEAN_GIT=true
+			shift
+			;;
+		--no-log-file)
+			NO_LOG_FILE=true
+			shift
+			;;
 		--help)
 			usage
 			exit 0
@@ -300,11 +346,17 @@ parse_args() {
 prepare_reports() {
 	mkdir -p "$REPORT_DIR"
 	LOG_DIR="$REPORT_DIR/logs"
-	mkdir -p "$LOG_DIR"
-	REPORT_FILE="$REPORT_DIR/gate-report-$TIMESTAMP.md"
-	JSON_REPORT_FILE="$REPORT_DIR/gate-report-$TIMESTAMP.json"
-	JUNIT_REPORT_FILE="$REPORT_DIR/gate-report-$TIMESTAMP.junit.xml"
-	RUN_LOG_FILE="$LOG_DIR/gate-run-$TIMESTAMP.log"
+	if [[ "$NO_LOG_FILE" == false ]]; then
+		mkdir -p "$LOG_DIR"
+	fi
+	REPORT_FILE="$REPORT_DIR/${REPORT_PREFIX}-$TIMESTAMP.md"
+	JSON_REPORT_FILE="$REPORT_DIR/${REPORT_PREFIX}-$TIMESTAMP.json"
+	JUNIT_REPORT_FILE="$REPORT_DIR/${REPORT_PREFIX}-$TIMESTAMP.junit.xml"
+	if [[ "$NO_LOG_FILE" == true ]]; then
+		RUN_LOG_FILE=""
+	else
+		RUN_LOG_FILE="$LOG_DIR/${REPORT_PREFIX}-$TIMESTAMP.log"
+	fi
 
 	cat >"$REPORT_FILE" <<REPORT
 # Enhancement Gates Report
@@ -319,8 +371,11 @@ prepare_reports() {
 - Timeout (seconds): $TIMEOUT_SECONDS
 - Fail on warn: $FAIL_ON_WARN
 - Max failures: $MAX_FAILURES
+- Require clean git: $REQUIRE_CLEAN_GIT
+- Keep reports: $KEEP_REPORTS
+- Print summary: $PRINT_SUMMARY
 - Root directory: $ROOT_DIR
-- Run log: ${RUN_LOG_FILE#$ROOT_DIR/}
+- Run log: $( [[ -n "$RUN_LOG_FILE" ]] && echo "${RUN_LOG_FILE#$ROOT_DIR/}" || echo "disabled")
 
 ## Environment Snapshot
 - Shell: ${SHELL:-unknown}
@@ -372,6 +427,11 @@ ensure_prerequisites() {
 
 	if [[ "$TIMEOUT_SECONDS" -gt 0 ]] && ! command -v timeout >/dev/null 2>&1; then
 		log WARN "timeout command not available; per-command timeout disabled"
+	fi
+
+	if [[ "$REQUIRE_CLEAN_GIT" == true ]] && [[ -n "$(git -C "$ROOT_DIR" status --porcelain)" ]]; then
+		log ERROR "Repository contains uncommitted changes but --require-clean-git is enabled"
+		exit 1
 	fi
 }
 
@@ -466,6 +526,8 @@ run_docs_gate() {
 	for required in "${docs[@]}"; do
 		if [[ ! -f "$ROOT_DIR/$required" ]]; then
 			missing+=("$required")
+		elif [[ ! -s "$ROOT_DIR/$required" ]]; then
+			missing+=("$required (empty)")
 		fi
 	done
 
@@ -506,9 +568,12 @@ run_quality_gates() {
 	gate_enabled "frontend:lint" && run_gate "Frontend lint" "cd '$ROOT_DIR/frontend' && npm run lint" || record_skipped_gate "Frontend lint" "cd '$ROOT_DIR/frontend' && npm run lint" "selection filters"
 	gate_enabled "frontend:check" && run_gate "Frontend type checks" "cd '$ROOT_DIR/frontend' && npm run check" || record_skipped_gate "Frontend type checks" "cd '$ROOT_DIR/frontend' && npm run check" "selection filters"
 	gate_enabled "frontend:unit" && run_gate "Frontend unit tests" "cd '$ROOT_DIR/frontend' && npm run test:unit" || record_skipped_gate "Frontend unit tests" "cd '$ROOT_DIR/frontend' && npm run test:unit" "selection filters"
+	gate_enabled "frontend:build" && run_gate "Frontend production build" "cd '$ROOT_DIR/frontend' && npm run build" || record_skipped_gate "Frontend production build" "cd '$ROOT_DIR/frontend' && npm run build" "selection filters"
 
 	if [[ "$PROFILE" == "full" || "$PROFILE" == "ci" ]]; then
 		gate_enabled "backend:test" && run_gate "Backend tests" "cd '$ROOT_DIR/backend' && $(resolve_maven_cmd) test" || record_skipped_gate "Backend tests" "cd '$ROOT_DIR/backend' && $(resolve_maven_cmd) test" "selection filters"
+		gate_enabled "backend:integration" && run_gate "Backend integration tests" "cd '$ROOT_DIR/backend' && $(resolve_maven_cmd) -Dtest='*IT' test" "Runs targeted integration test classes" || record_skipped_gate "Backend integration tests" "cd '$ROOT_DIR/backend' && $(resolve_maven_cmd) -Dtest='*IT' test" "selection filters"
+		gate_enabled "backend:package" && run_gate "Backend package verification" "cd '$ROOT_DIR/backend' && $(resolve_maven_cmd) -DskipTests package" "Ensures production artifact packaging succeeds" || record_skipped_gate "Backend package verification" "cd '$ROOT_DIR/backend' && $(resolve_maven_cmd) -DskipTests package" "selection filters"
 		if [[ "$SKIP_E2E" == true ]]; then
 			record_skipped_gate "Frontend E2E smoke" "cd '$ROOT_DIR/frontend' && npm run test:e2e:smoke" "--skip-e2e"
 		elif gate_enabled "frontend:e2e"; then
@@ -518,8 +583,26 @@ run_quality_gates() {
 		fi
 	else
 		record_skipped_gate "Backend tests" "cd '$ROOT_DIR/backend' && $(resolve_maven_cmd) test" "quick profile"
+		record_skipped_gate "Backend integration tests" "cd '$ROOT_DIR/backend' && $(resolve_maven_cmd) -Dtest='*IT' test" "quick profile"
+		record_skipped_gate "Backend package verification" "cd '$ROOT_DIR/backend' && $(resolve_maven_cmd) -DskipTests package" "quick profile"
 		record_skipped_gate "Frontend E2E smoke" "cd '$ROOT_DIR/frontend' && npm run test:e2e:smoke" "quick profile"
 	fi
+}
+
+cleanup_old_reports() {
+	if [[ "$KEEP_REPORTS" -eq 0 ]]; then
+		return
+	fi
+
+	local pattern="$REPORT_DIR/${REPORT_PREFIX}-*"
+	mapfile -t files < <(ls -1t $pattern 2>/dev/null || true)
+	local idx=0
+	for file in "${files[@]}"; do
+		idx=$((idx + 1))
+		if [[ "$idx" -gt "$KEEP_REPORTS" ]]; then
+			rm -f "$file"
+		fi
+	done
 }
 
 write_summary() {
@@ -616,6 +699,12 @@ PY
 			echo '</testsuite>'
 		} >"$JUNIT_REPORT_FILE"
 		append_report "- JUnit report: ${JUNIT_REPORT_FILE#$ROOT_DIR/}"
+	fi
+
+	cleanup_old_reports
+
+	if [[ "$PRINT_SUMMARY" == true ]]; then
+		log INFO "Summary: passed=$PASS_COUNT failed=$FAIL_COUNT skipped=$SKIP_COUNT warnings=$WARN_COUNT duration=${TOTAL_DURATION}s"
 	fi
 }
 
